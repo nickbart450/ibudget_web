@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Budget</title>
+
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"/>
+  <link rel="stylesheet" href="https://www.w3schools.com/lib/w3-colors-2018.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+<!--  <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}"/>-->
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
+
+  <script src="{{ url_for('static', filename='index.js') }}"></script>
+  <script src="https://code.jquery.com/jquery-3.6.1.js"
+    integrity="sha256-3zlB5s2uwoUzrXK3BT7AX3FyvojsraNFxCc2vC/7pNI="
+    crossorigin="anonymous">
+  </script>
+</head>
+
+<body style="color: whitesmoke; background-color: #0b0d1a; margin-top:100px">
+
+<div id="nav_menu" class="w3-top w3-2018-sailor-blue">
+    <div class="w3-bar w3-theme w3-xlarge">
+      <span class="w3-bar-item"><i class="fa fa-bank"></i> - Nick's Budget</span>
+
+      <div class="w3-bar w3-large">
+        <a href="/" class="w3-bar-item w3-button w3-hover-deep-purple" style="text-shadow:2px 2px 0 #444;"><b>//HOME</b></a>  <!-- style="width: 7%; min-width: 100px" -->
+        <!--              <a href="/tasks/" class="w3-bar-item w3-button" style="width: 7%; min-width: 100px">TASKS</a>-->
+        <a href="{{ url_for('get_transactions') }}" class="w3-bar-item w3-button">TRANSACT</a>  <!-- style="width: 7%; min-width: 100px" -->
+        <div class="w3-dropdown-hover">
+          <button class="w3-button">Links</button>  <!-- onclick="dropdownFunction()" -->
+          <div id="dropdown" class="w3-dropdown-content w3-bar-block w3-card-4 w3-deep-purple w3-medium">
+            <a href="https://www.skylacu.com/" target="_blank" class="w3-bar-item w3-button">Skyla Credit Union</a>
+            <a href="https://www.td.com/us/en/personal-banking" target="_blank" class="w3-bar-item w3-button">TD Bank</a>
+            <a href="https://www.chase.com/" target="_blank" class="w3-bar-item w3-button">Chase</a>
+            <a href="https://www.capitalone.com/" target="_blank" class="w3-bar-item w3-button">Capital One</a>
+            <a href="https://www.mortgagequestions.com/" target="_blank" class="w3-bar-item w3-button">PHH Mortgage</a>
+            <a href="https://docs.google.com/spreadsheets/d/1P3mthHotydy02lQSS9wTdwvIGes6mNVu3ej2MAfXdDw/" target="_blank" class="w3-bar-item w3-button">Old Spreadsheet</a>
+            <a href="https://github.com/nickbart450/budget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
+          </div>
+        </div>
+<!--        <a class="w3-bar-item w3-button w3-right" href="#"><i class="fa fa-search"></i></a>-->
+      </div>
+    </div>
+  </div>
+
+{% block body %}
+<!-- on page load script -->
+<script>
+$(function(){
+  initDataTables();
+  console.log('datatable initialized');
+
+  //Better to construct options first and then pass it as a parameter
+  var stacked_options = {
+    theme: "dark2",
+    animationEnabled: true,
+    title:{
+        text: "Account Values"
+    },
+    axisY:{
+        title:"Value ($)",
+        minimum: 0,
+        maximum: 30000,
+    },
+    toolTip: {
+        shared: true,
+        reversed: true
+    },
+    data: [
+      {
+        type: "stackedColumn",
+        name: "Skyla Emergency Savings",
+        showInLegend: "true",
+        yValueFormatString: "$ #.##",
+        dataPoints: {{ account_values['102'] | safe }},
+      },
+      {
+        type: "stackedColumn",
+        name: "Skyla Main Savings",
+        showInLegend: "true",
+        yValueFormatString: "$ #.##",
+        dataPoints: {{ account_values['101'] | safe }},
+      },
+      {
+          type: "stackedColumn",
+          name: "Cash",
+          showInLegend: "true",
+          yValueFormatString: "$ #.##",
+          dataPoints: {{ account_values['Cash'] | safe }},
+      },
+      {
+          type: "stackedColumn",
+          name: "TD Combined",
+          showInLegend: "true",
+          yValueFormatString: "$ #.##",
+          dataPoints: {{ account_values['TD'] | safe }},
+      },
+      {
+          type: "stackedColumn",
+          name: "Skyla Checking",
+          showInLegend: "true",
+          yValueFormatString: "$ #.##",
+          dataPoints: {{ account_values['100'] | safe }},
+      },
+    ]
+};
+
+var burn_time_options = {
+    theme: "dark2",
+	animationEnabled: true,
+	title:{
+		text: "Burn Time"
+	},
+	axisX:{
+		valueFormatString: "DD MMM",
+		crosshair: {
+			enabled: true,
+			snapToDataPoint: true
+		}
+	},
+	axisY: {
+		title: "Months to 0",
+		valueFormatString: "0.00",
+		minimum: 0,
+		maximum: 12,
+		crosshair: {
+			enabled: true,
+			snapToDataPoint: true,
+			labelFormatter: function(e) {
+				return "$" + CanvasJS.formatNumber(e.value, "0.00");
+			}
+		}
+	},
+	data: [{
+		type: "area",
+		xValueFormatString: "DD MMM",
+		yValueFormatString: "0.00",
+		dataPoints: [
+    		{% for i in burn_time %}
+                { x: new Date({{ i['year'] }}, {{ i['month'] }}, {{ i['day'] }}), y: {{ i['burn'] }} },
+    		{% endfor %}
+        ],
+	}],
+};
+
+$("#account_value_chart").CanvasJSChart(stacked_options);
+$("#burn_time_chart").CanvasJSChart(burn_time_options);
+});
+</script>
+
+<div class="w3-row-padding">
+    <!-- CanvasJS Charts Import-->
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+
+    <!-- DataTables Import -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+
+    <div class="w3-row-padding">
+
+      <!-- Stacked Account Value Chart -->
+      <div id="account_value_chart" class="w3-content w3-card" style="height: 400px; max-width:1200px;"></div><br>
+
+      <!-- Burn Time Chart -->
+      <div id="burn_time_chart" class="w3-content w3-card" style="height: 400px; max-width:1200px ;"></div><br>
+
+      <!-- Account Value Table -->
+      <div class="w3-content w3-card" style="max-width:1200px">
+        <table id="account_value_table" class="w3-table-all" style="width:100%; color:black">
+          <thead>
+            <tr>
+              <th class="w3-center"></th>
+              <th class="w3-center">Date</th>
+              <th class="w3-center">Skyla Emergency Savings</th>
+              <th class="w3-center">Skyla Checking</th>
+              <th class="w3-center">Skyla Main Savings</th>
+              <th class="w3-center">Wallet</th>
+              <th class="w3-center">Cash Stash</th>
+              <th class="w3-center">TD Bank Checking</th>
+              <th class="w3-center">TD Bank Savings</th>
+              <!-- <th class="w3-center">Chase 4895</th>-->
+              <!-- <th class="w3-center">Capital One 5735</th>-->
+            </tr>
+          </thead>
+          <tbody style="font-size:12px">
+          {% for item in data %}
+            <tr>
+              <!-- Details Button-->
+              {% if item['is_posted'] -%}
+                <td class="w3-center"><button onclick="alert({{ item['transaction_id'] }})" class="w3-black w3-round-large"><i class="fa fa-bars"></i></button></td>
+              {% else -%}
+                <td></td>
+              {% endif %}
+
+              <!-- Data-->
+              <td class="w3-center">{{ item['transaction_date'] }}</td>
+              <td class="w3-center">{{ item['Skyla Home-Emergency Savings'] }}</td>
+              <td class="w3-center">{{ item['Skyla Checking'] }}</td>
+              <td class="w3-center">{{ item['Skyla Main Savings'] }}</td>
+              <td class="w3-center">{{ item['Wallet'] }}</td>
+              <td class="w3-center">{{ item['Cash Stash'] }}</td>
+              <td class="w3-center">{{ item['TD Bank Checking'] }}</td>
+              <td class="w3-center">{{ item['TD Bank Savings'] }}</td>
+              <!-- <td class="w3-center">{{ item['Chase 4895 Freedom Unlimited'] }}</td>-->
+              <!-- <td class="w3-center">{{ item['Capital One 5737'] }}</td>-->
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+</div>
+{% endblock %}
+
+</body>
+</html>

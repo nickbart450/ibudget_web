@@ -1,0 +1,15 @@
+body {
+    background-color: rgb(25, 35, 58);
+    color: white;
+}
+
+#nav_menu {
+    background-color: rgb(20, 27, 45);
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+canvas {
+    margin: 0 auto;
+    }

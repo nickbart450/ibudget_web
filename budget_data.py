@@ -1,0 +1,606 @@
+# budget_data.py
+__version__ = '0.0.1'
+
+import os.path
+import pandas as pd
+import sqlite3 as sql
+
+QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
+            'show_all_transactions': '''SELECT * from TRANSACTIONS''',
+            'show_all_accounts': '''SELECT * from ACCOUNTS''',
+            'list_tables': '''SELECT 
+                      name
+                  FROM 
+                      sqlite_schema
+                  WHERE 
+                      type ='table' AND 
+                      name NOT LIKE 'sqlite_%';''',
+           }
+
+
+class BudgetData:
+    """
+    Default date filters are 2023
+    """
+    def __init__(self):
+        self.dbConnection = None
+        self.dbConnected = False
+        self.connection_attempts = 0
+        self.date_filters = {'All': ['2022-12-01', '2024-01-01'],
+                    'January': ['2022-12-31', '2023-02-01'],
+                    'February': ['2023-02-01', '2023-03-01'],
+                    'March': ['2023-03-01', '2023-04-01'],
+                    'April': ['2023-04-01', '2023-05-01'],
+                    'May': ['2023-05-01', '2023-06-01'],
+                    'June': ['2023-06-01', '2023-07-01'],
+                    'July': ['2023-07-01', '2023-08-01'],
+                    'August': ['2023-08-01', '2023-09-01'],
+                    'September': ['2023-09-01', '2023-10-01'],
+                    'October': ['2023-10-01', '2023-11-01'],
+                    'November': ['2023-11-01', '2023-12-01'],
+                    'December': ['2023-12-01', '2024-01-01'],
+                    'Q1': ['2022-12-01', '2023-04-01'],
+                    'Q2': ['2023-04-01', '2023-07-01'],
+                    'Q3': ['2023-07-01', '2023-10-01'],
+                    'Q4': ['2023-10-01', '2024-01-01'],
+                    }
+
+    def connect(self, db_file):
+        self.connection_attempts += 1
+        try:
+            if os.path.exists(os.path.abspath(db_file)):
+                print('Attempting to open {}'.format(os.path.abspath(db_file)))
+                self.dbConnection = sql.connect(db_file, check_same_thread=False)
+                test_query = 'SELECT sqlite_version();'
+                test_cursor = self.dbConnection.cursor()
+                self.db_version = test_cursor.execute(test_query).fetchall()[0]
+                self.dbConnected = True
+                print('Successfully Connected')
+                return True
+            elif os.path.exists(os.path.abspath('./budget_example.db')):
+                print('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
+                self.dbConnection = sql.connect('./budget_example.db', check_same_thread=False)
+                test_query = 'SELECT sqlite_version();'
+                test_cursor = self.dbConnection.cursor()
+                self.db_version = test_cursor.execute(test_query).fetchall()[0]
+                self.dbConnected = True
+                print('Successfully Connected to Example db')
+                return True
+            else:
+                if self.connection_attempts <= 5:
+                    print('No database file found, attempting to create fresh, empty database at {}'.format(
+                        os.path.abspath(db_file)))
+                    self.create_fresh_database(os.path.abspath(db_file), create_tables=True)
+                    self.connect(db_file)  # reattempt connection
+                else:
+                    print('attempted db connection/creation 5 times, quitting')
+                    self.dbConnected = False
+                    return None
+
+        # Handle errors
+        except sql.Error as e:
+            print('Failed db connection/creation with error: {}'.format(e))
+            self.dbConnected = False
+            return None
+
+    def close(self):
+        if self.dbConnected:
+            self.dbConnection.close()
+            self.dbConnected = False
+            print('SQLite Connection closed')
+        else:
+            print('No SQLite Connection to close')
+
+    def get_accounts(self):
+        if self.dbConnected:
+            self.dbConnection.row_factory = sql.Row  # Sets the direction of returned data to work with pd.from_dict
+            accounts = self.dbConnection.cursor().execute('''SELECT * FROM ACCOUNTS''').fetchall()
+            account_table = pd.DataFrame([dict(row) for row in accounts])
+            return account_table
+        else:
+            raise RuntimeError('database not connected')
+
+    def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
+                         account_filter='All', expense_income_filter='Both', append_total=False):  # alternative date_type: posted_date
+        """ Can provide either filter code string (ex. 'January', 'Q3') defined by date_filters dict
+                            OR  start and end dates of format 'YYYY-mm-dd'
+        """
+
+        query = """SELECT * from TRANSACTIONS
+                   {fill}
+                   ORDER BY transaction_date ASC;
+                """
+
+        # Query (Date Filter happens here)
+        if date_filter == 'Date Filter':
+            date_filter = 'All'
+
+        if date_filter is not None:
+            d1 = self.date_filters[date_filter][0]
+            d2 = self.date_filters[date_filter][1]
+            query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
+            query = query.format(date_type, d1, d2)
+        elif start_date is not None and end_date is not None:
+            d1 = start_date
+            d2 = end_date
+            query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
+            query = query.format(date_type, d1, d2)
+        else:
+            query = query.format(fill='')
+            # raise Exception("Please provide date range or filter code")
+
+        date_cols = ['transaction_date', 'posted_date']
+        df = pd.read_sql(query, self.dbConnection, parse_dates=date_cols)
+
+        # Account Filter
+        accounts = self.get_accounts()
+        if account_filter == 'All' or account_filter == 'Account Filter':
+            account = list(accounts['account_id'])
+        else:
+            account = [int(accounts[accounts['name'] == account_filter]['account_id'])]
+
+        debit_truth_series = []
+        for i in df.index:
+            if df.iloc[i].debit_account_id in account:
+                debit_truth_series.append(True)
+            else:
+                debit_truth_series.append(False)
+
+        credit_truth_series = []
+        for i in df.index:
+            if df.iloc[i].credit_account_id in account:
+                credit_truth_series.append(True)
+            else:
+                credit_truth_series.append(False)
+
+        joint_truth_series = []
+        for i in list(range(len(debit_truth_series))):
+            if debit_truth_series[i]:
+                joint_truth_series.append(True)
+            elif credit_truth_series[i]:
+                joint_truth_series.append(True)
+            else:
+                joint_truth_series.append(False)
+
+        df = df[joint_truth_series]
+
+        # Expense/Income Filter
+        if expense_income_filter == 'Expenses':
+            df = df[df['debit_account_id']==0]
+
+        elif expense_income_filter == 'Income':
+            df = pd.concat([df[df['credit_account_id']==0], df[df['credit_account_id']==300]])
+
+        # Append Total
+        if append_total:
+            col_names = ['amount']
+            df = self.append_total(df, col_names)
+            df.fillna('', inplace=True)
+
+        return df
+
+    def bulk_import(self, file, table, date_columns=False):
+        # Load data from csv
+        df = pd.read_csv(file, encoding="ISO-8859-1")
+
+        # Convert date columns to proper dtype
+        if date_columns:
+            for date_col in date_columns:
+                df[date_col] = pd.to_datetime(df[date_col])  # , format="%Y-%m-%d"
+        else:
+            print('no date column conversion')
+
+        # Add data to sqlite db
+        rows_changed = df.to_sql(table, self.dbConnection, schema='budget', if_exists='append', index=False)
+        self.dbConnection.commit()
+        return rows_changed
+
+    def add_transaction(self, transaction_date, category, amount, posted_date=False, credit_account=False,
+                        debit_account=False, description=None, vendor=None, is_posted=False):
+        transaction_date = pd.to_datetime(transaction_date)
+
+        # handle post date
+        if posted_date:
+            posted_date = pd.to_datetime(posted_date)
+        else:
+            posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
+
+        # handle accounts
+        accounts = self.get_accounts()
+        if credit_account and debit_account:
+            if credit_account == debit_account:
+                raise RuntimeError('debit_account must be different from credit_account')
+            else:
+                pass
+
+        elif credit_account and not debit_account:
+            print('credit_account ONLY provided')
+            debit_account = 0
+        elif debit_account and not credit_account:
+            print('debit_account ONLY provided')
+            credit_account = 0
+        else:
+            raise RuntimeError('Please specify at least one account as debit_account or credit_account')
+
+        # convert is_posted
+        if is_posted:
+            is_posted = 1
+        else:
+            is_posted = 0
+
+        if description is None:
+            description = ''
+
+        query = '''INSERT INTO TRANSACTIONS
+                    (transaction_date,
+                    posted_date,
+                    credit_account_id,
+                    debit_account_id,
+                    category,
+                    description,
+                    amount,
+                    vendor,
+                    is_posted)
+                VALUES
+                    ("{t_date}",
+                    "{p_date}",
+                    {c_account_id},
+                    {d_account_id},
+                    "{category}",
+                    "{description}",
+                    {amount},
+                    "{vendor}",
+                    {is_posted});'''.format(
+            t_date=transaction_date,
+            p_date=posted_date,
+            c_account_id=int(credit_account),
+            d_account_id=int(debit_account),
+            category=category,
+            description=description,
+            amount=amount,
+            vendor=vendor,
+            is_posted=is_posted,
+        )
+        print(query)
+
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+    def update_transaction(self, transaction_id, transaction_date, category, amount, posted_date=False, credit_account=False,
+                        debit_account=False, description=None, vendor=None, is_posted=False):
+
+        transaction_date = pd.to_datetime(transaction_date)
+
+        # handle post date
+        if posted_date:
+            posted_date = pd.to_datetime(posted_date)
+        else:
+            posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
+
+        # handle accounts
+        accounts = self.get_accounts()
+        if credit_account and debit_account:
+            if credit_account == debit_account:
+                raise RuntimeError('debit_account must be different from credit_account')
+            else:
+                credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
+                debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
+        elif credit_account and not debit_account:
+            print('credit_account ONLY provided')
+            credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
+            debit_account = 0
+        elif debit_account and not credit_account:
+            print('debit_account ONLY provided')
+            credit_account = 0
+            debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
+        else:
+            raise RuntimeError('Please specify at least one account as debit_account or credit_account')
+
+        # convert is_posted
+        if is_posted:
+            is_posted = 1
+        else:
+            is_posted = 0
+
+        q_update = """
+            UPDATE TRANSACTIONS
+            SET transaction_date = "{t_date}",
+                posted_date = "{p_date}",
+                credit_account_id = {c_account_id},
+                debit_account_id = {d_account_id},
+                category = "{category}",
+                description = "{description}",
+                amount = {amount},
+                vendor = "{vendor}",
+                is_posted = {is_posted}
+            WHERE transaction_id = {transaction_id};""".format(
+                t_date=transaction_date,
+                p_date=posted_date,
+                c_account_id=credit_account,
+                d_account_id=debit_account,
+                category=category,
+                description=description,
+                amount=amount,
+                vendor=vendor,
+                is_posted=is_posted,
+                transaction_id=transaction_id,
+        )
+
+        cursor = self.dbConnection.cursor()
+        cursor.execute(q_update)
+        self.dbConnection.commit()
+
+    def delete_transaction(self, id):
+        query = '''DELETE FROM TRANSACTIONS
+                WHERE transaction_id={};'''.format(id)
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+    def general_query(self, query, date_columns=None):
+        try:
+            result = pd.read_sql_query(query, self.dbConnection, parse_dates=date_columns)
+        except Exception as e:
+            result = self.dbConnection.execute(query).fetchall()
+        self.dbConnection.commit()
+        return (result)
+
+    def quick_query(self, query_code):
+        return self.general_query(QUERIES[query_code])
+
+    def calculate_account_values(self, starting_values, date_filter=None, append_transaction_details=False):
+        # accounts = self.get_accounts()
+
+        if date_filter:
+            transactions = self.get_transactions(date_filter=date_filter)
+        else:
+            transactions = self.get_transactions()
+
+        transactions.sort_values(by=['transaction_date', 'transaction_id'], inplace=True)
+
+        for v in starting_values:
+            starting_values[v] = [starting_values[v]]
+
+        # iterate over each transaction to calculate account value over time
+        account_values = pd.DataFrame()  # Setup dataframe
+        values = pd.Series(pd.DataFrame.from_dict(starting_values).iloc[0])  # Setup transient series to use through iterations
+        for i in transactions.index:
+            # Find Accounts
+            transaction_id = int(transactions.iloc[i]['transaction_id'])
+            transaction_date = transactions.iloc[i]['transaction_date']
+            posted_date = transactions.iloc[i]['posted_date']
+            debit_account = int(transactions.iloc[i]['debit_account_id'])
+            credit_account = int(transactions.iloc[i]['credit_account_id'])
+
+            # Find before value of accounts
+            debit_acct_0 = values[str(debit_account)]
+            credit_acct_0 = values[str(credit_account)]
+
+            # Calculate after value of accounts
+            values['transaction_id'] = transaction_id
+
+            values['transaction_date'] = transaction_date
+            values['posted_date'] = posted_date
+
+            values[str(debit_account)] = round(debit_acct_0 + float(transactions.iloc[i]['amount']), 2)
+            values[str(credit_account)] = round(credit_acct_0 - float(transactions.iloc[i]['amount']), 2)
+
+            # Append that new set of values to the history dataframe
+            account_values = pd.concat([account_values, values.to_frame().T])
+
+        if append_transaction_details:
+            details_list = [
+                'credit_account_id',
+                'debit_account_id',
+                'category',
+                'description',
+                'amount',
+                'vendor',
+                'is_posted',
+            ]
+            account_values.set_index('transaction_id', inplace=True)
+            transactions.set_index('transaction_id', inplace=True)
+            account_values = pd.concat([account_values, transactions], axis=1)
+
+        else:
+            # Append is_posted column
+            account_values['is_posted'] = list(transactions['is_posted'])
+
+        # Reformatting table
+        account_values.reset_index(inplace=True, drop=True)
+
+        return account_values
+
+    def calculate_credit_card_payment(self, account_id, payment_date):
+        """
+        Payment assumed to happen BEFORE the transactions post on the day of the payment even if it technically POSTS
+        after the other transactions. The CC company seems to post everything towards EOD and I pay in the AM, so the
+        amount paid is determined before they post.
+
+        :param account_id:
+        :param payment_date:
+        :return:
+        """
+        payment_date = pd.to_datetime(payment_date)
+
+        transactions = self.get_transactions()
+
+        payments = transactions[(transactions['debit_account_id'] == int(account_id)) & (transactions['category'] == 'Credit Card Payment')]  # NOTE: includes rewards transactions
+        payments.reset_index(drop=True, inplace=True)
+
+        try:
+            payment_id = int(payments[(payments['posted_date'] == payment_date)]['transaction_id'])
+            previous_payment_date = pd.to_datetime(payments.iloc[list(payments['transaction_id']).index(payment_id) - 1]['posted_date'])
+            previous_payment_id = int(payments.iloc[list(payments['transaction_id']).index(payment_id) - 1]['transaction_id'])
+            credit_balance = 0
+
+        except Exception as e:
+            # print(e)
+            payment_id = len(transactions)
+            if len(payments) == 0:
+                # print('generating first payment')
+                previous_payment_date = '2022-12-31'
+                previous_payment_id = 0
+                if int(account_id) == 4895:
+                    credit_balance = -689.77
+                else:
+                    credit_balance = 101.18
+            else:
+                previous_payment_date = payments.iloc[len(payments)-1]['posted_date']
+                previous_payment_id = int(payments.iloc[len(payments)-1]['transaction_id'])
+                credit_balance = 0
+
+        print('New Payment:  {} -- id: {}\nPrev payment: {} -- id: {}'.format(payment_date, payment_id, previous_payment_date, previous_payment_id))
+
+
+        truth_series_c = (transactions['posted_date'].between(previous_payment_date, payment_date-pd.Timedelta(days=1)))\
+                         & (transactions['credit_account_id'] == int(account_id))
+
+        truth_series_d = (transactions['posted_date'].between(previous_payment_date, payment_date-pd.Timedelta(days=1)))\
+                         & (transactions['debit_account_id'] == int(account_id))\
+                         & (transactions['transaction_id'] != previous_payment_id)\
+                         & (transactions['category'] != 'Credit Card Payment')
+
+        # Expenses:
+        credit_transactions = transactions.loc[truth_series_c, :]
+        print(credit_transactions)
+        # credit_transactions.to_csv('./credit_transacts.csv')
+        # Rewards/Returns:
+        debit_transactions = transactions.loc[truth_series_d, :]
+        print(debit_transactions)
+
+        credits_sum = round(sum(credit_transactions['amount']), 2)
+        debits_sum = round(sum(debit_transactions['amount']), 2)
+        payment_amnt = credits_sum - credit_balance - debits_sum
+
+        print('credits_sum: $', credits_sum)
+        print('debits_sum:  $', debits_sum)
+        # print('Credit Balance:  $', credit_balance)
+        # print('PAYMENT:     $ {:.2f}'.format(payment_amnt))
+        return payment_amnt
+
+    def recalc_future_credit_card_payments(self):
+        print('Recalculating credit card payments')
+
+    @staticmethod
+    def create_fresh_database(filepath, create_tables=False):
+        '''Function that builds a starter database when none exists at startup'''
+        try:
+            conn = sql.connect(filepath)
+            print("Database formed at: {}".format(os.path.abspath(filepath)))
+
+            if create_tables:
+                create_accounts_query = '''CREATE TABLE ACCOUNTS
+                                   (account_id INTEGER PRIMARY KEY NOT NULL,
+                                   name TEXT NOT NULL,
+                                   transaction_type TEXT NOT NULL,
+                                   account_type TEXT NOT NULL
+                                   );
+                                '''
+                conn.execute(create_accounts_query)
+
+                add_account_query = '''INSERT INTO ACCOUNTS
+                                    (account_id,
+                                    name,
+                                    transaction_type,
+                                    account_type
+                                    )
+                                    VALUES
+                                    ({account_id},
+                                    '{name}',
+                                    '{transaction_type}',
+                                    '{account_type}');'''.format(
+                                        account_id=100,
+                                        name='test',
+                                        transaction_type='cash',
+                                        account_type='other'
+                                    )
+                conn.execute(add_account_query)
+                conn.commit()
+
+                create_transactions_query = '''CREATE TABLE TRANSACTIONS
+                                   (transaction_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                   transaction_date TEXT NOT NULL,
+                                   posted_date TEXT NOT NULL,
+                                   credit_account_id INTEGER NOT NULL,
+                                   debit_account_id INTEGER NOT NULL,
+                                   category TEXT NOT NULL,
+                                   description TEXT,
+                                   amount REAL NOT NULL,
+                                   vendor TEXT,
+                                   is_posted INTEGER NOT NULL);
+                                '''
+                conn.execute(create_transactions_query)
+
+                add_transaction_query = '''INSERT INTO TRANSACTIONS
+                                                    (transaction_date,
+                                                    posted_date,
+                                                    credit_account_id,
+                                                    debit_account_id,
+                                                    category,
+                                                    description,
+                                                    amount,
+                                                    vendor,
+                                                    is_posted)
+                                                VALUES
+                                                    ("{t_date}",
+                                                    "{p_date}",
+                                                    {c_account_id},
+                                                    {d_account_id},
+                                                    "{category}",
+                                                    "{description}",
+                                                    {amount},
+                                                    "{vendor}",
+                                                    {is_posted});'''.format(
+                    t_date='2000-01-01',
+                    p_date='2000-01-01',
+                    c_account_id=100,
+                    d_account_id=100,
+                    category='Setup',
+                    description='description',
+                    amount=0,
+                    vendor='vendor',
+                    is_posted=1,
+                )
+                conn.execute(add_transaction_query)
+                conn.commit()
+
+                print("Database tables created")
+
+                # self.add_transaction('2000-01-01', 'Test Category', '0.00')
+
+        except Exception as e:
+            print("Database not formed")
+            print(e)
+
+    @staticmethod
+    def append_total(data, column_names):
+        total_index = max(data.index) + 1
+        for c in column_names:
+            data.loc[total_index, c] = sum(data[c])
+        # data.loc[max(data.index) + 1, 'description'] = 'Total'
+        return data
+
+    @staticmethod
+    def filter_by_category(data, category):
+        if category == "All":
+            pass
+        else:
+            data = data[data['category'] == category]
+        return data
+
+
+if __name__ == "__main__":
+    DATA = BudgetData()
+    DATA.connect('./budget_2023.db')
+    connection = DATA.dbConnection
+
+    all_transactions = DATA.get_transactions()
+    # all_transactions.sort_values(by=['posted_date', 'transaction_id'])
+    all_transactions.to_csv('./all_transactions.csv')
+
+    for i in all_transactions.category.unique():
+        print('Category: {}, Amount: ${}'.format(i, round(sum(all_transactions[all_transactions['category'] == i].amount), 2)))
+
+    DATA.close()

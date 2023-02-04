@@ -1,0 +1,165 @@
+{% extends 'transactions.html' %}
+{% block table %}
+
+<!-- OnLoad jQuery Script-->
+<script type="text/javascript">
+    $(function(){
+        $('#'+'{{ income_expense_filter_default }}').prop('checked',true);
+        console.log('radio button set on {{ income_expense_filter_default }}');
+
+        initDataTables( {{ data | safe }} );
+        console.log('datatable initialized');
+
+        initListeners();
+        console.log('listeners initialized');
+    });
+</script>
+
+<!--  Transactions Table  -->
+<div id="transaction_table" class="w3-rest" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
+    <table id="budget_table">
+        <thead>
+            <tr>
+                <th class="w3-center">Details</th>
+                <th class="w3-center">Date</th>
+                <th class="w3-center">Account-From</th>
+                <th class="w3-center">Account-To</th>
+                <th class="w3-center">Category</th>
+                <th class="w3-center">Amount</th>
+                <th>Vendor</th>
+            </tr>
+        </thead>
+        <tbody style="font-size:12px">
+
+        {% for item in data %}
+
+        <!-- Details/Transaction Modify Modal-->
+        <div id="det_{{ item['transaction_id'] }}" class="w3-modal">
+            <div class="w3-modal-content w3-border w3-dark-grey w3-round">
+                <!-- Transaction Modify/Delete Modal Close Button-->
+                <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('det_{{ item['transaction_id'] }}').style.display='none'">&times;</span>
+                <!-- Transaction Modify/Delete Modal Title Bar-->
+                <div class="w3-bar w3-2018-meerkat w3-round">
+                    <div class="w3-bar-item">TRANSACTION EDIT - {{ item['transaction_id'] }}</div>
+                </div>
+
+                <!-- Transaction Modify/Delete Modal Form-->
+                <form class="transaction_mod_form w3-row-padding w3-margin-top" action="{{ url_for('update_transaction') }}?transaction_id={{ item['transaction_id'] }}" method="post">
+                    <!-- Top Row-->
+                    <div class="w3-row-padding w3-section">
+                        <div class="w3-half">
+                            <input class="w3-input w3-border" type="date" name="date" value="{{ item['transaction_date'] }}">
+                            <label>Transaction Date</label>
+                        </div>
+                        <div class="w3-half">
+                            <input class="w3-input w3-border" type="date" name="post_date" value="{{ item['posted_date'] }}">
+                            <label>Posted Date</label>
+                        </div>
+                    </div>
+
+                    <!-- Second Row-->
+                    <div class="w3-row-padding w3-section">
+                        <div class="w3-half">
+                            <div class="w3-dropdown-hover" style="width:100%">
+                                <input id="cred_accnt_input_modal" class="cred_accnt_input_modal w3-input w3-border" type="text" name="account-credit" value="{{ item['credit_account_name'] }}" pattern="[^()/><\][\\\x22;|]+">
+                                <div id="cred_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
+                                    {% for i in accounts %}
+                                        <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <label>Credit Account</label>
+                        </div>
+                        <div class="w3-half">
+                            <div class="w3-dropdown-hover" style="width:100%">
+                                <input id="deb_accnt_input_modal" class="deb_accnt_input_modal w3-input w3-border" type="text" name="account-debit" value="{{ item['debit_account_name'] }}" pattern="[^()/><\][\\\x22;|]+">
+                                <div id="deb_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
+                                    {% for i in accounts %}
+                                        <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <label>Debit Account</label>
+                        </div>
+                    </div>
+
+                    <!-- Third Row-->
+                    <div class="w3-row-padding w3-section">
+                        <div class="w3-half">
+                            <input class="w3-input w3-border" type="number" name="amount" step="0.01" value="{{ item['amount'] }}">
+                            <label>Amount</label>
+                        </div>
+                        <div class="w3-half">
+                            <div class="w3-dropdown-hover" style="width:100%">
+                                <input id="cat_input_modal" class="cat_input_modal w3-input w3-border" type="text" name="category" value="{{ item['category'] }}" pattern="[^()/><\][\\\x22;|]+">
+                                <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
+                                    <input id="cat_1" type="button" value="Alcohol" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_2" type="button" value="Automotive" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_3" type="button" value="Dining" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_4" type="button" value="Entertainment" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_5" type="button" value="Gas" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_6" type="button" value="Gifts" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_7" type="button" value="Grocery" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_8" type="button" value="Health Care" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_9" type="button" value="Home" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_10" type="button" value="Insurance" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_11" type="button" value="Investment" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_12" type="button" value="Merchandise" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_13" type="button" value="Mortgage/Rent" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_14" type="button" value="Other Goods" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_15" type="button" value="Other Services" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_16" type="button" value="Tax Refund/Payment" class="cat_btn w3-bar-item w3-button">
+                                    <input id="cat_17" type="button" value="Utilities" class="cat_btn w3-bar-item w3-button">
+                                </div>
+                            </div>
+                            <label>Category</label>
+                        </div>
+                    </div>
+
+                    <!-- Fourth Row-->
+                    <div class="w3-row-padding w3-section">
+                        <div class="w3-threequarter">
+                            <input class="w3-input w3-border" type="text" name="description" value="{{ item['description'] }}" pattern="[^()/><\][\\\x22;|]+">
+                            <label>Description</label>
+                        </div>
+                        <div class="w3-rest w3-center">
+                            <input class="w3-check" type="checkbox" name="is_posted_selector" {{ item["is_posted"] }}>
+                            <label class="w3-large">Posted</label>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Row-->
+                    <div class="w3-row-padding w3-section">
+                        <div class="w3-half">
+                            <input class="w3-input w3-border" type="text" name="vendor" value="{{ item['vendor'] }}" pattern="[^()/><\][\\\x22;|]+">
+                            <label>Vendor</label>
+                        </div>
+                        <div class="w3-quarter w3-center">
+                            <input type="submit" value="Submit" class="w3-button w3-black w3-large">
+                        </div>
+                        <div class="w3-quarter w3-center">
+                            <button type="button" onclick="delete_transaction_from_modal({{ item['transaction_id'] }})" class="w3-button w3-red w3-large">DELETE</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <tr>
+            <!-- Details Button-->
+            <td class="w3-center"><button onclick="document.getElementById('det_{{ item['transaction_id'] }}').style.display='block'" class="w3-button w3-black"><i class="fa fa-bars"></i></button></td>
+
+            <!-- Data-->
+            <td class="w3-center">{{ item['transaction_date'] }}</td>
+            <td class="w3-center">{{ item['credit_account_name'] }}</td>
+            <td class="w3-center">{{ item['debit_account_name'] }}</td>
+            <td class="w3-center">{{ item['category'] }}</td>
+            <td class="w3-center">{{ item['amount_string'] }}</td>
+            <td>{{ item['vendor'] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

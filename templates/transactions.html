@@ -1,0 +1,211 @@
+{% extends 'index.html' %}
+{% block body %}
+
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+
+<script type="text/javascript" src="{{ url_for('static', filename='transactions.js') }}"></script>
+
+<div id="transactions" class="w3-margin">
+    <!--  Top Row (Sidebar + Main Transaction Table) -->
+    <div class="w3-section w3-row">
+        <!--  Filter Sidebar  -->
+        <div id="date_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
+            <div class="w3-bar w3-2018-meerkat">
+                <div class="w3-bar-item">FILTERS -</div>
+            </div>
+
+            <!-- Transaction Type Filter -->
+            <div id="transact_type_filter" class="w3-bar-block w3-section">
+                <span class="w3-bar-item w3-card-4">Expenses/Income</span>
+                <div class="w3-margin-left">
+                    <input class="income_expense_btn w3-radio" id="both" type="radio" name="expense_income_selector" value="Both"/>
+                    <label for="both">Both</label>
+                </div>
+                <div class="w3-margin-left">
+                    <input class="income_expense_btn w3-radio" id="income" type="radio" name="expense_income_selector" value="Income"/>
+                    <label for="income">Income</label>
+                </div>
+                <div class="w3-margin-left">
+                    <input class="income_expense_btn w3-radio" id="expenses" type="radio" name="expense_income_selector" value="Expenses"/>
+                    <label for="expenses">Expenses</label>
+                </div>
+            </div>
+
+            <!-- Transaction Date Filter -->
+            <div id="transact_date_filter" class="w3-bar-block w3-section">
+                <span class="w3-bar-item w3-card-4">Date</span>
+                <div class="w3-dropdown-hover" style="width:100%">
+                    <div class="w3-button w3-white w3-row">
+                        <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+                    </div>
+                    <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+                        {% for i in date_filter %}
+                        <input class="date_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Filter -->
+            <div id="account_filter_container" class="w3-bar-block w3-section">
+                <span class="w3-bar-item w3-card-4">Account</span>
+                <div class="w3-dropdown-hover" style="width:100%">
+                    <div class="w3-button w3-white w3-row">
+                        <span id="account_filter">{{ account_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+                    </div>
+                    <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+                        {% for i in accounts %}
+                        <input class="account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Filter -->
+            <div id="category_filter_container" class="w3-bar-block w3-section">
+                <span class="w3-bar-item w3-card-4">Category</span>
+                <div class="w3-dropdown-hover" style="width:100%">
+                    <div class="w3-button w3-white w3-row">
+                        <span id="category_filter">{{ category_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+                    </div>
+                    <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+                        {% for i in categories %}
+                        <input class="category_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <br><br><br><br><br><br><br><br><br>
+
+            <!-- Add Transaction Modal & Button -->
+            <div>
+                <!-- Add Transaction Button -->
+                <div class="w3-row w3-padding w3-2018-meerkat w3-border w3-hover-blue w3-round w3-margin-left w3-margin-right" onclick="document.getElementById('transaction_add_modal').style.display='block'">
+                    <span>ADD TRANSACTION</span><span style="float:right"><i class="fa fa-plus"></i></span>
+                </div>
+
+                <!-- Add Transaction Modal -->
+                <div id="transaction_add_modal" class="w3-modal">
+                    <!-- Transaction Add Form -->
+                    <div class="w3-modal-content w3-border w3-dark-grey w3-round" id="transaction_add_form">
+
+                        <!-- Transaction Input Form Title Bar-->
+                        <div class="w3-bar w3-2018-meerkat w3-round">
+                            <span class="w3-button w3-black w3-display-topright w3-round" onclick="document.getElementById('transaction_add_modal').style.display='none'">&times;</span>
+                            <div class="w3-bar-item">TRANSACTION INPUT -</div>
+                        </div>
+
+                        <!-- Transaction Input Form-->
+                        <form class="w3-row-padding w3-margin-top" onsubmit="return confirm('Confirm Submit?')" action="{{ url_for('submit_transaction') }}" method="post">
+                            <!-- Top Row -->
+                            <div class="w3-row-padding w3-section">
+                                <div class="w3-half">
+                                    <input class="w3-input w3-border" type="date" name="date">
+                                    <label>Transaction Date</label>
+                                </div>
+                                <div class="w3-half">
+                                    <input class="w3-input w3-border" type="date" name="post_date">
+                                    <label>Posted Date</label>
+                                </div>
+                            </div>
+
+                            <!-- Second Row -->
+                            <div class="w3-row-padding w3-section">
+                                <div class="w3-half">
+                                    <div class="w3-dropdown-hover" style="width:100%">
+                                        <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" placeholder="Account-From" pattern="[^()/><\][\\\x22;|]+">
+                                        <div id="cred_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
+                                            {% for i in accounts %}
+                                                <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <label>Credit Account</label>
+                                </div>
+                                <div class="w3-half">
+                                    <div class="w3-dropdown-hover" style="width:100%">
+                                        <input id="deb_accnt_input" class="w3-input w3-border" type="text" name="account-debit" placeholder="Account-To" pattern="[^()/><\][\\\x22;|]+">
+                                        <div id="deb_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
+                                            {% for i in accounts %}
+                                                <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <label>Debit Account</label>
+                                </div>
+                            </div>
+
+                            <!-- Third Row -->
+                            <div class="w3-row-padding w3-section">
+                                <div class="w3-half">
+                                    <input class="w3-input w3-border" type="number" name="amount" step="0.01" placeholder="69.42">
+                                    <label>Amount</label>
+                                </div>
+                                <div class="w3-half">
+                                    <div class="w3-dropdown-hover" style="width:100%">
+                                        <input id="cat_input" class="w3-input w3-border" type="text" name="category" placeholder="Category" pattern="[^()/><\][\\\x22;|]+">
+                                        <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
+                                            <input id="cat_1" type="button" value="Alcohol" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_2" type="button" value="Automotive" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_3" type="button" value="Dining" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_4" type="button" value="Entertainment" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_5" type="button" value="Gas" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_6" type="button" value="Gifts" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_7" type="button" value="Grocery" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_8" type="button" value="Health Care" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_9" type="button" value="Home" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_10" type="button" value="Insurance" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_11" type="button" value="Investment" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_12" type="button" value="Merchandise" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_13" type="button" value="Mortgage" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_14" type="button" value="Other Goods" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_15" type="button" value="Other Services" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_16" type="button" value="Tax Refund-Payment" class="cat_btn w3-bar-item w3-button">
+                                            <input id="cat_17" type="button" value="Utilities" class="cat_btn w3-bar-item w3-button">
+                                        </div>
+                                    </div>
+                                    <label>Category</label>
+                                </div>
+                            </div>
+
+                            <!-- Fourth Row -->
+                            <div class="w3-row-padding w3-section">
+                                <div class="w3-threequarter">
+                                    <input class="w3-input w3-border" type="text" name="description" placeholder="Monday - Dinner" pattern="[^()/><\][\\\x22;|]+">
+                                    <label>Description</label>
+                                </div>
+                                <div class="w3-rest w3-center">
+                                    <input class="w3-check" type="checkbox" name="is_posted_selector">
+                                    <label class="w3-large">Posted</label>
+                                </div>
+                            </div>
+
+                            <!-- Fifth Row -->
+                            <div class="w3-row-padding w3-section">
+                                <div class="w3-threequarter">
+                                    <input class="w3-input w3-border" type="text" name="vendor" placeholder="Amazon" pattern="[^()/><\][\\\x22;|]+">
+                                    <label>Vendor</label>
+                                </div>
+                                <div class="w3-quarter w3-center">
+                                    <input class="w3-button w3-black w3-large" type="submit" value="Submit">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+            <br>
+
+        </div>
+
+        <!--  Main Transactions Table  -->
+        {% block table %}
+        <div class="w3-container">Transaction Table Here</div>
+        {% endblock %}
+
+    </div>
+</div>
+
+{% endblock %}
