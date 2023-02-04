@@ -2,10 +2,12 @@
 /.ARCHIVE/*
 /.idea/*
 __pycache__/
-Notes
-start.sh
-budget_2023.db
+venv/
 
 /tools/*
 !/tools/budget-tools.py
 !/tools/build_2023_database.py
+
+# Nick's stuff
+Notes
+start.sh
