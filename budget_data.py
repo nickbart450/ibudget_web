@@ -26,7 +26,7 @@ class BudgetData:
         self.dbConnection = None
         self.dbConnected = False
         self.connection_attempts = 0
-        self.date_filters = {'All': ['2022-12-01', '2024-01-01'],
+        self.date_filters = {'All': ['1970-01-01', '2100-01-01'],
                     'January': ['2022-12-31', '2023-02-01'],
                     'February': ['2023-02-01', '2023-03-01'],
                     'March': ['2023-03-01', '2023-04-01'],

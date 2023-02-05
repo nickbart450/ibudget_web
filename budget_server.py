@@ -92,7 +92,6 @@ def get_home():
                             '9721': 0.00}
     result = DATA.calculate_account_values(STARTING_VALUES_2023)
 
-
     # Reformat account values for CanvasJS stacked chart
     prev_date = 20211230
     account_values = {'100': [],
@@ -240,42 +239,46 @@ def data_transactions():
         append_total=False,
     )
 
-    if selected_category_filter == 'All':
-        pass
+    if len(result) > 0:
+        if selected_category_filter == 'All':
+            pass
+        else:
+            result = result[result['category'] == selected_category_filter]
+
+        # Reformat amount column
+        result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
+
+        # Reformat date columns
+        result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
+        result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
+
+        # Reformat is_posted column
+        result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
+
+        # Append account names
+        account_name_list = ['All'] + list(accounts['name'])
+        account_id_list = [0] + list(accounts['account_id'])
+        account_translate_dict = {}
+        for i in list(range(len(account_id_list))):
+            account_translate_dict[account_id_list[i]] = account_name_list[i]
+        result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
+        result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
+
+        # print(result.head())
+        return render_template(
+            'transactions_table.html',
+            data=result.to_dict('records'),
+            date_filter=list(DATA.date_filters.keys()),
+            date_filter_default=request_date_filter,
+            accounts=account_name_list,
+            account_filter_default=selected_account_filter,
+            categories=categories,
+            category_filter_default=selected_category_filter,
+            income_expense_filter_default=selected_income_expense_filter,
+        )
     else:
-        result = result[result['category'] == selected_category_filter]
-
-    # Reformat amount column
-    result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
-
-    # Reformat date columns
-    result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
-    result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
-
-    # Reformat is_posted column
-    result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
-
-    # Append account names
-    account_name_list = ['All'] + list(accounts['name'])
-    account_id_list = [0] + list(accounts['account_id'])
-    account_translate_dict = {}
-    for i in list(range(len(account_id_list))):
-        account_translate_dict[account_id_list[i]] = account_name_list[i]
-    result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
-    result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
-
-    # print(result.head())
-    return render_template(
-        'transactions_table.html',
-        data=result.to_dict('records'),
-        date_filter=list(DATA.date_filters.keys()),
-        date_filter_default=request_date_filter,
-        accounts=account_name_list,
-        account_filter_default=selected_account_filter,
-        categories=categories,
-        category_filter_default=selected_category_filter,
-        income_expense_filter_default=selected_income_expense_filter,
-    )
+        print('No transactions meet current filters. redirecting back to /transact')
+        return redirect(url_for('get_transactions'))
 
 
 @APP.route("/transact/submit_transaction", methods=['POST'])
