@@ -8,6 +8,7 @@ import os
 import logging
 import datetime
 import argparse
+from collections import namedtuple
 
 START_FLAG = True
 # PORT = 9000
@@ -15,30 +16,6 @@ START_FLAG = True
 APP = Flask(__name__,
             template_folder="./templates",
             static_folder="./static", )
-
-categories = [
-    'All',
-    'Credit Card Payment',
-    'Job Pay',
-    'Transfer',
-    'Alcohol',
-    'Automotive',
-    'Dining',
-    'Entertainment',
-    'Gas',
-    'Gifts',
-    'Grocery',
-    'Health Care',
-    'Home',
-    'Insurance',
-    'Investment',
-    'Merchandise',
-    'Mortgage',
-    'Other',
-    'Other Services',
-    'Tax Refund-Payment',
-    'Utilities',
-]
 
 
 @APP.route("/", methods=['GET'])
@@ -195,6 +172,11 @@ def get_transactions():
     result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
     result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
 
+    FILTERS['date'] = 'All'
+    FILTERS['account'] = 'All'
+    FILTERS['category']: 'All'
+    FILTERS['income_expense'] = 'both'
+
     # print(result.head())
     return render_template(
         'transactions_table.html',
@@ -203,7 +185,7 @@ def get_transactions():
         date_filter_default='Date Filter',
         accounts=account_name_list,
         account_filter_default='Account Filter',
-        categories=categories,
+        categories=CATEGORIES,
         category_filter_default='All',
         income_expense_filter_default='both',
     )
@@ -217,68 +199,39 @@ def data_transactions():
     :return:
     """
     print('Fetching /transact with filters')
-    accounts = DATA.get_accounts()
 
     # Get Date Filter
-    request_date_filter = request.args.get('date')
+    if request.args.get('date') is not None:
+        FILTERS['date'] = request.args.get('date')
 
     # Get Account Filter
-    selected_account_filter = request.args.get('account')
+    if request.args.get('account') is not None:
+        FILTERS['account'] = request.args.get('account')
 
     # Get Category Filter
-    selected_category_filter = request.args.get('category')
+    if request.args.get('category') is not None:
+        FILTERS['category'] = request.args.get('category')
 
     # Get & Reformat expense_income_filter
-    expense_income_filter = request.args.get('income_expense')
-    # print('expense_income_filter: ', expense_income_filter)
-    selected_income_expense_filter = expense_income_filter.lower()
+    if request.args.get('income_expense') is not None:
+        FILTERS['income_expense'] = request.args.get('income_expense').lower()
 
-    result = DATA.get_transactions(
-        date_filter=request_date_filter,
-        start_date=None,
-        end_date=None,
-        date_type='transaction_date',
-        account_filter=selected_account_filter,
-        expense_income_filter=expense_income_filter,
-        append_total=False,
-    )
+    print('Active Filters: {}'.format(FILTERS))
 
-    if len(result) > 0:
-        if selected_category_filter == 'All':
-            pass
-        else:
-            result = result[result['category'] == selected_category_filter]
+    results = fetch_filtered_transactions()
 
-        # Reformat amount column
-        result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
-
-        # Reformat date columns
-        result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
-        result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
-
-        # Reformat is_posted column
-        result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
-
-        # Append account names
-        account_name_list = ['All'] + list(accounts['name'])
-        account_id_list = [0] + list(accounts['account_id'])
-        account_translate_dict = {}
-        for i in list(range(len(account_id_list))):
-            account_translate_dict[account_id_list[i]] = account_name_list[i]
-        result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
-        result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
-
+    if len(results) > 0:
         # print(result.head())
         return render_template(
             'transactions_table.html',
-            data=result.to_dict('records'),
-            date_filter=list(DATA.date_filters.keys()),
-            date_filter_default=request_date_filter,
-            accounts=account_name_list,
-            account_filter_default=selected_account_filter,
-            categories=categories,
-            category_filter_default=selected_category_filter,
-            income_expense_filter_default=selected_income_expense_filter,
+            data=results.to_dict('records'),
+            date_filter=DATE_FILTERS,
+            accounts=ACCOUNT_NAMES,
+            categories=CATEGORIES,
+            date_filter_default=FILTERS['date'],
+            account_filter_default=FILTERS['account'],
+            category_filter_default=FILTERS['category'],
+            income_expense_filter_default=FILTERS['income_expense'],
         )
     else:
         print('No transactions meet current filters. redirecting back to /transact')
@@ -329,7 +282,7 @@ def submit_transaction():
         description=description,
         vendor=vendor,
         is_posted=posted_flag)
-    return redirect(url_for('get_transactions'))
+    return redirect(url_for('data_transactions'))
 
 
 @APP.route("/transact/update_transaction", methods=['GET', 'POST'])
@@ -365,7 +318,7 @@ def update_transaction():
 
     DATA.update_credit_card_payment(transaction_id)
 
-    return redirect(url_for('get_transactions'))
+    return redirect(url_for('data_transactions'))
 
 
 @APP.route("/transact/delete_transaction", methods=['GET', 'POST'])
@@ -374,6 +327,44 @@ def delete_transaction():
     transaction_id = request.args.get('transaction_id')
     DATA.delete_transaction(transaction_id)
     return redirect(url_for('get_transactions'))
+
+
+def fetch_filtered_transactions():
+    # Fetch filtered results
+    result = DATA.get_transactions(
+        date_filter=FILTERS['date'],
+        start_date=None,
+        end_date=None,
+        date_type='transaction_date',
+        account_filter=FILTERS['account'],
+        expense_income_filter=FILTERS['income_expense'],
+        append_total=False,
+    )
+
+    if FILTERS['category'] == 'All':
+        pass
+    else:
+        result = result[result['category'] == FILTERS['category']]
+
+    # Reformat amount column
+    result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
+
+    # Reformat date columns
+    result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
+    result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
+
+    # Reformat is_posted column
+    result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
+
+    # Append account names
+    account_id_list = [0] + list(ACCOUNTS['account_id'])
+    account_translate_dict = {}
+    for i in list(range(len(account_id_list))):
+        account_translate_dict[account_id_list[i]] = ACCOUNT_NAMES[i]
+    result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
+    result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
+
+    return result
 
 
 if __name__ == '__main__':
@@ -412,6 +403,41 @@ if __name__ == '__main__':
         START_FLAG = False
 
     if START_FLAG:
+        ACCOUNTS = DATA.get_accounts()
+        ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
+
+        CATEGORIES = [
+            'All',
+            'Credit Card Payment',
+            'Job Pay',
+            'Transfer',
+            'Alcohol',
+            'Automotive',
+            'Dining',
+            'Entertainment',
+            'Gas',
+            'Gifts',
+            'Grocery',
+            'Health Care',
+            'Home',
+            'Insurance',
+            'Investment',
+            'Merchandise',
+            'Mortgage',
+            'Other',
+            'Other Services',
+            'Tax Refund-Payment',
+            'Utilities',
+        ]
+
+        DATE_FILTERS = list(DATA.date_filters.keys())
+
+        FILTERS = {'date': 'All',
+                   'account': 'All',
+                   'category': 'All',
+                   'income_expense': 'both',
+                   }
+
         # webbrowser.open('http://127.0.0.1:{}'.format(PORT), new=2)  # , autoraise=True
         if args.port is None:
             port = 9000
