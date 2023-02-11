@@ -45,6 +45,8 @@ class BudgetData:
                     'Q4': ['2023-10-01', '2024-01-01'],
                     }
 
+        self.transaction_cache = None
+
     def connect(self, db_file):
         self.connection_attempts += 1
         try:
@@ -231,6 +233,17 @@ class BudgetData:
         if description is None:
             description = ''
 
+        print('adding transaction:')
+        print('\ttransaction_date: ', transaction_date)
+        print('\tposted_date: ', posted_date)
+        print('\tcredit_account: ', credit_account)
+        print('\tdebit_account: ', debit_account)
+        print('\tamount: ', amount)
+        print('\tcategory: ', category)
+        print('\tdescription: ', description)
+        print('\tvendor: ', vendor)
+        print('\tposted_flag: ', is_posted)
+
         query = '''INSERT INTO TRANSACTIONS
                     (transaction_date,
                     posted_date,
@@ -267,16 +280,43 @@ class BudgetData:
         cursor.execute(query)
         self.dbConnection.commit()
 
-    def update_transaction(self, transaction_id, transaction_date, category, amount, posted_date=False, credit_account=False,
-                        debit_account=False, description=None, vendor=None, is_posted=False):
+    def update_transaction(self, transaction_id, transaction_date=None, category=None, amount=None, posted_date=False, credit_account=False,
+                        debit_account=False, description=None, vendor=None, is_posted=None):
+        """
+        Updates provided values for specific transaction_id
 
-        transaction_date = pd.to_datetime(transaction_date)
+        :param transaction_id:    required
+        :param transaction_date:
+        :param category:
+        :param amount:
+        :param posted_date:
+        :param credit_account:
+        :param debit_account:
+        :param description:
+        :param vendor:
+        :param is_posted:
+        :return:
+        """
+        # Get current transaction details
+        transaction = self.get_transaction(self.dbConnection, transaction_id)
+
+        if transaction_date:
+            transaction_date = pd.to_datetime(transaction_date)
+        else:
+            transaction_date = transaction['transaction_date']
+
+        if category is None:
+            category = transaction['category']
+
+        if amount is None:
+            amount = transaction['amount']
 
         # handle post date
         if posted_date:
             posted_date = pd.to_datetime(posted_date)
         else:
-            posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
+            posted_date = transaction['posted_date']
+            # posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
 
         # handle accounts
         accounts = self.get_accounts()
@@ -295,13 +335,36 @@ class BudgetData:
             credit_account = 0
             debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
         else:
-            raise RuntimeError('Please specify at least one account as debit_account or credit_account')
+            credit_account = transaction['credit_account_id']
+            debit_account = transaction['debit_account_id']
+            # raise RuntimeError('Please specify at least one account as debit_account or credit_account')
+
+        if description is None:
+            description = transaction['description']
+
+        if vendor is None:
+            vendor = transaction['vendor']
 
         # convert is_posted
-        if is_posted:
-            is_posted = 1
+        if is_posted is None:
+            is_posted = transaction['is_posted']
         else:
-            is_posted = 0
+            if is_posted:
+                is_posted = 1
+            else:
+                is_posted = 0
+
+        print('Updating transaction:')
+        print('\ttransaction_id: ', transaction_id)
+        print('\ttransaction_date: ', transaction_date)
+        print('\tposted_date: ', posted_date)
+        print('\tcredit_account: ', credit_account)
+        print('\tdebit_account: ', debit_account)
+        print('\tamount: ', amount)
+        print('\tcategory: ', category)
+        print('\tdescription: ', description)
+        print('\tvendor: ', vendor)
+        print('\tposted_flag: ', is_posted)
 
         q_update = """
             UPDATE TRANSACTIONS
@@ -412,49 +475,65 @@ class BudgetData:
 
         return account_values
 
-    def calculate_credit_card_payment(self, account_id, payment_date):
+    def calculate_credit_card_payment(self, account_id, payment_date, use_cached=False):
         """
         Payment assumed to happen BEFORE the transactions post on the day of the payment even if it technically POSTS
         after the other transactions. The CC company seems to post everything towards EOD and I pay in the AM, so the
         amount paid is determined before they post.
 
+        :param use_cached:
         :param account_id:
         :param payment_date:
         :return:
         """
         payment_date = pd.to_datetime(payment_date)
 
-        transactions = self.get_transactions()
+        if use_cached:
+            transactions = self.transaction_cache
 
-        payments = transactions[(transactions['debit_account_id'] == int(account_id)) & (transactions['category'] == 'Credit Card Payment')]  # NOTE: includes rewards transactions
-        payments.reset_index(drop=True, inplace=True)
+        else:
+            transactions = self.get_transactions()
 
-        try:
-            payment_id = int(payments[(payments['posted_date'] == payment_date)]['transaction_id'])
-            previous_payment_date = pd.to_datetime(payments.iloc[list(payments['transaction_id']).index(payment_id) - 1]['posted_date'])
-            previous_payment_id = int(payments.iloc[list(payments['transaction_id']).index(payment_id) - 1]['transaction_id'])
+        payments = self.get_cc_payments(transactions, account_id)  # DataFrame of payment transactions
+        payment_dates = list(payments['posted_date'])  # list of payment dates
+
+        # try:
+        payment_id = int(payments[(payments['posted_date'] == payment_date)]['transaction_id'])
+
+        if payment_dates.index(payment_date) <= 0:
+            print('generating first payment')
+            previous_payment_id = 0
+            previous_payment_date = '1970-01-01'
+            if int(account_id) == 4895:
+                credit_balance = -689.77
+            else:
+                credit_balance = 101.18
+
+        else:
+            previous_payment_index = payment_dates.index(payment_date) - 1
+            previous_payment_date = pd.to_datetime(payment_dates[previous_payment_index])
+            previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
             credit_balance = 0
 
-        except Exception as e:
-            # print(e)
-            payment_id = len(transactions)
-            if len(payments) == 0:
-                # print('generating first payment')
-                previous_payment_date = '2022-12-31'
-                previous_payment_id = 0
-                if int(account_id) == 4895:
-                    credit_balance = -689.77
-                else:
-                    credit_balance = 101.18
-            else:
-                previous_payment_date = payments.iloc[len(payments)-1]['posted_date']
-                previous_payment_id = int(payments.iloc[len(payments)-1]['transaction_id'])
-                credit_balance = 0
+        # except Exception as e:
+        #     print(e)
+        #     payment_id = len(transactions)
+        #     if len(payments) == 0:
+        #         previous_payment_id = 0
+        #         previous_payment_date = '1970-01-01'
+        #
+        #     else:
+        #         previous_payment_date = payments.iloc[len(payments)-1]['posted_date']
+        #         previous_payment_id = int(payments.iloc[len(payments)-1]['transaction_id'])
+        #         credit_balance = 0
 
-        print('New Payment:  {} -- id: {}\nPrev payment: {} -- id: {}'.format(payment_date, payment_id, previous_payment_date, previous_payment_id))
+        print('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                              payment_id,
+                                                                              previous_payment_date,
+                                                                              previous_payment_id))
 
-
-        truth_series_c = (transactions['posted_date'].between(previous_payment_date, payment_date-pd.Timedelta(days=1)))\
+        truth_series_c = (transactions['posted_date'].between(previous_payment_date,
+                                                              payment_date - pd.Timedelta(days=1))) \
                          & (transactions['credit_account_id'] == int(account_id))
 
         truth_series_d = (transactions['posted_date'].between(previous_payment_date, payment_date-pd.Timedelta(days=1)))\
@@ -464,24 +543,68 @@ class BudgetData:
 
         # Expenses:
         credit_transactions = transactions.loc[truth_series_c, :]
-        print(credit_transactions)
+        # print(credit_transactions)
         # credit_transactions.to_csv('./credit_transacts.csv')
+
         # Rewards/Returns:
         debit_transactions = transactions.loc[truth_series_d, :]
-        print(debit_transactions)
+        # print(debit_transactions)
 
         credits_sum = round(sum(credit_transactions['amount']), 2)
         debits_sum = round(sum(debit_transactions['amount']), 2)
-        payment_amnt = credits_sum - credit_balance - debits_sum
+        payment_amount = credits_sum - credit_balance - debits_sum
 
-        print('credits_sum: $', credits_sum)
-        print('debits_sum:  $', debits_sum)
-        # print('Credit Balance:  $', credit_balance)
-        # print('PAYMENT:     $ {:.2f}'.format(payment_amnt))
-        return payment_amnt
+        # print('credits_sum: $', credits_sum, ':: debits_sum:  $', debits_sum)
+        print('PAYMENT:  $ {:.2f}\n'.format(payment_amount))
+        return payment_amount
 
-    def recalc_future_credit_card_payments(self):
-        print('Recalculating credit card payments')
+    def update_credit_card_payment(self, modified_transaction_id):
+        """
+        When passed a transaction id for a modified transaction, the appropriate CC payment transaction amount gets
+        updated.
+
+        :param modified_transaction_id:
+        :return:
+        """
+        print('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
+        modified_transaction_id = int(modified_transaction_id)
+
+        self.transaction_cache = self.get_transactions()
+
+        transaction = self.transaction_cache.loc[self.transaction_cache['transaction_id'] == modified_transaction_id]
+
+        # print('Modified Transaction: {} -- {} -- {}'.format(modified_transaction_id,
+        #                                                     str(transaction['description'].values[0]),
+        #                                                     transaction['posted_date'].values[0]))  # numpy.datetime64
+
+        account_id = transaction['credit_account_id'].values[0]
+        post_date = transaction['posted_date'].values[0]
+
+        cc_payments = self.get_cc_payments(self.transaction_cache, account_id)
+        payment_date = None
+        for i in cc_payments.index:
+            if cc_payments.iloc[i]['posted_date'] <= post_date < cc_payments.iloc[i+1]['posted_date']:
+                payment_date = cc_payments.iloc[i+1]['posted_date']
+                payment_id = cc_payments.iloc[i+1]['transaction_id']
+
+        if payment_date is None:
+            payment_date = cc_payments.iloc[0]['posted_date']
+            payment_id = cc_payments.iloc[0]['transaction_id']
+
+        amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=True)
+
+        self.update_transaction(payment_id, amount=amount)
+
+        return amount
+
+    @staticmethod
+    def get_cc_payments(transactions, account):
+        payments = transactions[
+            (transactions['debit_account_id'] == int(account)) & (transactions['category'] == 'Credit Card Payment')
+        ]
+        payments.reset_index(drop=True, inplace=True)
+
+        return payments
 
     @staticmethod
     def create_fresh_database(filepath, create_tables=False):
@@ -590,17 +713,49 @@ class BudgetData:
             data = data[data['category'] == category]
         return data
 
+    @staticmethod
+    def get_transaction(db_connection, transaction_id):
+        # print('getting details for transaction {}'.format(transaction_id))
+
+        cols = ['transaction_id',
+                'transaction_date',
+                'posted_date',
+                'credit_account_id',
+                'debit_account_id',
+                'category',
+                'description',
+                'amount',
+                'vendor',
+                'is_posted']
+
+        query = f"""SELECT * from TRANSACTIONS
+                   WHERE transaction_id={transaction_id};
+                """
+        c = db_connection.cursor()
+        c.execute(query)
+        db_row = c.fetchone()[:]
+        data = {}
+        i = 0
+        for c in cols:
+            data[c] = db_row[i]
+            i += 1
+        return data
+
 
 if __name__ == "__main__":
     DATA = BudgetData()
-    DATA.connect('./budget_2023.db')
+    DATA.connect('/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db')
     connection = DATA.dbConnection
 
     all_transactions = DATA.get_transactions()
     # all_transactions.sort_values(by=['posted_date', 'transaction_id'])
-    all_transactions.to_csv('./all_transactions.csv')
+    # all_transactions.to_csv('./all_transactions.csv')
 
-    for i in all_transactions.category.unique():
-        print('Category: {}, Amount: ${}'.format(i, round(sum(all_transactions[all_transactions['category'] == i].amount), 2)))
+    # cat_width = 30
+    # amnt_width = 9
+    # for i in all_transactions.category.unique():
+    #     str_1 = '{}{}'.format('_'*(cat_width-len(i)-9), i)
+    #     str_2 = '${}'.format(round(sum(all_transactions[all_transactions['category'] == i].amount), 2))
+    #     print('Category:', str_1, 'Amount:', '_'*(amnt_width-len(str_2)), str_2)
 
     DATA.close()

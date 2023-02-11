@@ -14,7 +14,7 @@ START_FLAG = True
 
 APP = Flask(__name__,
             template_folder="./templates",
-            static_folder="./static",)
+            static_folder="./static", )
 
 categories = [
     'All',
@@ -106,11 +106,16 @@ def get_home():
         if prev_date == date:
             pass
         else:
-            account_values['100'].append({"y": result.iloc[i-1]['100'], "label": result.iloc[i-1]['transaction_date'].strftime('%Y-%m-%d')})
-            account_values['101'].append({"y": result.iloc[i-1]['101'], "label": result.iloc[i-1]['transaction_date'].strftime('%Y-%m-%d')})
-            account_values['102'].append({"y": result.iloc[i-1]['102'], "label": result.iloc[i-1]['transaction_date'].strftime('%Y-%m-%d')})
-            account_values['TD'].append({"y": result.iloc[i-1]['103']+result.iloc[i-1]['104'], "label": result.iloc[i-1]['transaction_date'].strftime('%Y-%m-%d')})
-            account_values['Cash'].append({"y": result.iloc[i-1]['201']+result.iloc[i-1]['202'], "label": result.iloc[i-1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['100'].append(
+                {"y": result.iloc[i - 1]['100'], "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['101'].append(
+                {"y": result.iloc[i - 1]['101'], "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['102'].append(
+                {"y": result.iloc[i - 1]['102'], "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['TD'].append({"y": result.iloc[i - 1]['103'] + result.iloc[i - 1]['104'],
+                                         "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['Cash'].append({"y": result.iloc[i - 1]['201'] + result.iloc[i - 1]['202'],
+                                           "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
             prev_date = date
 
     # Calculate Burn Time for CanvasJS Line chart
@@ -125,16 +130,15 @@ def get_home():
             y = result.iloc[i]['transaction_date'].year
             m = result.iloc[i]['transaction_date'].month
             d = result.iloc[i]['transaction_date'].day
-            account_sum = sum([result.iloc[i-1]['100'], result.iloc[i-1]['101'], result.iloc[i-1]['102'],
-                               result.iloc[i-1]['103'], result.iloc[i-1]['104'], result.iloc[i-1]['201'],
-                               result.iloc[i-1]['202']])
+            account_sum = sum([result.iloc[i - 1]['100'], result.iloc[i - 1]['101'], result.iloc[i - 1]['102'],
+                               result.iloc[i - 1]['103'], result.iloc[i - 1]['104'], result.iloc[i - 1]['201'],
+                               result.iloc[i - 1]['202']])
             investment_est = 6000
 
-            b = round((account_sum+investment_est)/3600, 2)
+            b = round((account_sum + investment_est) / 3600, 2)
 
-            burn_time.append({"year":y, "month": m, "day": d, "burn": b})
+            burn_time.append({"year": y, "month": m, "day": d, "burn": b})
             prev_date = date
-
 
     # Translate Account Names for Datatables Columns
     translate = accounts[['account_id', 'name']]
@@ -315,17 +319,6 @@ def submit_transaction():
     else:
         debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
 
-    print('adding transaction:')
-    print('\ttransaction_date: ', transaction_date)
-    print('\tposted_date: ', posted_date)
-    print('\tcredit_account: ', credit_account)
-    print('\tdebit_account: ', debit_account)
-    print('\tamount: ', amount)
-    print('\tcategory: ', category)
-    print('\tdescription: ', description)
-    print('\tvendor: ', vendor)
-    print('\tposted_flag: ', posted_flag)
-
     DATA.add_transaction(
         transaction_date=transaction_date,
         category=category,
@@ -359,28 +352,19 @@ def update_transaction():
     else:
         posted_flag = False
 
-    print('Updating transaction:')
-    print('\ttransaction_id: ', transaction_id)
-    print('\ttransaction_date: ', transaction_date)
-    print('\tposted_date: ', posted_date)
-    print('\tcredit_account: ', credit_account)
-    print('\tdebit_account: ', debit_account)
-    print('\tamount: ', amount)
-    print('\tcategory: ', category)
-    print('\tdescription: ', description)
-    print('\tvendor: ', vendor)
-    print('\tposted_flag: ', posted_flag)
-
     DATA.update_transaction(transaction_id,
-        transaction_date=transaction_date,
-        category=category,
-        amount=amount,
-        posted_date=posted_date,
-        credit_account=credit_account,
-        debit_account=debit_account,
-        description=description,
-        vendor=vendor,
-        is_posted=posted_flag)
+                            transaction_date=transaction_date,
+                            category=category,
+                            amount=amount,
+                            posted_date=posted_date,
+                            credit_account=credit_account,
+                            debit_account=debit_account,
+                            description=description,
+                            vendor=vendor,
+                            is_posted=posted_flag)
+
+    DATA.update_credit_card_payment(transaction_id)
+
     return redirect(url_for('get_transactions'))
 
 
