@@ -2,6 +2,7 @@
 __version__ = '0.0.1'
 
 from budget_data import BudgetData
+from budget_data import init_logger
 
 from flask import Flask, redirect, render_template, url_for, request, jsonify
 import os
@@ -84,15 +85,20 @@ def get_home():
             pass
         else:
             account_values['100'].append(
-                {"y": result.iloc[i - 1]['100'], "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+                {"y": result.iloc[i - 1]['100'],
+                 "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
             account_values['101'].append(
-                {"y": result.iloc[i - 1]['101'], "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+                {"y": result.iloc[i - 1]['101'],
+                 "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
             account_values['102'].append(
-                {"y": result.iloc[i - 1]['102'], "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
-            account_values['TD'].append({"y": result.iloc[i - 1]['103'] + result.iloc[i - 1]['104'],
-                                         "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
-            account_values['Cash'].append({"y": result.iloc[i - 1]['201'] + result.iloc[i - 1]['202'],
-                                           "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+                {"y": result.iloc[i - 1]['102'],
+                 "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['TD'].append(
+                {"y": result.iloc[i - 1]['103'] + result.iloc[i - 1]['104'],
+                 "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
+            account_values['Cash'].append(
+                {"y": result.iloc[i - 1]['201'] + result.iloc[i - 1]['202'],
+                 "label": result.iloc[i - 1]['transaction_date'].strftime('%Y-%m-%d')})
             prev_date = date
 
     # Calculate Burn Time for CanvasJS Line chart
@@ -132,7 +138,6 @@ def get_home():
         new_cols.append(c)
 
     result.columns = new_cols
-    # result.to_csv('./test.csv')
 
     return render_template(
         'index.html',
@@ -326,7 +331,7 @@ def delete_transaction():
     print('Deleting transaction')
     transaction_id = request.args.get('transaction_id')
     DATA.delete_transaction(transaction_id)
-    return redirect(url_for('get_transactions'))
+    return redirect(url_for('data_transactions'))
 
 
 def fetch_filtered_transactions():
@@ -378,6 +383,9 @@ if __name__ == '__main__':
                             log_path,
                             'budget_{}.log'.format(datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))))
     LOGGER = logging.getLogger()
+    LOGGER.debug('budget_server -- DEBUG LOGGING MODE')
+    LOGGER.info('budget_server -- INFO LOGGING MODE')
+    init_logger()
 
     # argparse setup
     parser = argparse.ArgumentParser(
@@ -391,7 +399,7 @@ if __name__ == '__main__':
 
     # Create data object and connect to database
     DATA = BudgetData()
-    print('connecting to {}'.format(args.db_file))
+    LOGGER.info('connecting to {}'.format(args.db_file))
     DATA.connect(args.db_file)
 
     if DATA.dbConnected:
