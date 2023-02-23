@@ -4,11 +4,12 @@ __version__ = '0.0.1'
 import os.path
 import pandas as pd
 import sqlite3 as sql
+import logging
 
 QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
-            'show_all_transactions': '''SELECT * from TRANSACTIONS''',
-            'show_all_accounts': '''SELECT * from ACCOUNTS''',
-            'list_tables': '''SELECT 
+           'show_all_transactions': '''SELECT * from TRANSACTIONS''',
+           'show_all_accounts': '''SELECT * from ACCOUNTS''',
+           'list_tables': '''SELECT 
                       name
                   FROM 
                       sqlite_schema
@@ -17,33 +18,42 @@ QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
                       name NOT LIKE 'sqlite_%';''',
            }
 
+LOGGER = None
+def init_logger():
+    global LOGGER
+    LOGGER = logging.getLogger(__name__)
+    LOGGER.debug('budget_data -- DEBUG LOGGING MODE')
+    LOGGER.info('budget_data -- INFO LOGGING MODE')
+    return
+
 
 class BudgetData:
     """
     Default date filters are 2023
     """
+
     def __init__(self):
         self.dbConnection = None
         self.dbConnected = False
         self.connection_attempts = 0
         self.date_filters = {'All': ['1970-01-01', '2100-01-01'],
-                    'January': ['2022-12-31', '2023-02-01'],
-                    'February': ['2023-02-01', '2023-03-01'],
-                    'March': ['2023-03-01', '2023-04-01'],
-                    'April': ['2023-04-01', '2023-05-01'],
-                    'May': ['2023-05-01', '2023-06-01'],
-                    'June': ['2023-06-01', '2023-07-01'],
-                    'July': ['2023-07-01', '2023-08-01'],
-                    'August': ['2023-08-01', '2023-09-01'],
-                    'September': ['2023-09-01', '2023-10-01'],
-                    'October': ['2023-10-01', '2023-11-01'],
-                    'November': ['2023-11-01', '2023-12-01'],
-                    'December': ['2023-12-01', '2024-01-01'],
-                    'Q1': ['2022-12-01', '2023-04-01'],
-                    'Q2': ['2023-04-01', '2023-07-01'],
-                    'Q3': ['2023-07-01', '2023-10-01'],
-                    'Q4': ['2023-10-01', '2024-01-01'],
-                    }
+                             'January': ['2022-12-31', '2023-02-01'],
+                             'February': ['2023-02-01', '2023-03-01'],
+                             'March': ['2023-03-01', '2023-04-01'],
+                             'April': ['2023-04-01', '2023-05-01'],
+                             'May': ['2023-05-01', '2023-06-01'],
+                             'June': ['2023-06-01', '2023-07-01'],
+                             'July': ['2023-07-01', '2023-08-01'],
+                             'August': ['2023-08-01', '2023-09-01'],
+                             'September': ['2023-09-01', '2023-10-01'],
+                             'October': ['2023-10-01', '2023-11-01'],
+                             'November': ['2023-11-01', '2023-12-01'],
+                             'December': ['2023-12-01', '2024-01-01'],
+                             'Q1': ['2022-12-01', '2023-04-01'],
+                             'Q2': ['2023-04-01', '2023-07-01'],
+                             'Q3': ['2023-07-01', '2023-10-01'],
+                             'Q4': ['2023-10-01', '2024-01-01'],
+                             }
 
         self.transaction_cache = None
 
@@ -51,37 +61,37 @@ class BudgetData:
         self.connection_attempts += 1
         try:
             if os.path.exists(os.path.abspath(db_file)):
-                print('Attempting to open {}'.format(os.path.abspath(db_file)))
+                LOGGER.info('Attempting to open {}'.format(os.path.abspath(db_file)))
                 self.dbConnection = sql.connect(db_file, check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
                 test_cursor = self.dbConnection.cursor()
                 self.db_version = test_cursor.execute(test_query).fetchall()[0]
                 self.dbConnected = True
-                print('Successfully Connected')
+                LOGGER.info('Successfully Connected')
                 return True
             elif os.path.exists(os.path.abspath('./budget_example.db')):
-                print('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
+                LOGGER.debug('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
                 self.dbConnection = sql.connect('./budget_example.db', check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
                 test_cursor = self.dbConnection.cursor()
                 self.db_version = test_cursor.execute(test_query).fetchall()[0]
                 self.dbConnected = True
-                print('Successfully Connected to Example db')
+                LOGGER.info('Successfully Connected to Example db')
                 return True
             else:
                 if self.connection_attempts <= 5:
-                    print('No database file found, attempting to create fresh, empty database at {}'.format(
+                    LOGGER.warning('No database file found, attempting to create fresh, empty database at {}'.format(
                         os.path.abspath(db_file)))
                     self.create_fresh_database(os.path.abspath(db_file), create_tables=True)
                     self.connect(db_file)  # reattempt connection
                 else:
-                    print('attempted db connection/creation 5 times, quitting')
+                    LOGGER.warning('attempted db connection/creation 5 times, quitting')
                     self.dbConnected = False
                     return None
 
         # Handle errors
         except sql.Error as e:
-            print('Failed db connection/creation with error: {}'.format(e))
+            LOGGER.warning('Failed db connection/creation with error: {}'.format(e))
             self.dbConnected = False
             return None
 
@@ -89,9 +99,9 @@ class BudgetData:
         if self.dbConnected:
             self.dbConnection.close()
             self.dbConnected = False
-            print('SQLite Connection closed')
+            LOGGER.info('SQLite Connection closed')
         else:
-            print('No SQLite Connection to close')
+            LOGGER.info('No SQLite Connection to close')
 
     def get_accounts(self):
         if self.dbConnected:
@@ -103,7 +113,8 @@ class BudgetData:
             raise RuntimeError('database not connected')
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
-                         account_filter='All', expense_income_filter='Both', append_total=False):  # alternative date_type: posted_date
+                         account_filter='All', expense_income_filter='Both',
+                         append_total=False):  # alternative date_type: posted_date
         """ Can provide either filter code string (ex. 'January', 'Q3') defined by date_filters dict
                             OR  start and end dates of format 'YYYY-mm-dd'
         """
@@ -168,10 +179,10 @@ class BudgetData:
 
         # Expense/Income Filter
         if expense_income_filter == 'Expenses':
-            df = df[df['debit_account_id']==0]
+            df = df[df['debit_account_id'] == 0]
 
         elif expense_income_filter == 'Income':
-            df = pd.concat([df[df['credit_account_id']==0], df[df['credit_account_id']==300]])
+            df = pd.concat([df[df['credit_account_id'] == 0], df[df['credit_account_id'] == 300]])
 
         # Append Total
         if append_total:
@@ -190,7 +201,7 @@ class BudgetData:
             for date_col in date_columns:
                 df[date_col] = pd.to_datetime(df[date_col])  # , format="%Y-%m-%d"
         else:
-            print('no date column conversion')
+            LOGGER.debug('no date column conversion')
 
         # Add data to sqlite db
         rows_changed = df.to_sql(table, self.dbConnection, schema='budget', if_exists='append', index=False)
@@ -208,7 +219,7 @@ class BudgetData:
             posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
 
         # handle accounts
-        accounts = self.get_accounts()
+        # accounts = self.get_accounts()
         if credit_account and debit_account:
             if credit_account == debit_account:
                 raise RuntimeError('debit_account must be different from credit_account')
@@ -216,10 +227,10 @@ class BudgetData:
                 pass
 
         elif credit_account and not debit_account:
-            print('credit_account ONLY provided')
+            LOGGER.info('credit_account ONLY provided')
             debit_account = 0
         elif debit_account and not credit_account:
-            print('debit_account ONLY provided')
+            LOGGER.info('debit_account ONLY provided')
             credit_account = 0
         else:
             raise RuntimeError('Please specify at least one account as debit_account or credit_account')
@@ -274,14 +285,15 @@ class BudgetData:
             vendor=vendor,
             is_posted=is_posted,
         )
-        print(query)
+        # LOGGER.debug('add_transaction query:\n', query)
 
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
 
-    def update_transaction(self, transaction_id, transaction_date=None, category=None, amount=None, posted_date=False, credit_account=False,
-                        debit_account=False, description=None, vendor=None, is_posted=None):
+    def update_transaction(self, transaction_id, transaction_date=None, category=None, amount=None, posted_date=False,
+                           credit_account=False,
+                           debit_account=False, description=None, vendor=None, is_posted=None):
         """
         Updates provided values for specific transaction_id
 
@@ -327,11 +339,11 @@ class BudgetData:
                 credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
                 debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
         elif credit_account and not debit_account:
-            print('credit_account ONLY provided')
+            LOGGER.info('credit_account ONLY provided')
             credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
             debit_account = 0
         elif debit_account and not credit_account:
-            print('debit_account ONLY provided')
+            LOGGER.info('debit_account ONLY provided')
             credit_account = 0
             debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
         else:
@@ -378,17 +390,18 @@ class BudgetData:
                 vendor = "{vendor}",
                 is_posted = {is_posted}
             WHERE transaction_id = {transaction_id};""".format(
-                t_date=transaction_date,
-                p_date=posted_date,
-                c_account_id=credit_account,
-                d_account_id=debit_account,
-                category=category,
-                description=description,
-                amount=amount,
-                vendor=vendor,
-                is_posted=is_posted,
-                transaction_id=transaction_id,
+            t_date=transaction_date,
+            p_date=posted_date,
+            c_account_id=credit_account,
+            d_account_id=debit_account,
+            category=category,
+            description=description,
+            amount=amount,
+            vendor=vendor,
+            is_posted=is_posted,
+            transaction_id=transaction_id,
         )
+        # LOGGER.debug('update_transaction query:\n', q_update)
 
         cursor = self.dbConnection.cursor()
         cursor.execute(q_update)
@@ -400,6 +413,7 @@ class BudgetData:
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
+        LOGGER.info('Deleting Transaction: {}'.format(id))
 
     def general_query(self, query, date_columns=None):
         try:
@@ -407,7 +421,8 @@ class BudgetData:
         except Exception as e:
             result = self.dbConnection.execute(query).fetchall()
         self.dbConnection.commit()
-        return (result)
+
+        return result
 
     def quick_query(self, query_code):
         return self.general_query(QUERIES[query_code])
@@ -427,7 +442,8 @@ class BudgetData:
 
         # iterate over each transaction to calculate account value over time
         account_values = pd.DataFrame()  # Setup dataframe
-        values = pd.Series(pd.DataFrame.from_dict(starting_values).iloc[0])  # Setup transient series to use through iterations
+        values = pd.Series(
+            pd.DataFrame.from_dict(starting_values).iloc[0])  # Setup transient series to use through iterations
         for i in transactions.index:
             # Find Accounts
             transaction_id = int(transactions.iloc[i]['transaction_id'])
@@ -497,7 +513,6 @@ class BudgetData:
         payments = self.get_cc_payments(transactions, account_id)  # DataFrame of payment transactions
         payment_dates = list(payments['posted_date'])  # list of payment dates
 
-        # try:
         payment_id = int(payments[(payments['posted_date'] == payment_date)]['transaction_id'])
 
         if payment_dates.index(payment_date) <= 0:
@@ -515,30 +530,19 @@ class BudgetData:
             previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
             credit_balance = 0
 
-        # except Exception as e:
-        #     print(e)
-        #     payment_id = len(transactions)
-        #     if len(payments) == 0:
-        #         previous_payment_id = 0
-        #         previous_payment_date = '1970-01-01'
-        #
-        #     else:
-        #         previous_payment_date = payments.iloc[len(payments)-1]['posted_date']
-        #         previous_payment_id = int(payments.iloc[len(payments)-1]['transaction_id'])
-        #         credit_balance = 0
-
-        print('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
-                                                                              payment_id,
-                                                                              previous_payment_date,
-                                                                              previous_payment_id))
+        LOGGER.info('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                                  payment_id,
+                                                                                  previous_payment_date,
+                                                                                  previous_payment_id))
 
         truth_series_c = (transactions['posted_date'].between(previous_payment_date,
                                                               payment_date - pd.Timedelta(days=1))) \
                          & (transactions['credit_account_id'] == int(account_id))
 
-        truth_series_d = (transactions['posted_date'].between(previous_payment_date, payment_date-pd.Timedelta(days=1)))\
-                         & (transactions['debit_account_id'] == int(account_id))\
-                         & (transactions['transaction_id'] != previous_payment_id)\
+        truth_series_d = (transactions['posted_date'].between(previous_payment_date,
+                                                              payment_date - pd.Timedelta(days=1))) \
+                         & (transactions['debit_account_id'] == int(account_id)) \
+                         & (transactions['transaction_id'] != previous_payment_id) \
                          & (transactions['category'] != 'Credit Card Payment')
 
         # Expenses:
@@ -555,7 +559,7 @@ class BudgetData:
         payment_amount = credits_sum - credit_balance - debits_sum
 
         # print('credits_sum: $', credits_sum, ':: debits_sum:  $', debits_sum)
-        print('PAYMENT:  $ {:.2f}\n'.format(payment_amount))
+        # print('PAYMENT:  $ {:.2f}\n'.format(payment_amount))
         return payment_amount
 
     def update_credit_card_payment(self, modified_transaction_id):
@@ -566,49 +570,69 @@ class BudgetData:
         :param modified_transaction_id:
         :return:
         """
-        print('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
+        # LOGGER.info('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
         modified_transaction_id = int(modified_transaction_id)
 
         self.transaction_cache = self.get_transactions()
+        accounts = self.get_accounts()
 
         transaction = self.transaction_cache.loc[self.transaction_cache['transaction_id'] == modified_transaction_id]
+        transaction_account = int(transaction['credit_account_id'])
 
-        # print('Modified Transaction: {} -- {} -- {}'.format(modified_transaction_id,
-        #                                                     str(transaction['description'].values[0]),
-        #                                                     transaction['posted_date'].values[0]))  # numpy.datetime64
+        if str(accounts[accounts['account_id'] == transaction_account]['account_type'].values[0]) == 'liability':
+            # print('Modified Transaction: {} -- {} -- {}'.format(modified_transaction_id,
+            #                                                     str(transaction['description'].values[0]),
+            #                                                     transaction['posted_date'].values[0]))  # numpy.datetime64
 
-        account_id = transaction['credit_account_id'].values[0]
-        post_date = transaction['posted_date'].values[0]
+            account_id = transaction['credit_account_id'].values[0]
+            post_date = transaction['posted_date'].values[0]
 
-        cc_payments = self.get_cc_payments(self.transaction_cache, account_id)
-        payment_date = None
-        for i in cc_payments.index:
-            if cc_payments.iloc[i]['posted_date'] <= post_date < cc_payments.iloc[i+1]['posted_date']:
-                payment_date = cc_payments.iloc[i+1]['posted_date']
-                payment_id = cc_payments.iloc[i+1]['transaction_id']
+            cc_payments = self.get_cc_payments(self.transaction_cache, account_id)
+            payment_date = None
+            for i in cc_payments.index:
+                if cc_payments.iloc[i]['posted_date'] <= post_date < cc_payments.iloc[i + 1]['posted_date']:
+                    payment_date = cc_payments.iloc[i + 1]['posted_date']
+                    payment_id = cc_payments.iloc[i + 1]['transaction_id']
 
-        if payment_date is None:
-            payment_date = cc_payments.iloc[0]['posted_date']
-            payment_id = cc_payments.iloc[0]['transaction_id']
+            if payment_date is None:
+                payment_date = cc_payments.iloc[0]['posted_date']
+                payment_id = cc_payments.iloc[0]['transaction_id']
 
-        amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=True)
+            amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=True)
 
-        self.update_transaction(payment_id, amount=amount)
+            self.update_transaction(payment_id, amount=amount)
 
-        return amount
+            return amount
+
+    def category_summary(self, date_filter='All'):
+        transactions = self.get_transactions(date_filter=date_filter)
+        cat_width = 30
+        amount_width = 10
+
+        for i in transactions.category.unique():
+            str_1 = '{}{}'.format('_' * (cat_width - len(i) - 9), i)
+            str_2 = '${:.2f}'.format(round(sum(transactions[transactions['category'] == i].amount), 2))
+            print('Category:', str_1, 'Amount:', '_' * (amount_width - len(str_2)), str_2)
+
+        debit_sum = round(sum(transactions[transactions['debit_account_id'] == 0].amount), 2)
+        credit_sum = round(sum(transactions[(transactions['credit_account_id'] == 0) |
+                                            (transactions['credit_account_id'] == 300)].amount), 2)
+        print('Net Debits (outflow): ${:.2f}'.format(debit_sum))
+        print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
 
     @staticmethod
     def get_cc_payments(transactions, account):
         payments = transactions[
-            (transactions['debit_account_id'] == int(account)) & (transactions['category'] == 'Credit Card Payment')
-        ]
+            (transactions['debit_account_id'] == int(account)) & (transactions['category'] == 'Credit Card Payment')]
         payments.reset_index(drop=True, inplace=True)
 
         return payments
 
     @staticmethod
     def create_fresh_database(filepath, create_tables=False):
-        '''Function that builds a starter database when none exists at startup'''
+        """
+        Function that builds a starter database when none exists at startup
+        """
         try:
             conn = sql.connect(filepath)
             print("Database formed at: {}".format(os.path.abspath(filepath)))
@@ -634,11 +658,11 @@ class BudgetData:
                                     '{name}',
                                     '{transaction_type}',
                                     '{account_type}');'''.format(
-                                        account_id=100,
-                                        name='test',
-                                        transaction_type='cash',
-                                        account_type='other'
-                                    )
+                    account_id=100,
+                    name='test',
+                    transaction_type='cash',
+                    account_type='other'
+                )
                 conn.execute(add_account_query)
                 conn.commit()
 
@@ -715,7 +739,7 @@ class BudgetData:
 
     @staticmethod
     def get_transaction(db_connection, transaction_id):
-        # print('getting details for transaction {}'.format(transaction_id))
+        LOGGER.info('getting details for transaction {}'.format(transaction_id))
 
         cols = ['transaction_id',
                 'transaction_date',
@@ -743,19 +767,17 @@ class BudgetData:
 
 
 if __name__ == "__main__":
+    init_logger()
     DATA = BudgetData()
     DATA.connect('/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db')
     connection = DATA.dbConnection
 
     all_transactions = DATA.get_transactions()
     # all_transactions.sort_values(by=['posted_date', 'transaction_id'])
-    # all_transactions.to_csv('./all_transactions.csv')
+    all_transactions.to_csv('./all_transactions.csv')
 
-    # cat_width = 30
-    # amnt_width = 9
-    # for i in all_transactions.category.unique():
-    #     str_1 = '{}{}'.format('_'*(cat_width-len(i)-9), i)
-    #     str_2 = '${}'.format(round(sum(all_transactions[all_transactions['category'] == i].amount), 2))
-    #     print('Category:', str_1, 'Amount:', '_'*(amnt_width-len(str_2)), str_2)
+    # print(DATA.get_accounts())
+
+    DATA.category_summary(date_filter='February')
 
     DATA.close()
