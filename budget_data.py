@@ -436,7 +436,10 @@ class BudgetData:
 
         starting_vals_dict = {}
         for v in starting_values:
-            starting_vals_dict[v] = [starting_values[v]]
+            try:
+                starting_vals_dict[v] = [float(starting_values[v])]
+            except ValueError:
+                starting_vals_dict[v] = [starting_values[v]]
 
         # iterate over each transaction to calculate account value over time
         account_values = pd.DataFrame()  # Setup dataframe
