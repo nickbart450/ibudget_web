@@ -22,6 +22,7 @@ APP = Flask(__name__,
 # Create data object and connect to database
 DATA = BudgetData()
 db_file = '/home/nick450/budget_2023.db'
+# db_file = '/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db'
 print('connecting to {}'.format(db_file))
 DATA.connect(db_file)
 

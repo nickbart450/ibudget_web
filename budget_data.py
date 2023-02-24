@@ -463,8 +463,8 @@ class BudgetData:
             values['transaction_date'] = transaction_date
             values['posted_date'] = posted_date
 
-            values[str(debit_account)] = round(debit_acct_0 + float(transactions.iloc[i]['amount']), 2)
-            values[str(credit_account)] = round(credit_acct_0 - float(transactions.iloc[i]['amount']), 2)
+            values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.iloc[i]['amount']), 2)
+            values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.iloc[i]['amount']), 2)
 
             # Append that new set of values to the history dataframe
             account_values = pd.concat([account_values, values.to_frame().T])
