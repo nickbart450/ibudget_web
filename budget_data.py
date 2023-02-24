@@ -1,5 +1,5 @@
 # budget_data.py
-__version__ = '0.0.1'
+__version__ = '0.1.1'
 
 import os.path
 import pandas as pd

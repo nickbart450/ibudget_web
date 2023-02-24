@@ -1,5 +1,5 @@
 # budget_server.py
-__version__ = '0.0.1'
+__version__ = '0.1.1'
 
 from budget_data import BudgetData
 # from budget_data import init_logger
