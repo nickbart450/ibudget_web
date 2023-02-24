@@ -2,7 +2,7 @@
 __version__ = '0.0.1'
 
 from budget_data import BudgetData
-from budget_data import init_logger
+# from budget_data import init_logger
 
 from flask import Flask, redirect, render_template, url_for, request, jsonify
 import os
@@ -13,30 +13,49 @@ import argparse
 
 START_FLAG = True
 
+
+def init_logger(log_directory='./logs'):
+    # Start Logger
+    log_path = os.path.abspath(log_directory)
+    if not os.path.exists(log_path):
+        os.mkdir(log_path)
+
+    logging.basicConfig(level=logging.DEBUG,
+                        filename=os.path.join(
+                            log_path,
+                            'budget_{}.log'.format(datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))))
+    logger = logging.getLogger() # Creates root logger
+    return logger
+
+
 # Create Flask Object
 APP = Flask(__name__,
             template_folder="./templates",
             static_folder="./static", )
 
+LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
 # Create data object and connect to database
-DATA = BudgetData()
-db_file = '/home/nick450/2023_budget_db/budget_2023.db'
+db_file = '/home/nick450/2023_budget_db/budget_2023.db'  # <<<<<<<<<< Live Version
 # db_file = '/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db'
+# db_file = r'D:\BartlettSync\~Nick Stuff\2023_budget_db\budget_2023.db'
+
 print('connecting to {}'.format(db_file))
+LOGGER.info('Connecting to SQLite3 db at: {}'.format(db_file))
+
+DATA = BudgetData()
 DATA.connect(db_file)
 
 if DATA.dbConnected:
-    # LOGGER.debug('db File Connected')
-    # LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
+    LOGGER.debug('db File Connected')
+    LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
     print('db File Connected')
     print('db SQL version: {}'.format(DATA.db_version))
 
 else:
-    print('Failed to Connect to Database -- shutting down')
     # LOGGER.debug('database connection failed -- cancelling startup')
     print('database connection failed -- cancelling startup')
-    START_FLAG = False
+    raise RuntimeError('database connection failed')
 
 # Get Accounts from Data
 ACCOUNTS = DATA.get_accounts()
@@ -431,19 +450,8 @@ def fetch_filtered_transactions():
 
 
 if __name__ == '__main__':
-    # Start Logger
-    if not os.path.exists(os.path.abspath('./logs')):
-        os.mkdir(os.path.abspath('./logs'))
-
-    log_path = os.path.abspath('./logs')
-    logging.basicConfig(level=logging.DEBUG,
-                        filename=os.path.join(
-                            log_path,
-                            'budget_{}.log'.format(datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))))
-    LOGGER = logging.getLogger()
     LOGGER.debug('budget_server -- DEBUG LOGGING MODE')
     LOGGER.info('budget_server -- INFO LOGGING MODE')
-    init_logger()
 
     # argparse setup
     parser = argparse.ArgumentParser(
@@ -451,22 +459,23 @@ if __name__ == '__main__':
         description='Individual Financial Tracking and Analysis Web Application',
         # epilog='Text at the bottom of help'
     )
-    parser.add_argument('db_file')
+    parser.add_argument('--db_file')
     parser.add_argument('--port', nargs='?', const=9000, type=int)
     args = parser.parse_args()
 
     # Rebuild w/ data object w/ our args and connect to database
-    DATA = BudgetData()
-    LOGGER.info('connecting to {}'.format(args.db_file))
-    DATA.connect(args.db_file)
+    if args.db_file is not None:
+        LOGGER.info('connecting to {}'.format(args.db_file))
+        DATA = BudgetData()
+        DATA.connect(args.db_file)
 
-    if DATA.dbConnected:
-        LOGGER.debug('db File Connected')
-        LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
-    else:
-        print('Failed to Connect to Database -- shutting down')
-        LOGGER.debug('database connection failed -- cancelling startup')
-        START_FLAG = False
+        if DATA.dbConnected:
+            LOGGER.debug('db File Connected')
+            LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
+        else:
+            print('Failed to Connect to Database -- shutting down')
+            LOGGER.debug('database connection failed -- cancelling startup')
+            START_FLAG = False
 
     if START_FLAG:
         # webbrowser.open('http://127.0.0.1:{}'.format(PORT), new=2)  # , autoraise=True
@@ -474,7 +483,7 @@ if __name__ == '__main__':
             port = 9000
         else:
             port = args.port
-        LOGGER.debug('Starting Budget at: http://127.0.0.1:{}'.format(port))
+        LOGGER.info('Starting Budget at: http://127.0.0.1:{}'.format(port))
         print('Budget Starting at: http://127.0.0.1:{}'.format(port))
         try:
             APP.run(debug=True, port=port)  # , use_reloader=False

@@ -18,14 +18,6 @@ QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
                       name NOT LIKE 'sqlite_%';''',
            }
 
-LOGGER = None
-def init_logger():
-    global LOGGER
-    LOGGER = logging.getLogger(__name__)
-    LOGGER.debug('budget_data -- DEBUG LOGGING MODE')
-    LOGGER.info('budget_data -- INFO LOGGING MODE')
-    return
-
 
 class BudgetData:
     """
@@ -33,6 +25,10 @@ class BudgetData:
     """
 
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('budget_data -- DEBUG LOGGING MODE')
+        self.logger.info('budget_data -- INFO LOGGING MODE')
+
         self.dbConnection = None
         self.dbConnected = False
         self.connection_attempts = 0
@@ -61,36 +57,36 @@ class BudgetData:
         self.connection_attempts += 1
         try:
             if os.path.exists(os.path.abspath(db_file)):
-                # LOGGER.info('Attempting to open {}'.format(os.path.abspath(db_file)))
+                self.logger.info('Attempting to open {}'.format(os.path.abspath(db_file)))
                 self.dbConnection = sql.connect(db_file, check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
                 test_cursor = self.dbConnection.cursor()
                 self.db_version = test_cursor.execute(test_query).fetchall()[0]
                 self.dbConnected = True
-                # LOGGER.info('Successfully Connected')
+                self.logger.info('Successfully Connected')
                 return True
             elif os.path.exists(os.path.abspath('./budget_example.db')):
-                # LOGGER.debug('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
+                self.logger.debug('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
                 self.dbConnection = sql.connect('./budget_example.db', check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
                 test_cursor = self.dbConnection.cursor()
                 self.db_version = test_cursor.execute(test_query).fetchall()[0]
                 self.dbConnected = True
-                # LOGGER.info('Successfully Connected to Example db')
+                self.logger.info('Successfully Connected to Example db')
                 return True
             else:
                 if self.connection_attempts <= 5:
-                    # LOGGER.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath(db_file)))
+                    self.logger.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath(db_file)))
                     self.create_fresh_database(os.path.abspath(db_file), create_tables=True)
                     self.connect(db_file)  # reattempt connection
                 else:
-                    # LOGGER.warning('attempted db connection/creation 5 times, quitting')
+                    self.logger.warning('attempted db connection/creation 5 times, quitting')
                     self.dbConnected = False
                     return None
 
         # Handle errors
         except sql.Error as e:
-            # LOGGER.warning('Failed db connection/creation with error: {}'.format(e))
+            self.logger.warning('Failed db connection/creation with error: {}'.format(e))
             self.dbConnected = False
             return None
 
@@ -98,10 +94,10 @@ class BudgetData:
         if self.dbConnected:
             self.dbConnection.close()
             self.dbConnected = False
-            # LOGGER.info('SQLite Connection closed')
+            self.logger.info('SQLite Connection closed')
         else:
-            print('No SQLite Connection to close')
-            # LOGGER.info('No SQLite Connection to close')
+            # print('No SQLite Connection to close')
+            self.logger.info('No SQLite Connection to close')
 
     def get_accounts(self):
         if self.dbConnected:
@@ -202,7 +198,7 @@ class BudgetData:
                 df[date_col] = pd.to_datetime(df[date_col])  # , format="%Y-%m-%d"
         else:
             print('no date column conversion')
-            # LOGGER.debug('no date column conversion')
+            self.logger.debug('no date column conversion')
 
         # Add data to sqlite db
         rows_changed = df.to_sql(table, self.dbConnection, schema='budget', if_exists='append', index=False)
@@ -228,10 +224,10 @@ class BudgetData:
                 pass
 
         elif credit_account and not debit_account:
-            # LOGGER.info('credit_account ONLY provided')
+            self.logger.info('credit_account ONLY provided')
             debit_account = 0
         elif debit_account and not credit_account:
-            # LOGGER.info('debit_account ONLY provided')
+            self.logger.info('debit_account ONLY provided')
             credit_account = 0
         else:
             raise RuntimeError('Please specify at least one account as debit_account or credit_account')
@@ -286,7 +282,7 @@ class BudgetData:
             vendor=vendor,
             is_posted=is_posted,
         )
-        # LOGGER.debug('add_transaction query:\n', query)
+        self.logger.debug('add_transaction query:\n{}'.format(query))
 
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
@@ -340,11 +336,11 @@ class BudgetData:
                 credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
                 debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
         elif credit_account and not debit_account:
-            # LOGGER.info('credit_account ONLY provided')
+            self.logger.info('credit_account ONLY provided')
             credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
             debit_account = 0
         elif debit_account and not credit_account:
-            # LOGGER.info('debit_account ONLY provided')
+            self.logger.info('debit_account ONLY provided')
             credit_account = 0
             debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
         else:
@@ -402,7 +398,7 @@ class BudgetData:
             is_posted=is_posted,
             transaction_id=transaction_id,
         )
-        # LOGGER.debug('update_transaction query:\n', q_update)
+        self.logger.debug('update_transaction query:\n{}'.format(q_update))
 
         cursor = self.dbConnection.cursor()
         cursor.execute(q_update)
@@ -414,7 +410,7 @@ class BudgetData:
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
-        # LOGGER.info('Deleting Transaction: {}'.format(id))
+        self.logger.info('Deleting Transaction: {}'.format(id))
 
     def general_query(self, query, date_columns=None):
         try:
@@ -533,14 +529,14 @@ class BudgetData:
             previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
             credit_balance = 0
 
-        # LOGGER.info('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
-                                                                                #   payment_id,
-                                                                                #   previous_payment_date,
-                                                                                #   previous_payment_id))
+        self.logger.info('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                                             payment_id,
+                                                                                             previous_payment_date,
+                                                                                             previous_payment_id))
 
-        truth_series_c = (transactions['posted_date'].between(previous_payment_date,
-                                                              payment_date - pd.Timedelta(days=1))) \
-                         & (transactions['credit_account_id'] == int(account_id))
+        truth_series_c = (transactions['posted_date'].between(
+            previous_payment_date, payment_date - pd.Timedelta(days=1))) \
+            & (transactions['credit_account_id'] == int(account_id))
 
         truth_series_d = (transactions['posted_date'].between(previous_payment_date,
                                                               payment_date - pd.Timedelta(days=1))) \
@@ -573,7 +569,7 @@ class BudgetData:
         :param modified_transaction_id:
         :return:
         """
-        # LOGGER.info('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
+        self.logger.info('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
         modified_transaction_id = int(modified_transaction_id)
 
         self.transaction_cache = self.get_transactions()
@@ -741,8 +737,9 @@ class BudgetData:
         return data
 
     @staticmethod
-    def get_transaction(db_connection, transaction_id):
-        # LOGGER.info('getting details for transaction {}'.format(transaction_id))
+    def get_transaction(db_connection, transaction_id, logger=None):
+        if logger is not None:
+            logger.info('getting details for transaction {}'.format(transaction_id))
 
         cols = ['transaction_id',
                 'transaction_date',
@@ -770,7 +767,6 @@ class BudgetData:
 
 
 if __name__ == "__main__":
-    init_logger()
     DATA = BudgetData()
     DATA.connect('/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db')
     connection = DATA.dbConnection
