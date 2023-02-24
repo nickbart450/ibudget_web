@@ -9,7 +9,7 @@ import logging
 import datetime
 import argparse
 import warnings
-import configparser
+import config
 from flask import Flask, redirect, render_template, url_for, request, jsonify
 # from collections import namedtuple
 
@@ -31,9 +31,7 @@ def init_logger(log_directory='./logs'):
 START_FLAG = True
 
 # Load Config File
-config_file = './config.ini'
-CONFIG = configparser.ConfigParser()
-CONFIG.read(config_file)
+CONFIG = config.CONFIG
 
 # Create Flask Object
 APP = Flask(__name__,

@@ -5,6 +5,8 @@ import os.path
 import pandas as pd
 import sqlite3 as sql
 import logging
+# import configparser
+import config
 
 QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
            'show_all_transactions': '''SELECT * from TRANSACTIONS''',
@@ -29,27 +31,17 @@ class BudgetData:
         self.logger.debug('budget_data -- DEBUG LOGGING MODE')
         self.logger.info('budget_data -- INFO LOGGING MODE')
 
+        # Load config settings
+        self.config = config.CONFIG
+
+        # Parse date filters from config
+        self.date_filters = {}
+        for k in self.config['ui_settings.date_filters']:
+            self.date_filters[k] = self.config['ui_settings.date_filters'][k].split(',')
+
         self.dbConnection = None
         self.dbConnected = False
         self.connection_attempts = 0
-        self.date_filters = {'All': ['1970-01-01', '2100-01-01'],
-                             'January': ['2022-12-31', '2023-02-01'],
-                             'February': ['2023-02-01', '2023-03-01'],
-                             'March': ['2023-03-01', '2023-04-01'],
-                             'April': ['2023-04-01', '2023-05-01'],
-                             'May': ['2023-05-01', '2023-06-01'],
-                             'June': ['2023-06-01', '2023-07-01'],
-                             'July': ['2023-07-01', '2023-08-01'],
-                             'August': ['2023-08-01', '2023-09-01'],
-                             'September': ['2023-09-01', '2023-10-01'],
-                             'October': ['2023-10-01', '2023-11-01'],
-                             'November': ['2023-11-01', '2023-12-01'],
-                             'December': ['2023-12-01', '2024-01-01'],
-                             'Q1': ['2022-12-01', '2023-04-01'],
-                             'Q2': ['2023-04-01', '2023-07-01'],
-                             'Q3': ['2023-07-01', '2023-10-01'],
-                             'Q4': ['2023-10-01', '2024-01-01'],
-                             }
 
         self.transaction_cache = None
 
@@ -122,9 +114,10 @@ class BudgetData:
 
         # Query (Date Filter happens here)
         if date_filter == 'Date Filter':
-            date_filter = 'All'
+            date_filter = 'all'
 
         if date_filter is not None:
+            date_filter = date_filter.lower()
             d1 = self.date_filters[date_filter][0]
             d2 = self.date_filters[date_filter][1]
             query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
@@ -606,7 +599,7 @@ class BudgetData:
 
             return amount
 
-    def category_summary(self, date_filter='All'):
+    def category_summary(self, date_filter='all'):
         transactions = self.get_transactions(date_filter=date_filter)
         cat_width = 30
         amount_width = 10
@@ -621,6 +614,7 @@ class BudgetData:
                                             (transactions['credit_account_id'] == 300)].amount), 2)
         print('Net Debits (outflow): ${:.2f}'.format(debit_sum))
         print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
+        print('Net Delta   (in-out): ${:.2f}'.format(credit_sum-debit_sum))
 
     @staticmethod
     def get_cc_payments(transactions, account):
@@ -770,16 +764,24 @@ class BudgetData:
 
 
 if __name__ == "__main__":
+    CONFIG = config.CONFIG
+
+    environ = 'work.test'
+    # environ = 'home.test'
+
     DATA = BudgetData()
-    DATA.connect('/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db')
+    db_file_ = CONFIG['database.{}'.format(environ)]['file']
+    DATA.connect(db_file_)
     connection = DATA.dbConnection
 
     all_transactions = DATA.get_transactions()
     # all_transactions.sort_values(by=['posted_date', 'transaction_id'])
-    all_transactions.to_csv('./all_transactions.csv')
+    # all_transactions.to_csv('./all_transactions.csv')
 
     # print(DATA.get_accounts())
 
-    DATA.category_summary(date_filter='February')
+    for i in ['q1', 'q2', 'q3', 'q4', 'all']:
+        print('\n\t{}'.format(i.upper()))
+        DATA.category_summary(date_filter=i)
 
     DATA.close()
