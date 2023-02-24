@@ -457,6 +457,10 @@ class BudgetData:
             debit_acct_0 = values[str(debit_account)]
             credit_acct_0 = values[str(credit_account)]
 
+            if isinstance(debit_acct_0, list) or isinstance(credit_acct_0, list):
+                print('debit_acct_0: ', debit_acct_0)
+                print('credit_acct_0: ', credit_acct_0)
+
             # Calculate after value of accounts
             values['transaction_id'] = transaction_id
 
@@ -557,7 +561,7 @@ class BudgetData:
 
         credits_sum = round(sum(credit_transactions['amount']), 2)
         debits_sum = round(sum(debit_transactions['amount']), 2)
-        payment_amount = credits_sum - credit_balance - debits_sum
+        payment_amount = round(credits_sum - credit_balance - debits_sum, 2)
 
         # print('credits_sum: $', credits_sum, ':: debits_sum:  $', debits_sum)
         # print('PAYMENT:  $ {:.2f}\n'.format(payment_amount))
