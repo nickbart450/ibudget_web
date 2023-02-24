@@ -80,8 +80,7 @@ class BudgetData:
                 return True
             else:
                 if self.connection_attempts <= 5:
-                    # LOGGER.warning('No database file found, attempting to create fresh, empty database at {}'.format(
-                        os.path.abspath(db_file)))
+                    # LOGGER.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath(db_file)))
                     self.create_fresh_database(os.path.abspath(db_file), create_tables=True)
                     self.connect(db_file)  # reattempt connection
                 else:
@@ -101,6 +100,7 @@ class BudgetData:
             self.dbConnected = False
             # LOGGER.info('SQLite Connection closed')
         else:
+            print('No SQLite Connection to close')
             # LOGGER.info('No SQLite Connection to close')
 
     def get_accounts(self):
@@ -201,6 +201,7 @@ class BudgetData:
             for date_col in date_columns:
                 df[date_col] = pd.to_datetime(df[date_col])  # , format="%Y-%m-%d"
         else:
+            print('no date column conversion')
             # LOGGER.debug('no date column conversion')
 
         # Add data to sqlite db
@@ -531,9 +532,9 @@ class BudgetData:
             credit_balance = 0
 
         # LOGGER.info('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
-                                                                                  payment_id,
-                                                                                  previous_payment_date,
-                                                                                  previous_payment_id))
+                                                                                #   payment_id,
+                                                                                #   previous_payment_date,
+                                                                                #   previous_payment_id))
 
         truth_series_c = (transactions['posted_date'].between(previous_payment_date,
                                                               payment_date - pd.Timedelta(days=1))) \
