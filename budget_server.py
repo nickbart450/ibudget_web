@@ -8,14 +8,86 @@ import os
 import logging
 import datetime
 import argparse
-from collections import namedtuple
+# from collections import namedtuple
 
 START_FLAG = True
-# PORT = 9000
 
+# Create Flask Object
 APP = Flask(__name__,
             template_folder="./templates",
             static_folder="./static", )
+
+
+# Create data object and connect to database
+DATA = BudgetData()
+db_file = '/home/nick450/budget_2023.db'
+print('connecting to {}'.format(db_file))
+DATA.connect(db_file)
+
+if DATA.dbConnected:
+    # LOGGER.debug('db File Connected')
+    # LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
+    print('db File Connected')
+    print('db SQL version: {}'.format(DATA.db_version))
+
+else:
+    print('Failed to Connect to Database -- shutting down')
+    # LOGGER.debug('database connection failed -- cancelling startup')
+    print('database connection failed -- cancelling startup')
+    START_FLAG = False
+
+# Get Accounts from Data
+ACCOUNTS = DATA.get_accounts()
+ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
+
+CATEGORIES = [
+    'All',
+    'Credit Card Payment',
+    'Job Pay',
+    'Transfer',
+    'Alcohol',
+    'Automotive',
+    'Dining',
+    'Entertainment',
+    'Gas',
+    'Gifts',
+    'Grocery',
+    'Health Care',
+    'Home',
+    'Insurance',
+    'Investment',
+    'Merchandise',
+    'Mortgage',
+    'Other',
+    'Other Services',
+    'Tax Refund-Payment',
+    'Utilities',
+]
+
+DATE_FILTERS = list(DATA.date_filters.keys())
+
+FILTERS = {'date': 'All',
+           'account': 'All',
+           'category': 'All',
+           'income_expense': 'both',
+           }
+
+STARTING_VALUES_2023 = {'transaction_id': 'start',
+                        'transaction_date': 'start',
+                        'posted_date': 'start',
+                        '0': 0.00,  # External Accounts
+                        '100': 2237.19,  # Main Skyla Checking
+                        '101': 505.13,  # Main Skyla Savings
+                        '102': 12002.95,  # House/Emergency Skyla Savings
+                        '103': 1300.06,  # TD Bank Checking
+                        '104': 500.00,  # TD Savings
+                        '201': 520.00,
+                        '202': 1890.00,
+                        '300': 0.00,
+                        '4895': -689.77,
+                        '5737': 101.18,
+                        '9721': 0.00,
+                        }
 
 
 @APP.route("/", methods=['GET'])
@@ -52,21 +124,6 @@ def get_home():
     #                    }
     # result = DATA.calculate_account_values(STARTING_VALUES_2022)
 
-    STARTING_VALUES_2023 = {'transaction_id': 'start',
-                            'transaction_date': 'start',
-                            'posted_date': 'start',
-                            '0': 0.00,  # External Accounts
-                            '100': 2237.19,  # Main Skyla Checking
-                            '101': 505.13,  # Main Skyla Savings
-                            '102': 12002.95,  # House/Emergency Skyla Savings
-                            '103': 1300.06,  # TD Bank Checking
-                            '104': 500.00,  # TD Savings
-                            '201': 520.00,
-                            '202': 1890.00,
-                            '300': 0.00,
-                            '4895': -689.77,
-                            '5737': 101.18,
-                            '9721': 0.00}
     result = DATA.calculate_account_values(STARTING_VALUES_2023)
 
     # Reformat account values for CanvasJS stacked chart
@@ -389,7 +446,7 @@ if __name__ == '__main__':
     parser.add_argument('--port', nargs='?', const=9000, type=int)
     args = parser.parse_args()
 
-    # Create data object and connect to database
+    # Rebuild w/ data object w/ our args and connect to database
     DATA = BudgetData()
     print('connecting to {}'.format(args.db_file))
     DATA.connect(args.db_file)
@@ -403,41 +460,6 @@ if __name__ == '__main__':
         START_FLAG = False
 
     if START_FLAG:
-        ACCOUNTS = DATA.get_accounts()
-        ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
-
-        CATEGORIES = [
-            'All',
-            'Credit Card Payment',
-            'Job Pay',
-            'Transfer',
-            'Alcohol',
-            'Automotive',
-            'Dining',
-            'Entertainment',
-            'Gas',
-            'Gifts',
-            'Grocery',
-            'Health Care',
-            'Home',
-            'Insurance',
-            'Investment',
-            'Merchandise',
-            'Mortgage',
-            'Other',
-            'Other Services',
-            'Tax Refund-Payment',
-            'Utilities',
-        ]
-
-        DATE_FILTERS = list(DATA.date_filters.keys())
-
-        FILTERS = {'date': 'All',
-                   'account': 'All',
-                   'category': 'All',
-                   'income_expense': 'both',
-                   }
-
         # webbrowser.open('http://127.0.0.1:{}'.format(PORT), new=2)  # , autoraise=True
         if args.port is None:
             port = 9000
