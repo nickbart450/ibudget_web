@@ -4,11 +4,13 @@ __version__ = '0.0.1'
 from budget_data import BudgetData
 # from budget_data import init_logger
 
-from flask import Flask, redirect, render_template, url_for, request, jsonify
 import os
 import logging
 import datetime
 import argparse
+import warnings
+import configparser
+from flask import Flask, redirect, render_template, url_for, request, jsonify
 # from collections import namedtuple
 
 START_FLAG = True
@@ -28,17 +30,23 @@ def init_logger(log_directory='./logs'):
     return logger
 
 
+# Load Config File
+config_file = './config.ini'
+CONFIG = configparser.ConfigParser()
+CONFIG.read(config_file)
+
+
 # Create Flask Object
 APP = Flask(__name__,
             template_folder="./templates",
             static_folder="./static", )
 
+
 LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
 # Create data object and connect to database
-db_file = '/home/nick450/2023_budget_db/budget_2023.db'  # <<<<<<<<<< Live Version
-# db_file = '/mnt/Data-x/Documents/1-Financial/2023/budget_2023.db'
-# db_file = r'D:\BartlettSync\~Nick Stuff\2023_budget_db\budget_2023.db'
+environ = 'live'
+db_file = CONFIG['database.{}'.format(environ)]['file']
 
 print('connecting to {}'.format(db_file))
 LOGGER.info('Connecting to SQLite3 db at: {}'.format(db_file))
@@ -52,63 +60,25 @@ if DATA.dbConnected:
     print('db File Connected')
     print('db SQL version: {}'.format(DATA.db_version))
 
+    # Get Accounts from Data
+    ACCOUNTS = DATA.get_accounts()
+    ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
+
+    # Get Date filters from data object - migrate to config eventually
+    DATE_FILTERS = list(DATA.date_filters.keys())
+
 else:
     # LOGGER.debug('database connection failed -- cancelling startup')
     print('database connection failed -- cancelling startup')
-    raise RuntimeError('database connection failed')
+    warnings.warn('Initial database connection failed')
 
-# Get Accounts from Data
-ACCOUNTS = DATA.get_accounts()
-ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
 
-CATEGORIES = [
-    'All',
-    'Credit Card Payment',
-    'Job Pay',
-    'Transfer',
-    'Alcohol',
-    'Automotive',
-    'Dining',
-    'Entertainment',
-    'Gas',
-    'Gifts',
-    'Grocery',
-    'Health Care',
-    'Home',
-    'Insurance',
-    'Investment',
-    'Merchandise',
-    'Mortgage',
-    'Other',
-    'Other Services',
-    'Tax Refund-Payment',
-    'Utilities',
-]
+CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
+CATEGORIES = CATEGORIES.split(',')
 
-DATE_FILTERS = list(DATA.date_filters.keys())
+FILTERS = CONFIG['ui_settings.default_filters']
 
-FILTERS = {'date': 'All',
-           'account': 'All',
-           'category': 'All',
-           'income_expense': 'both',
-           }
-
-STARTING_VALUES_2023 = {'transaction_id': 'start',
-                        'transaction_date': 'start',
-                        'posted_date': 'start',
-                        '0': 0.00,  # External Accounts
-                        '100': 2237.19,  # Main Skyla Checking
-                        '101': 505.13,  # Main Skyla Savings
-                        '102': 12002.95,  # House/Emergency Skyla Savings
-                        '103': 1300.06,  # TD Bank Checking
-                        '104': 500.00,  # TD Savings
-                        '201': 520.00,
-                        '202': 1890.00,
-                        '300': 0.00,
-                        '4895': -689.77,
-                        '5737': 101.18,
-                        '9721': 0.00,
-                        }
+STARTING_VALUES = CONFIG['STARTING_VALUES_2023']
 
 
 @APP.route("/", methods=['GET'])
@@ -121,31 +91,9 @@ def get_home():
     print('Fetching HOME')
     accounts = DATA.get_accounts()
 
-    # STARTING_VALUES_2022 = {'transaction_id': 'start',
-    #                    'transaction_date': 'start',
-    #                    'posted_date': 'start',
-    #                    '0': 0.00,  # External Accounts
-    #                    '100': 2152.98,  # Main Skyla Checking
-    #                    '101': 1005.00,  # Main Skyla Savings
-    #                    '102': 14000.00,  # House/Emergency Skyla Savings
-    #                    '103': 1480.00,  # TD Bank Checking
-    #                    '104': 500.00,  # TD Savings
-    #                    '201': 130.00,
-    #                    '202': 2700.00,
-    #                    '300': 0.00,
-    #                    '4895': 0.00,
-    #                    '5737': 0.00,
-    #                    '9721': 0.00,
-    #                    # 'Retirement'     : 0.00,
-    #                    # 'Fidelity'       : 15000.00,
-    #                    # 'TD Ameritrade'  : 0.00,
-    #                    # 'Electrum Wallet': 0.135,
-    #                    # 'Binance'        : 0.00,
-    #                    # 'FTX'            : 0.00,
-    #                    }
     # result = DATA.calculate_account_values(STARTING_VALUES_2022)
 
-    result = DATA.calculate_account_values(STARTING_VALUES_2023)
+    result = DATA.calculate_account_values(STARTING_VALUES)
 
     # Reformat account values for CanvasJS stacked chart
     prev_date = 20211230
@@ -256,7 +204,7 @@ def get_transactions():
 
     FILTERS['date'] = 'All'
     FILTERS['account'] = 'All'
-    FILTERS['category']: 'All'
+    FILTERS['category'] = 'All'
     FILTERS['income_expense'] = 'both'
 
     # print(result.head())
@@ -298,7 +246,7 @@ def data_transactions():
     if request.args.get('income_expense') is not None:
         FILTERS['income_expense'] = request.args.get('income_expense').lower()
 
-    print('Active Filters: {}'.format(FILTERS))
+    print('Active Filters: {}'.format(dict(FILTERS)))
 
     results = fetch_filtered_transactions()
 
@@ -450,6 +398,11 @@ def fetch_filtered_transactions():
 
 
 if __name__ == '__main__':
+    environ = 'work.test'
+    # environ = 'home.test'
+
+    # STARTING_VALUES = CONFIG['STARTING_VALUES_2022']
+
     LOGGER.debug('budget_server -- DEBUG LOGGING MODE')
     LOGGER.info('budget_server -- INFO LOGGING MODE')
 
@@ -463,20 +416,36 @@ if __name__ == '__main__':
     parser.add_argument('--port', nargs='?', const=9000, type=int)
     args = parser.parse_args()
 
-    # Rebuild w/ data object w/ our args and connect to database
+    # Rebuild data object with our args/options and connect to database
     if args.db_file is not None:
-        LOGGER.info('connecting to {}'.format(args.db_file))
-        DATA = BudgetData()
-        DATA.connect(args.db_file)
+        db_file = os.path.abspath(args.db_file)
+    else:
+        db_file = CONFIG['database.{}'.format(environ)]['file']
 
-        if DATA.dbConnected:
-            LOGGER.debug('db File Connected')
-            LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
-        else:
-            print('Failed to Connect to Database -- shutting down')
-            LOGGER.debug('database connection failed -- cancelling startup')
-            START_FLAG = False
+    # print(f'env: {environ}, db_file: {db_file}, DATA: {DATA}')
 
+    DATA = BudgetData()
+    DATA.connect(db_file)
+
+    if DATA.dbConnected:
+        LOGGER.debug('db File Connected')
+        LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
+        print('db File Connected')
+        print('db SQL version: {}'.format(DATA.db_version))
+
+        # Get Accounts from Data
+        ACCOUNTS = DATA.get_accounts()
+        ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
+
+        # Get Date filters from data object - migrate to config eventually
+        DATE_FILTERS = list(DATA.date_filters.keys())
+
+    else:
+        LOGGER.debug('database connection failed -- cancelling startup')
+        print('database connection failed -- cancelling startup')
+        raise RuntimeError('Final database connection failed, exiting')
+
+    # If everything launched okay, start the development server
     if START_FLAG:
         # webbrowser.open('http://127.0.0.1:{}'.format(PORT), new=2)  # , autoraise=True
         if args.port is None:
