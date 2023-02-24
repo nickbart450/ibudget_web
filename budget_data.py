@@ -438,13 +438,15 @@ class BudgetData:
 
         transactions.sort_values(by=['transaction_date', 'transaction_id'], inplace=True)
 
+        starting_vals_dict = {}
         for v in starting_values:
-            starting_values[v] = [starting_values[v]]
+            starting_vals_dict[v] = [starting_values[v]]
 
         # iterate over each transaction to calculate account value over time
         account_values = pd.DataFrame()  # Setup dataframe
         values = pd.Series(
-            pd.DataFrame.from_dict(starting_values).iloc[0])  # Setup transient series to use through iterations
+            pd.DataFrame.from_dict(starting_vals_dict).iloc[0])  # Setup transient series to use through iterations
+
         for i in transactions.index:
             # Find Accounts
             transaction_id = int(transactions.iloc[i]['transaction_id'])
@@ -456,10 +458,6 @@ class BudgetData:
             # Find before value of accounts
             debit_acct_0 = values[str(debit_account)]
             credit_acct_0 = values[str(credit_account)]
-
-            if isinstance(debit_acct_0, list) or isinstance(credit_acct_0, list):
-                print('debit_acct_0: ', debit_acct_0)
-                print('credit_acct_0: ', credit_acct_0)
 
             # Calculate after value of accounts
             values['transaction_id'] = transaction_id
