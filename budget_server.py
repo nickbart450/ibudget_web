@@ -13,8 +13,6 @@ import configparser
 from flask import Flask, redirect, render_template, url_for, request, jsonify
 # from collections import namedtuple
 
-START_FLAG = True
-
 
 def init_logger(log_directory='./logs'):
     # Start Logger
@@ -30,27 +28,28 @@ def init_logger(log_directory='./logs'):
     return logger
 
 
+START_FLAG = True
+
 # Load Config File
 config_file = './config.ini'
 CONFIG = configparser.ConfigParser()
 CONFIG.read(config_file)
-
 
 # Create Flask Object
 APP = Flask(__name__,
             template_folder="./templates",
             static_folder="./static", )
 
-
+# Start Logger
 LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
-# Create data object and connect to database
+# Fetch database file location from the config. Defaults to live version
 environ = 'live'
 db_file = CONFIG['database.{}'.format(environ)]['file']
-
 print('connecting to {}'.format(db_file))
 LOGGER.info('Connecting to SQLite3 db at: {}'.format(db_file))
 
+# Create data object and connect to database
 DATA = BudgetData()
 DATA.connect(db_file)
 
@@ -69,9 +68,8 @@ if DATA.dbConnected:
 
 else:
     # LOGGER.debug('database connection failed -- cancelling startup')
-    print('database connection failed -- cancelling startup')
+    print('Initial database connection failed')
     warnings.warn('Initial database connection failed')
-
 
 CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
 CATEGORIES = CATEGORIES.split(',')
@@ -422,15 +420,13 @@ if __name__ == '__main__':
     else:
         db_file = CONFIG['database.{}'.format(environ)]['file']
 
-    # print(f'env: {environ}, db_file: {db_file}, DATA: {DATA}')
-
     DATA = BudgetData()
     DATA.connect(db_file)
 
     if DATA.dbConnected:
         LOGGER.debug('db File Connected')
         LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
-        print('db File Connected')
+        print('db File Connected: {}'.format(db_file))
         print('db SQL version: {}'.format(DATA.db_version))
 
         # Get Accounts from Data
