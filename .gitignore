@@ -4,9 +4,9 @@
 __pycache__/
 venv/
 
-/tools/*
-!/tools/budget-tools.py
-!/tools/build_2023_database.py
+/tools/build_2023_database.py
+
+environ.ini
 
 # Nick's stuff
 Notes

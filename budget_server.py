@@ -28,8 +28,6 @@ def init_logger(log_directory='./logs'):
     return logger
 
 
-START_FLAG = True
-
 # Load Config File
 CONFIG = config.CONFIG
 
@@ -42,7 +40,7 @@ APP = Flask(__name__,
 LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
 # Fetch database file location from the config. Defaults to live version
-environ = 'live'
+environ = CONFIG['env']['environ']
 db_file = CONFIG['database.{}'.format(environ)]['file']
 print('connecting to {}'.format(db_file))
 LOGGER.info('Connecting to SQLite3 db at: {}'.format(db_file))
@@ -394,15 +392,18 @@ def fetch_filtered_transactions():
 
 
 if __name__ == '__main__':
-    environ = 'work.test'
-    # environ = 'home.test'
+    environ = CONFIG['env']['environ']
+    LOGGER.debug('Config environment: {}'.format(CONFIG['env']['environ']))
 
+    # Uncomment to overwrite starting values w/ 2022 values
     # STARTING_VALUES = CONFIG['STARTING_VALUES_2022']
 
     LOGGER.debug('budget_server -- DEBUG LOGGING MODE')
     LOGGER.info('budget_server -- INFO LOGGING MODE')
 
-    # argparse setup
+    # argparse setup -- Available Arguments:
+    #   --db_file   specify new .db file to open
+    #   --port      specify alternative port number to launch development server on (Default: 9000)
     parser = argparse.ArgumentParser(
         prog='budget_web',
         description='Individual Financial Tracking and Analysis Web Application',
@@ -413,42 +414,41 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Rebuild data object with our args/options and connect to database
+    # Allows us to specify custom or alternative database file at testing startup
     if args.db_file is not None:
         db_file = os.path.abspath(args.db_file)
-    else:
-        db_file = CONFIG['database.{}'.format(environ)]['file']
 
-    DATA = BudgetData()
-    DATA.connect(db_file)
+        DATA = BudgetData()
+        DATA.connect(db_file)
 
-    if DATA.dbConnected:
-        LOGGER.debug('db File Connected')
-        LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
-        print('db File Connected: {}'.format(db_file))
-        print('db SQL version: {}'.format(DATA.db_version))
+        if DATA.dbConnected:
+            LOGGER.debug('db File Connected')
+            LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
+            print('db File Connected: {}'.format(db_file))
+            print('db SQL version: {}'.format(DATA.db_version))
 
-        # Get Accounts from Data
-        ACCOUNTS = DATA.get_accounts()
-        ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
+            # Get Accounts from Data
+            ACCOUNTS = DATA.get_accounts()
+            ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
 
-        # Get Date filters from data object - migrate to config eventually
-        DATE_FILTERS = list(DATA.date_filters.keys())
+            # Get Date filters from data object - migrate to config eventually
+            DATE_FILTERS = list(DATA.date_filters.keys())
 
-    else:
-        LOGGER.debug('database connection failed -- cancelling startup')
-        print('database connection failed -- cancelling startup')
-        raise RuntimeError('Final database connection failed, exiting')
-
-    # If everything launched okay, start the development server
-    if START_FLAG:
-        # webbrowser.open('http://127.0.0.1:{}'.format(PORT), new=2)  # , autoraise=True
-        if args.port is None:
-            port = 9000
         else:
-            port = args.port
-        LOGGER.info('Starting Budget at: http://127.0.0.1:{}'.format(port))
-        print('Budget Starting at: http://127.0.0.1:{}'.format(port))
-        try:
-            APP.run(debug=True, port=port)  # , use_reloader=False
-        finally:
-            DATA.close()
+            LOGGER.debug('database connection failed -- cancelling startup')
+            print('database connection failed -- cancelling startup')
+            raise RuntimeError('Final database connection failed, exiting')
+
+    if args.port is None:
+        port = 9000
+    else:
+        port = args.port
+
+    # webbrowser.open('http://127.0.0.1:{}'.format(port), new=2)  # , autoraise=True
+    LOGGER.info('Starting Budget at: http://127.0.0.1:{}'.format(port))
+    print('Budget Starting at: http://127.0.0.1:{}'.format(port))
+
+    try:
+        APP.run(debug=True, port=port)  # , use_reloader=False
+    finally:
+        DATA.close()

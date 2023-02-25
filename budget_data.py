@@ -766,8 +766,8 @@ class BudgetData:
 if __name__ == "__main__":
     CONFIG = config.CONFIG
 
-    environ = 'work.test'
-    # environ = 'home.test'
+    environ = CONFIG['env']['environ']
+    print('Config environment: {}'.format(CONFIG['env']['environ']))
 
     DATA = BudgetData()
     db_file_ = CONFIG['database.{}'.format(environ)]['file']
