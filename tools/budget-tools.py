@@ -1,7 +1,11 @@
+import os
+import os.path
+os.chdir('../')
+
 import datetime
 from budget_data import BudgetData
 import budget_server
-import os.path
+import config
 import pandas as pd
 import sqlite3 as sql
 
@@ -116,16 +120,49 @@ def rebuild_transactions():
     print(rows_added, ' rows added to TRANSACTIONS')
 
 
+def add_starting_values_to_accounts(database_connector):
+    statement = """
+        ALTER TABLE ACCOUNTS
+        ADD COLUMN starting_value NUM NOT NULL default 0
+    """
+    database_connector.execute(statement)
+    database_connector.commit()
+
+def update_starting_values_in_accounts(database_connector):
+    accounts =  [0,     100,    101,      102,     103, 104, 201,  202, 300,    4895,   5737, 9721]
+    values =    [0, 2237.19, 505.13, 12002.95, 1300.06, 500, 520, 1890,   0, -689.77, 101.18,    0]
+
+    for a in range(len(accounts)):
+        account_id = accounts[a]
+        v = values[a]
+
+        statement = """
+            UPDATE accounts
+            SET starting_value = {value}
+            WHERE account_id = {id};
+        """.format(value=v, id=account_id)
+        database_connector.execute(statement)
+        database_connector.commit()
+
+
 if __name__ == '__main__':
     # -- Setup
     # pd.set_option("display.max_rows", None, "display.max_columns", None)  # makes pandas print full table
 
+    # Fetch config
+    CONFIG = config.CONFIG
+    environ = CONFIG['env']['environ']
+
+    # Create Data object
     DATA = BudgetData()
-    # DATA.connect('../2022_budget/budget_2022.db')
-    # DATA.connect('../budget_2023.db')
-    DATA.connect('../budget_test.db')
+    db_file_ = CONFIG['database.{}'.format(environ)]['file']
+    DATA.connect(db_file_)
     connection = DATA.dbConnection
 
+    # -- Add starting_values column to database ACCOUNTS table
+    # print('Adding starting_values column to ACCOUNTS table in: ', db_file_)
+    # add_starting_values_to_accounts(connection)
+    # update_starting_values_in_accounts(connection)
 
     # -- Calculate CC Payment
     # pay = DATA.calculate_credit_card_payment(4895, '2023-02-09')
@@ -255,6 +292,5 @@ if __name__ == '__main__':
     # cursor = DATA.dbConnection.cursor()
     # cursor.execute(update_accounts_query)
     # DATA.dbConnection.commit()
-
 
     DATA.close()
