@@ -159,10 +159,12 @@ if __name__ == '__main__':
     DATA.connect(db_file_)
     connection = DATA.dbConnection
 
+
     # -- Add starting_values column to database ACCOUNTS table
     # print('Adding starting_values column to ACCOUNTS table in: ', db_file_)
     # add_starting_values_to_accounts(connection)
     # update_starting_values_in_accounts(connection)
+
 
     # -- Calculate CC Payment
     # pay = DATA.calculate_credit_card_payment(4895, '2023-02-09')
@@ -180,48 +182,8 @@ if __name__ == '__main__':
                  'TD Bank Checking',
                  'TD Bank Savings',
                  ]
-    STARTING_VALUES_2022 = {'transaction_id': 'start',
-                       'transaction_date': 'start',
-                       'posted_date': 'start',
-                       '0': 0.00,  # External Accounts
-                       '100': 2152.98,  # Main Skyla Checking
-                       '101': 1005.00,  # Main Skyla Savings
-                       '102': 14000.00,  # House/Emergency Skyla Savings
-                       '103': 1480.00,  # TD Bank Checking
-                       '104': 500.00,  # TD Savings
-                       '201': 130.00,
-                       '202': 2700.00,
-                       '300': 0.00,
-                       '4895': 0.00,
-                       '5737': 0.00,
-                       '9721': 0.00,
-                       # 'Retirement'     : 0.00,
-                       # 'Fidelity'       : 15000.00,
-                       # 'TD Ameritrade'  : 0.00,
-                       # 'Electrum Wallet': 0.135,
-                       # 'Binance'        : 0.00,
-                       # 'FTX'            : 0.00,
-                       }
-    # account_values = DATA.calculate_account_values(STARTING_VALUES_2022, date_filter='All')  # [SHOW_COLS]
-    # account_values.to_csv('./2022_acct_values.csv')
-
-    STARTING_VALUES_2023 = {'transaction_id': 'start',
-                            'transaction_date': 'start',
-                            'posted_date': 'start',
-                            '0': 0.00,  # External Accounts
-                            '100': 2237.19,  # Main Skyla Checking
-                            '101': 505.13,  # Main Skyla Savings
-                            '102': 12002.95,  # House/Emergency Skyla Savings
-                            '103': 1300.06,  # TD Bank Checking
-                            '104': 500.00,  # TD Savings
-                            '201': 520.00,
-                            '202': 1890.00,
-                            '300': 0.00,
-                            '4895': -689.77,
-                            '5737': 101.18,
-                            '9721': 0.00}
-    # vals = DATA.calculate_account_values(STARTING_VALUES_2023)
-    # vals.to_csv('./2023_account_values.csv')
+    # account_values = DATA.calculate_account_values()  # [SHOW_COLS]
+    # account_values.to_csv('./tools/2023_acct_values.csv')
 
 
     # -- Transactions save to csv
@@ -250,8 +212,8 @@ if __name__ == '__main__':
 
 
     # -- Quick Queries
-    print('DATA db tables:\n', DATA.quick_query('list_tables'))
-    print('DATA db accounts:\n', DATA.quick_query('show_all_accounts'))
+    # print('DATA db tables:\n', DATA.quick_query('list_tables'))
+    # print('DATA db accounts:\n', DATA.quick_query('show_all_accounts'))
     # print(DATA.quick_query('show_transactions_dtypes'))
 
 
@@ -280,15 +242,15 @@ if __name__ == '__main__':
                         '{transaction_type}',
                         '{account_type}',
                         );'''.format(account_id=1, name='test', transaction_type='cash', account_type='other')
+    update_accounts_query = """UPDATE TRANSACTIONS
+                                SET
+                                    amount=1907.70
+                                WHERE
+                                    category='Job Pay'
+                                AND
+                                    is_posted=0
+                            """
 
-    # update_accounts_query = """UPDATE TRANSACTIONS
-    #                             SET
-    #                                 amount=1907.70
-    #                             WHERE
-    #                                 category='Job Pay'
-    #                             AND
-    #                                 is_posted=0
-    #                         """
     # cursor = DATA.dbConnection.cursor()
     # cursor.execute(update_accounts_query)
     # DATA.dbConnection.commit()

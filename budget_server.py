@@ -72,8 +72,6 @@ CATEGORIES = CATEGORIES.split(',')
 
 FILTERS = CONFIG['ui_settings.default_filters']
 
-STARTING_VALUES = CONFIG['STARTING_VALUES_2023']
-
 
 @APP.route("/", methods=['GET'])
 def get_home():
@@ -85,9 +83,7 @@ def get_home():
     print('Fetching HOME')
     accounts = DATA.get_accounts()
 
-    # result = DATA.calculate_account_values(STARTING_VALUES_2022)
-
-    result = DATA.calculate_account_values(STARTING_VALUES)
+    result = DATA.calculate_account_values()
 
     # Reformat account values for CanvasJS stacked chart
     prev_date = 20211230
@@ -394,9 +390,6 @@ def fetch_filtered_transactions():
 if __name__ == '__main__':
     environ = CONFIG['env']['environ']
     LOGGER.debug('Config environment: {}'.format(CONFIG['env']['environ']))
-
-    # Uncomment to overwrite starting values w/ 2022 values
-    # STARTING_VALUES = CONFIG['STARTING_VALUES_2022']
 
     LOGGER.debug('budget_server -- DEBUG LOGGING MODE')
     LOGGER.info('budget_server -- INFO LOGGING MODE')

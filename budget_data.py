@@ -417,28 +417,35 @@ class BudgetData:
     def quick_query(self, query_code):
         return self.general_query(QUERIES[query_code])
 
-    def calculate_account_values(self, starting_values, date_filter=None, append_transaction_details=False):
-        # accounts = self.get_accounts()
+    def calculate_account_values(self, append_transaction_details=False):
+        """
+        Returns dataframe of account values over time. Index is sequential after reordering transactions chronologically
 
-        if date_filter:
-            transactions = self.get_transactions(date_filter=date_filter)
-        else:
-            transactions = self.get_transactions()
+        Returned columns:
+        ['transaction_id', 'transaction_date', 'posted_date', '0', '100', '101', '102', '103', '104', '201', '202',
+        '300', '4895', '5737', '9721', 'is_posted']
 
+        :param append_transaction_details: Adds columns for transaction data alongside account values
+        :return: pandas.DataFrame
+        """
+        # Fetch transactions from db and order them by date
+        transactions = self.get_transactions()
         transactions.sort_values(by=['transaction_date', 'transaction_id'], inplace=True)
 
-        starting_vals_dict = {}
-        for v in starting_values:
-            try:
-                starting_vals_dict[v] = [float(starting_values[v])]
-            except ValueError:
-                starting_vals_dict[v] = [starting_values[v]]
+        # Fetch account info from database
+        accounts = self.get_accounts().set_index('account_id')
 
-        # iterate over each transaction to calculate account value over time
+        # Setup transient series to use through iterations
         account_values = pd.DataFrame()  # Setup dataframe
-        values = pd.Series(
-            pd.DataFrame.from_dict(starting_vals_dict).iloc[0])  # Setup transient series to use through iterations
+        starting_vals_dict = {
+            'transaction_id': 'start',
+            'transaction_date': 'start',
+            'posted_date': 'start'}
+        for v in accounts.index:
+            starting_vals_dict[str(v)] = [float(accounts.at[v, 'starting_value'])]
+        values = pd.Series(pd.DataFrame.from_dict(starting_vals_dict).iloc[0])
 
+        # -- Main Loop: iterates over each transaction to calculate account value over time
         for i in transactions.index:
             # Find Accounts
             transaction_id = int(transactions.iloc[i]['transaction_id'])
@@ -481,7 +488,7 @@ class BudgetData:
             # Append is_posted column
             account_values['is_posted'] = list(transactions['is_posted'])
 
-        # Reformatting table
+        # Reset index of table so it is sequential
         account_values.reset_index(inplace=True, drop=True)
 
         return account_values
@@ -780,8 +787,9 @@ if __name__ == "__main__":
 
     # print(DATA.get_accounts())
 
-    for i in ['q1', 'q2', 'q3', 'q4', 'all']:
-        print('\n\t{}'.format(i.upper()))
-        DATA.category_summary(date_filter=i)
+    # ['q1', 'q2', 'q3', 'q4', 'all']
+    for n in ['january', 'february', 'march', 'april', 'all']:
+        print('\n\t{}'.format(n.upper()))
+        DATA.category_summary(date_filter=n)
 
     DATA.close()
