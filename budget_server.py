@@ -211,7 +211,7 @@ def get_transactions():
     )
 
 
-@APP.route("/transact/data", methods=['POST', 'GET'])
+@APP.route("/transact/data", methods=['GET'])
 def data_transactions():
     """
     /transact/<arguments>
@@ -230,6 +230,7 @@ def data_transactions():
 
     # Get Category Filter
     if request.args.get('category') is not None:
+        # print('category: ', len(request.args.get('category')), type(request.args.get('category')))
         FILTERS['category'] = request.args.get('category')
 
     # Get & Reformat expense_income_filter
@@ -364,7 +365,7 @@ def fetch_filtered_transactions():
     if FILTERS['category'] == 'All':
         pass
     else:
-        result = result[result['category'] == FILTERS['category']]
+        result = result[result['category'] == str(FILTERS['category'])]
 
     # Reformat amount column
     result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
