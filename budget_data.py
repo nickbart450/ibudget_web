@@ -504,38 +504,60 @@ class BudgetData:
         :param payment_date:
         :return:
         """
+        accounts = self.get_accounts().set_index('account_id')
+        account_id = int(account_id)
         payment_date = pd.to_datetime(payment_date)
 
+        # Use cached transactions dataframe from predecessor function
         if use_cached:
             transactions = self.transaction_cache
-
         else:
             transactions = self.get_transactions()
 
-        payments = self.get_cc_payments(transactions, account_id)  # DataFrame of payment transactions
-        payment_dates = list(payments['posted_date'])  # list of payment dates
+        # Find any existing payments
+        payments = self.get_cc_payments(transactions, account_id)  # Fetch DataFrame of payment transactions
+        payment_dates = list(payments['posted_date'])  # List of payment dates
 
-        payment_id = int(payments[(payments['posted_date'] == payment_date)]['transaction_id'])
+        # Set default values
+        previous_payment_id = None
+        previous_payment_date = '1970-01-01'
+        credit_balance = 0  # Set default credit balance
 
-        if payment_dates.index(payment_date) <= 0:
-            print('generating first payment')
-            previous_payment_id = 0
-            previous_payment_date = '1970-01-01'
-            if int(account_id) == 4895:
-                credit_balance = -689.77
-            else:
-                credit_balance = 101.18
+        if payment_date in list(payments['posted_date']):
+            # If the requested date matches an existing date in payments list, find that transaction id and store it
 
-        else:
+            # Determine previous payment id #
             previous_payment_index = payment_dates.index(payment_date) - 1
             previous_payment_date = pd.to_datetime(payment_dates[previous_payment_index])
             previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
-            credit_balance = 0
+        elif payment_date < min(payment_dates) and account_id in accounts.index:
+            # If payment is first of the year, lookup starting value from accounts db table
 
-        self.logger.info('\nNew Payment:  {} -- id: {}\nPrev payment: {} -- id: {}\n'.format(payment_date,
-                                                                                             payment_id,
-                                                                                             previous_payment_date,
-                                                                                             previous_payment_id))
+            # print('generating first payment for {}'.format(accounts.at[account_id, 'name']))
+            credit_balance = float(accounts.at[account_id, 'starting_value'])
+        elif min(payment_dates) < payment_date < max(payment_dates):
+            # Wind up here if calculating payment BETWEEN any existing payment transactions
+            for x in range(len(payment_dates)):
+                if payment_dates[x] < payment_date < payment_dates[x+1]:
+                    previous_payment_date = payment_dates[x]
+                    previous_payment_index = payment_dates.index(previous_payment_date)
+                    previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
+                else:
+                    print('something is wrong if you are here!')
+        else:
+            # Wind up here if calculating payment AFTER all existing payment transactions
+            previous_payment_date = max(payment_dates)
+            previous_payment_index = payment_dates.index(previous_payment_date)
+            previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
+
+        self.logger.info('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                                              # payment_id,
+                                                                                              previous_payment_date,
+                                                                                              previous_payment_id))
+        print('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                                   # payment_id,
+                                                                                   previous_payment_date,
+                                                                                   previous_payment_id))
 
         truth_series_c = (transactions['posted_date'].between(
             previous_payment_date, payment_date - pd.Timedelta(days=1))) \
@@ -543,9 +565,9 @@ class BudgetData:
 
         truth_series_d = (transactions['posted_date'].between(previous_payment_date,
                                                               payment_date - pd.Timedelta(days=1))) \
-                         & (transactions['debit_account_id'] == int(account_id)) \
-                         & (transactions['transaction_id'] != previous_payment_id) \
-                         & (transactions['category'] != 'Credit Card Payment')
+                          & (transactions['debit_account_id'] == int(account_id)) \
+                          & (transactions['transaction_id'] != previous_payment_id) \
+                          & (transactions['category'] != 'Credit Card Payment')
 
         # Expenses:
         credit_transactions = transactions.loc[truth_series_c, :]
@@ -780,12 +802,6 @@ if __name__ == "__main__":
     db_file_ = CONFIG['database.{}'.format(environ)]['file']
     DATA.connect(db_file_)
     connection = DATA.dbConnection
-
-    all_transactions = DATA.get_transactions()
-    # all_transactions.sort_values(by=['posted_date', 'transaction_id'])
-    # all_transactions.to_csv('./all_transactions.csv')
-
-    # print(DATA.get_accounts())
 
     # ['q1', 'q2', 'q3', 'q4', 'all']
     for n in ['january', 'february', 'march', 'april', 'all']:
