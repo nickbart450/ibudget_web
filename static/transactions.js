@@ -166,7 +166,7 @@ function setCategoryFilter(event){
     var server_data = {"income_expense": income_expense_select,
         "date": document.getElementById("date_filter").innerHTML,
         "account": document.getElementById("account_filter").innerHTML,
-        'category': category_filter,
+        "category": category_filter,
         "date_start": date_start,
         "date_end": date_end,
         };
