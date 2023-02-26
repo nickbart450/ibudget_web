@@ -76,7 +76,8 @@ def create_accounts(database_connector):
                (account_id INTEGER PRIMARY KEY NOT NULL,
                name TEXT NOT NULL,
                transaction_type TEXT NOT NULL,
-               account_type TEXT NOT NULL
+               account_type TEXT NOT NULL,
+               starting_value NUM NOT NULL default 0
                );
             '''
     database_connector.execute(query)
@@ -128,6 +129,7 @@ def add_starting_values_to_accounts(database_connector):
     database_connector.execute(statement)
     database_connector.commit()
 
+
 def update_starting_values_in_accounts(database_connector):
     accounts =  [0,     100,    101,      102,     103, 104, 201,  202, 300,    4895,   5737, 9721]
     values =    [0, 2237.19, 505.13, 12002.95, 1300.06, 500, 520, 1890,   0, -689.77, 101.18,    0]
@@ -145,9 +147,34 @@ def update_starting_values_in_accounts(database_connector):
         database_connector.commit()
 
 
+def add_account(database_connector):
+    account_id = 404
+    name = 'Electrum Wallet USD'
+    transaction_type = "investment"
+    account_type = "asset"
+    value_0 = 2116.58
+
+    query = f'''INSERT INTO ACCOUNTS
+                        (account_id,
+                        name,
+                        transaction_type,
+                        account_type,
+                        starting_value)
+                    VALUES
+                        ({account_id},
+                        "{name}",
+                        "{transaction_type}",
+                        "{account_type}",
+                        {value_0});'''
+    print('Executing: {}'.format(query))
+
+    database_connector.execute(query)
+    database_connector.commit()
+
+
 if __name__ == '__main__':
     # -- Setup
-    # pd.set_option("display.max_rows", None, "display.max_columns", None)  # makes pandas print full table
+    pd.set_option("display.max_rows", None, "display.max_columns", None)  # makes pandas print full table
 
     # Fetch config
     CONFIG = config.CONFIG
@@ -167,8 +194,8 @@ if __name__ == '__main__':
 
 
     # -- Calculate CC Payment
-    # pay = DATA.calculate_credit_card_payment(4895, '2023-02-09')
-    # print('Payment: ', pay)
+    pay = DATA.calculate_credit_card_payment(4895, '2023-12-31')  # 2023-02-24
+    print('Payment: ', pay)
 
 
     # -- Account Values save to csv
