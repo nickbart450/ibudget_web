@@ -197,17 +197,19 @@ def get_transactions():
     FILTERS['category'] = 'All'
     FILTERS['income_expense'] = 'both'
 
+    date_filters = [i.title() for i in list(DATA.date_filters.keys())]
+
     # print(result.head())
     return render_template(
         'transactions_table.html',
         data=result.to_dict('records'),
-        date_filter=list(DATA.date_filters.keys()),
-        date_filter_default='Date Filter',
-        accounts=account_name_list,
-        account_filter_default='Account Filter',
+        date_filter=date_filters,
+        accounts=ACCOUNT_NAMES,
         categories=CATEGORIES,
-        category_filter_default='All',
-        income_expense_filter_default='both',
+        date_filter_default=FILTERS['date'],
+        account_filter_default=FILTERS['account'],
+        category_filter_default=FILTERS['category'],
+        income_expense_filter_default=FILTERS['income_expense'],
     )
 
 
@@ -241,12 +243,14 @@ def data_transactions():
 
     results = fetch_filtered_transactions()
 
+    date_filters = [i.title() for i in list(DATA.date_filters.keys())]
+
     if len(results) > 0:
         # print(result.head())
         return render_template(
             'transactions_table.html',
             data=results.to_dict('records'),
-            date_filter=DATE_FILTERS,
+            date_filter=date_filters,
             accounts=ACCOUNT_NAMES,
             categories=CATEGORIES,
             date_filter_default=FILTERS['date'],
