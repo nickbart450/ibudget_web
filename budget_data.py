@@ -531,7 +531,7 @@ class BudgetData:
         previous_payment_date = '1970-01-01'
         credit_balance = 0  # Set default credit balance
 
-        if payment_date in list(payments['posted_date']):
+        if payment_date in list(payments['transaction_date']):
             # If the requested date matches an existing date in payments list, find that transaction id and store it
 
             # Determine previous payment id #
