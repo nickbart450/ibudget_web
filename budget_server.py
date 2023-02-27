@@ -171,8 +171,6 @@ def data_transactions():
     :return:
     """
     global FILTERS
-    print('Fetching /transact with filters: {}'.format(dict(FILTERS)))
-
     global DATA
     DATA = init_data(DB_FILE)
 
@@ -193,6 +191,8 @@ def data_transactions():
     # Get & Reformat expense_income_filter
     if request.args.get('income_expense') is not None:
         FILTERS['income_expense'] = request.args.get('income_expense').lower()
+
+    print('Fetching /transact with filters: {}'.format(dict(FILTERS)))
 
     result = fetch_filtered_transactions()
 
@@ -267,7 +267,6 @@ def submit_transaction():
 @APP.route("/transact/update_transaction", methods=['POST'])
 def update_transaction():
     print('Update transaction')
-    # result = DATA.get_transactions()
     transaction_id = request.args.get('transaction_id')
 
     transaction_date = request.form['date']
@@ -286,16 +285,14 @@ def update_transaction():
 
     DATA.update_transaction(transaction_id,
                             transaction_date=transaction_date,
+                            posted_date=posted_date,
                             category=category,
                             amount=amount,
-                            posted_date=posted_date,
                             credit_account=credit_account,
                             debit_account=debit_account,
                             description=description,
                             vendor=vendor,
                             is_posted=posted_flag)
-
-    DATA.update_credit_card_payment(transaction_id)
 
     return redirect(url_for('data_transactions'))
 

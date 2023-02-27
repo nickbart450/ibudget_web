@@ -297,9 +297,8 @@ class BudgetData:
         cursor.execute(query)
         self.dbConnection.commit()
 
-    def update_transaction(self, transaction_id, transaction_date=None, category=None, amount=None, posted_date=False,
-                           credit_account=False,
-                           debit_account=False, description=None, vendor=None, is_posted=None):
+    def update_transaction(self, transaction_id, transaction_date=None, posted_date=None, category=None, amount=None,
+                           credit_account=False, debit_account=False, description=None, vendor=None, is_posted=None):
         """
         Updates provided values for specific transaction_id
 
@@ -318,71 +317,69 @@ class BudgetData:
         # Get current transaction details
         transaction = self.get_transaction(self.dbConnection, transaction_id)
 
-        if transaction_date:
-            transaction_date = pd.to_datetime(transaction_date)
-        else:
-            transaction_date = transaction['transaction_date']
+        # Fetch the latest accounts table and store previous account types before updating transaction
+        accounts = self.get_accounts().set_index('account_id')
+        old_credit_account_type = accounts.at[int(transaction['credit_account_id']), 'transaction_type']
+        credit_account_type = old_credit_account_type
+        old_debit_account_type = accounts.at[int(transaction['debit_account_id']), 'transaction_type']
+        debit_account_type = old_debit_account_type
 
-        if category is None:
-            category = transaction['category']
+        if transaction_date is not None:
+            transaction['transaction_date'] = pd.to_datetime(transaction_date)
 
-        if amount is None:
-            amount = transaction['amount']
+        if posted_date is not None:
+            transaction['posted_date'] = pd.to_datetime(posted_date)
 
-        # handle post date
-        if posted_date:
-            posted_date = pd.to_datetime(posted_date)
-        else:
-            posted_date = transaction['posted_date']
-            # posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
+        if category is not None:
+            transaction['category'] = category
 
-        # handle accounts
-        accounts = self.get_accounts()
+        if amount is not None:
+            transaction['amount'] = amount
+
+        if description is not None:
+            transaction['description'] = description
+
+        if vendor is not None:
+            transaction['vendor'] = vendor
+
+        # Convert account names to id #s. 0 is external account
         if credit_account and debit_account:
             if credit_account == debit_account:
                 raise RuntimeError('debit_account must be different from credit_account')
             else:
-                credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
-                debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
+                transaction['credit_account_id'] = int(accounts[accounts['name'] == credit_account].index.values[0])
+                transaction['debit_account_id'] = int(accounts[accounts['name'] == debit_account].index.values[0])
+
+                credit_account_type = accounts.at[transaction['credit_account_id'], 'transaction_type']
+                debit_account_type = accounts.at[transaction['debit_account_id'], 'transaction_type']
         elif credit_account and not debit_account:
             self.logger.info('credit_account ONLY provided')
-            credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
-            debit_account = 0
+            transaction['credit_account_id'] = int(accounts[accounts['name'] == credit_account].index.values[0])
+            credit_account_type = accounts.at[transaction['credit_account_id'], 'transaction_type']
+
         elif debit_account and not credit_account:
             self.logger.info('debit_account ONLY provided')
-            credit_account = 0
-            debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
-        else:
-            credit_account = transaction['credit_account_id']
-            debit_account = transaction['debit_account_id']
-            # raise RuntimeError('Please specify at least one account as debit_account or credit_account')
-
-        if description is None:
-            description = transaction['description']
-
-        if vendor is None:
-            vendor = transaction['vendor']
+            transaction['debit_account_id'] = int(accounts[accounts['name'] == debit_account].index.values[0])
+            debit_account_type = accounts.at[transaction['debit_account_id'], 'transaction_type']
 
         # convert is_posted
-        if is_posted is None:
-            is_posted = transaction['is_posted']
-        else:
+        if is_posted is not None:
             if is_posted:
-                is_posted = 1
+                transaction['is_posted'] = 1
             else:
-                is_posted = 0
+                transaction['is_posted'] = 0
 
         print('Updating transaction:')
         print('\ttransaction_id: ', transaction_id)
-        print('\ttransaction_date: ', transaction_date)
-        print('\tposted_date: ', posted_date)
-        print('\tcredit_account: ', credit_account)
-        print('\tdebit_account: ', debit_account)
-        print('\tamount: ', amount)
-        print('\tcategory: ', category)
-        print('\tdescription: ', description)
-        print('\tvendor: ', vendor)
-        print('\tposted_flag: ', is_posted)
+        print('\ttransaction_date: ', transaction['transaction_date'])
+        print('\tposted_date: ', transaction['posted_date'])
+        print('\tcredit_account: ', transaction['credit_account_id'])
+        print('\tdebit_account: ', transaction['debit_account_id'])
+        print('\tcategory: ', transaction['category'])
+        print('\tdescription: ', transaction['description'])
+        print('\tdescription: ', transaction['amount'])
+        print('\tvendor: ', transaction['vendor'])
+        print('\tposted_flag: ', transaction['is_posted'])
 
         q_update = """
             UPDATE TRANSACTIONS
@@ -396,15 +393,15 @@ class BudgetData:
                 vendor = "{vendor}",
                 is_posted = {is_posted}
             WHERE transaction_id = {transaction_id};""".format(
-            t_date=transaction_date,
-            p_date=posted_date,
-            c_account_id=credit_account,
-            d_account_id=debit_account,
-            category=category,
-            description=description,
-            amount=amount,
-            vendor=vendor,
-            is_posted=is_posted,
+            t_date=transaction['transaction_date'],
+            p_date=transaction['posted_date'],
+            c_account_id=transaction['credit_account_id'],
+            d_account_id=transaction['debit_account_id'],
+            category=transaction['category'],
+            description=transaction['description'],
+            amount=transaction['amount'],
+            vendor=transaction['vendor'],
+            is_posted=transaction['is_posted'],
             transaction_id=transaction_id,
         )
         self.logger.debug('update_transaction query:\n{}'.format(q_update))
@@ -412,6 +409,12 @@ class BudgetData:
         cursor = self.dbConnection.cursor()
         cursor.execute(q_update)
         self.dbConnection.commit()
+
+        # print('credit_account_type OLD/NEW {}/{}'.format(str(old_credit_account_type), str(credit_account_type)))
+        # print('debit_account_type OLD/NEW {}/{}'.format(str(old_debit_account_type), str(debit_account_type)))
+        account_type_checks = [credit_account_type, old_credit_account_type, debit_account_type, old_debit_account_type]
+        if 'credit_card' in account_type_checks:
+            self.update_credit_card_payment(transaction_id)
 
     def delete_transaction(self, id):
         query = '''DELETE FROM TRANSACTIONS
@@ -618,6 +621,7 @@ class BudgetData:
         :param modified_transaction_id:
         :return:
         """
+        print('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
         self.logger.info('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
         modified_transaction_id = int(modified_transaction_id)
 
