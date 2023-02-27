@@ -153,6 +153,7 @@ def get_home():
         new_cols.append(c)
 
     result.columns = new_cols
+    result.fillna(value='')
 
     return render_template(
         'index.html',
@@ -201,14 +202,14 @@ def get_transactions():
 
     date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
-    # print(result.head())
+    result.fillna(value='')
     return render_template(
         'transactions_table.html',
-        data=result.to_dict('records'),
-        date_filter=date_filters,
-        accounts=['All'] + list(DATA.accounts['name']),
-        categories=CATEGORIES,
-        date_filter_default=FILTERS['date'],
+        data=result.to_dict('records'),         # Main transaction table data
+        date_filter=date_filters,               # List of available date filters - statically defined within data module
+        accounts=['All'] + list(DATA.accounts['name']),  # List of available account filters - dynamic from database
+        categories=CATEGORIES,                  # List of available category filters - defined within config file
+        date_filter_default=FILTERS['date'],    # set default values to current filter settings
         account_filter_default=FILTERS['account'],
         category_filter_default=FILTERS['category'],
         income_expense_filter_default=FILTERS['income_expense'],
@@ -245,15 +246,15 @@ def data_transactions():
 
     print('Active Filters: {}'.format(dict(FILTERS)))
 
-    results = fetch_filtered_transactions()
+    result = fetch_filtered_transactions()
 
     date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
-    if len(results) > 0:
-        # print(result.head())
+    if len(result) > 0:
+        result.fillna(value='')
         return render_template(
             'transactions_table.html',
-            data=results.to_dict('records'),
+            data=result.to_dict('records'),
             date_filter=date_filters,
             accounts=['All'] + list(DATA.accounts['name']),
             categories=CATEGORIES,
