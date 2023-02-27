@@ -117,7 +117,7 @@ class BudgetData:
         return account_table
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
-                         account_filter='All', expense_income_filter='Both',
+                         account_filter='All', expense_income_filter='both',
                          append_total=False):  # alternative date_type: posted_date
         """ Can provide either filter code string (ex. 'January', 'Q3') defined by date_filters dict
                             OR  start and end dates of format 'YYYY-mm-dd'
@@ -183,10 +183,10 @@ class BudgetData:
         df = df[joint_truth_series]
 
         # Expense/Income Filter
-        if expense_income_filter == 'Expenses':
+        if expense_income_filter == 'expenses':
             df = df[df['debit_account_id'] == 0]
 
-        elif expense_income_filter == 'Income':
+        elif expense_income_filter == 'income':
             df = pd.concat([df[df['credit_account_id'] == 0], df[df['credit_account_id'] == 300]])
 
         # Append Total
