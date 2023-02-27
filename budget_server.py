@@ -28,8 +28,26 @@ def init_logger(log_directory='./logs'):
     return logger
 
 
-# Load Config File
-CONFIG = config.CONFIG
+def init_data(database_file):
+    # Create new data object and connect to database. Previous object gets collected as garbage, running the __del__
+    #   function, closing the former db connection
+    data = BudgetData()
+    data.connect(database_file)
+
+    if data.dbConnected:
+        LOGGER.debug('Connected to DATA')
+
+        # Get Accounts from Data
+        accounts = data.get_accounts()
+
+    else:
+        # LOGGER.debug('database connection failed -- cancelling startup')
+        print('database connection failed')
+        warnings.warn('database connection failed')
+        LOGGER.warning('database connection failed. Attempted connection to: {}'.format(database_file))
+
+    return data
+
 
 # Create Flask Object
 APP = Flask(__name__,
@@ -39,33 +57,14 @@ APP = Flask(__name__,
 # Start Logger
 LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
+# Load Config File
+CONFIG = config.CONFIG
+
 # Fetch database file location from the config. Defaults to live version
-environ = CONFIG['env']['environ']
-db_file = CONFIG['database.{}'.format(environ)]['file']
-print('connecting to {}'.format(db_file))
-LOGGER.info('Connecting to SQLite3 db at: {}'.format(db_file))
+ENVIRON = CONFIG['env']['environ']
+DB_FILE = CONFIG['database.{}'.format(ENVIRON)]['file']
 
-# Create data object and connect to database
-DATA = BudgetData()
-DATA.connect(db_file)
-
-if DATA.dbConnected:
-    LOGGER.debug('db File Connected')
-    LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
-    print('db File Connected')
-    print('db SQL version: {}'.format(DATA.db_version))
-
-    # Get Accounts from Data
-    ACCOUNTS = DATA.get_accounts()
-    ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
-
-    # Get Date filters from data object - migrate to config eventually
-    DATE_FILTERS = list(DATA.date_filters.keys())
-
-else:
-    # LOGGER.debug('database connection failed -- cancelling startup')
-    print('Initial database connection failed')
-    warnings.warn('Initial database connection failed')
+DATA = init_data(DB_FILE)
 
 CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
 CATEGORIES = CATEGORIES.split(',')
@@ -81,7 +80,8 @@ def get_home():
     :return:
     """
     print('Fetching HOME')
-    accounts = DATA.get_accounts()
+    global DATA
+    DATA = init_data(DB_FILE)
 
     result = DATA.calculate_account_values()
 
@@ -139,7 +139,7 @@ def get_home():
             prev_date = date
 
     # Translate Account Names for Datatables Columns
-    translate = accounts[['account_id', 'name']]
+    translate = DATA.accounts[['account_id', 'name']]
     translate.set_index('account_id', inplace=True)
     translate = translate.to_dict(orient='dict')
 
@@ -170,7 +170,9 @@ def get_transactions():
     :return:
     """
     print('Fetching /transact')
-    accounts = DATA.get_accounts()
+    global DATA
+    DATA = init_data(DB_FILE)
+
     result = DATA.get_transactions()
 
     # Reformat amount column
@@ -184,8 +186,8 @@ def get_transactions():
     result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
 
     # Append account names
-    account_name_list = ['All'] + list(accounts['name'])
-    account_id_list = [0] + list(accounts['account_id'])
+    account_name_list = ['All'] + list(DATA.accounts['name'])
+    account_id_list = [0] + list(DATA.accounts['account_id'])
     account_translate_dict = {}
     for i in list(range(len(account_id_list))):
         account_translate_dict[account_id_list[i]] = account_name_list[i]
@@ -204,7 +206,7 @@ def get_transactions():
         'transactions_table.html',
         data=result.to_dict('records'),
         date_filter=date_filters,
-        accounts=ACCOUNT_NAMES,
+        accounts=['All'] + list(DATA.accounts['name']),
         categories=CATEGORIES,
         date_filter_default=FILTERS['date'],
         account_filter_default=FILTERS['account'],
@@ -221,6 +223,8 @@ def data_transactions():
     :return:
     """
     print('Fetching /transact with filters')
+    global DATA
+    DATA = init_data(DB_FILE)
 
     # Get Date Filter
     if request.args.get('date') is not None:
@@ -251,7 +255,7 @@ def data_transactions():
             'transactions_table.html',
             data=results.to_dict('records'),
             date_filter=date_filters,
-            accounts=ACCOUNT_NAMES,
+            accounts=['All'] + list(DATA.accounts['name']),
             categories=CATEGORIES,
             date_filter_default=FILTERS['date'],
             account_filter_default=FILTERS['account'],
@@ -288,14 +292,14 @@ def submit_transaction():
     else:
         posted_flag = False
 
-    accounts = DATA.get_accounts()
-    credit_account = int(accounts[accounts['name'] == credit_account]['account_id'])
+    # accounts = DATA.get_accounts()
+    credit_account = int(DATA.accounts[DATA.accounts['name'] == credit_account]['account_id'])
 
     if debit_account == '':
         # print('debit account is None: {}'.format(debit_account))
         debit_account = None
     else:
-        debit_account = int(accounts[accounts['name'] == debit_account]['account_id'])
+        debit_account = int(DATA.accounts[DATA.accounts['name'] == debit_account]['account_id'])
 
     DATA.add_transaction(
         transaction_date=transaction_date,
@@ -310,7 +314,7 @@ def submit_transaction():
     return redirect(url_for('data_transactions'))
 
 
-@APP.route("/transact/update_transaction", methods=['GET', 'POST'])
+@APP.route("/transact/update_transaction", methods=['POST'])
 def update_transaction():
     print('Update transaction')
     # result = DATA.get_transactions()
@@ -346,7 +350,7 @@ def update_transaction():
     return redirect(url_for('data_transactions'))
 
 
-@APP.route("/transact/delete_transaction", methods=['GET', 'POST'])
+@APP.route("/transact/delete_transaction", methods=['POST'])
 def delete_transaction():
     print('Deleting transaction')
     transaction_id = request.args.get('transaction_id')
@@ -382,10 +386,10 @@ def fetch_filtered_transactions():
     result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
 
     # Append account names
-    account_id_list = [0] + list(ACCOUNTS['account_id'])
+    account_id_list = [0] + list(DATA.accounts['account_id'])
     account_translate_dict = {}
     for i in list(range(len(account_id_list))):
-        account_translate_dict[account_id_list[i]] = ACCOUNT_NAMES[i]
+        account_translate_dict[account_id_list[i]] = (['All'] + list(DATA.accounts['name']))[i]
     result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
     result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
 
@@ -393,11 +397,9 @@ def fetch_filtered_transactions():
 
 
 if __name__ == '__main__':
-    environ = CONFIG['env']['environ']
-    LOGGER.debug('Config environment: {}'.format(CONFIG['env']['environ']))
-
-    LOGGER.debug('budget_server -- DEBUG LOGGING MODE')
-    LOGGER.info('budget_server -- INFO LOGGING MODE')
+    ENVIRON = CONFIG['env']['environ']
+    print('Config environment: {}'.format(ENVIRON))
+    LOGGER.debug('Config environment: {}'.format(ENVIRON))
 
     # argparse setup -- Available Arguments:
     #   --db_file   specify new .db file to open
@@ -415,27 +417,7 @@ if __name__ == '__main__':
     # Allows us to specify custom or alternative database file at testing startup
     if args.db_file is not None:
         db_file = os.path.abspath(args.db_file)
-
-        DATA = BudgetData()
-        DATA.connect(db_file)
-
-        if DATA.dbConnected:
-            LOGGER.debug('db File Connected')
-            LOGGER.debug('db SQL version: {}'.format(DATA.db_version))
-            print('db File Connected: {}'.format(db_file))
-            print('db SQL version: {}'.format(DATA.db_version))
-
-            # Get Accounts from Data
-            ACCOUNTS = DATA.get_accounts()
-            ACCOUNT_NAMES = ['All'] + list(ACCOUNTS['name'])
-
-            # Get Date filters from data object - migrate to config eventually
-            DATE_FILTERS = list(DATA.date_filters.keys())
-
-        else:
-            LOGGER.debug('database connection failed -- cancelling startup')
-            print('database connection failed -- cancelling startup')
-            raise RuntimeError('Final database connection failed, exiting')
+        DATA = init_data(db_file)
 
     if args.port is None:
         port = 9000
@@ -443,9 +425,8 @@ if __name__ == '__main__':
         port = args.port
 
     # webbrowser.open('http://127.0.0.1:{}'.format(port), new=2)  # , autoraise=True
-    LOGGER.info('Starting Budget at: http://127.0.0.1:{}'.format(port))
     print('Budget Starting at: http://127.0.0.1:{}'.format(port))
-
+    LOGGER.info('Starting Budget at: http://127.0.0.1:{}'.format(port))
     try:
         APP.run(debug=True, port=port)  # , use_reloader=False
     finally:
