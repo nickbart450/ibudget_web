@@ -441,9 +441,17 @@ class BudgetData:
             'transaction_id': 'start',
             'transaction_date': 'start',
             'posted_date': 'start'}
-        for v in accounts.index:
-            starting_vals_dict[str(v)] = [float(accounts.at[v, 'starting_value'])]
-        values = pd.Series(pd.DataFrame.from_dict(starting_vals_dict).iloc[0])
+        try:
+            for v in accounts.index:
+                starting_vals_dict[str(v)] = [float(accounts.at[v, 'starting_value'])]
+            values = pd.Series(pd.DataFrame.from_dict(starting_vals_dict).iloc[0])
+        except KeyError as err:
+            if 'starting_value' in str(err):
+                print('WARNING! Old database detected. Please update account table with starting_value column')
+                self.logger.warning('Old database detected. Please update account table with starting_value column')
+                raise RuntimeError('missing starting_value column in ACCOUNTS table of db')
+            else:
+                raise RuntimeError('Unknown db error while accessing starting values')
 
         # -- Main Loop: iterates over each transaction to calculate account value over time
         for i in transactions.index:
