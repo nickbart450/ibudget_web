@@ -69,7 +69,7 @@ DATA = init_data(DB_FILE)
 CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
 CATEGORIES = CATEGORIES.split(',')
 
-FILTERS = CONFIG['ui_settings.default_filters']
+FILTERS = dict(CONFIG['ui_settings.default_filters'])
 
 
 @APP.route("/", methods=['GET'])
@@ -164,72 +164,22 @@ def get_home():
 
 
 @APP.route("/transact/", methods=['GET'])
-def get_transactions():
-    """
-    /transact page
-
-    :return:
-    """
-    print('Fetching /transact')
-    global DATA
-    DATA = init_data(DB_FILE)
-
-    result = DATA.get_transactions()
-
-    # Reformat amount column
-    result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
-
-    # Reformat date columns
-    result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
-    result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
-
-    # Reformat is_posted column
-    result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
-
-    # Append account names
-    account_name_list = ['All'] + list(DATA.accounts['name'])
-    account_id_list = [0] + list(DATA.accounts['account_id'])
-    account_translate_dict = {}
-    for i in list(range(len(account_id_list))):
-        account_translate_dict[account_id_list[i]] = account_name_list[i]
-    result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
-    result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
-
-    FILTERS['date'] = 'All'
-    FILTERS['account'] = 'All'
-    FILTERS['category'] = 'All'
-    FILTERS['income_expense'] = 'both'
-
-    date_filters = [i.title() for i in list(DATA.date_filters.keys())]
-
-    result.fillna(value='')
-    return render_template(
-        'transactions_table.html',
-        data=result.to_dict('records'),         # Main transaction table data
-        date_filter=date_filters,               # List of available date filters - statically defined within data module
-        accounts=['All'] + list(DATA.accounts['name']),  # List of available account filters - dynamic from database
-        categories=CATEGORIES,                  # List of available category filters - defined within config file
-        date_filter_default=FILTERS['date'],    # set default values to current filter settings
-        account_filter_default=FILTERS['account'],
-        category_filter_default=FILTERS['category'],
-        income_expense_filter_default=FILTERS['income_expense'],
-    )
-
-
-@APP.route("/transact/data", methods=['GET'])
 def data_transactions():
     """
     /transact/<arguments>
 
     :return:
     """
-    print('Fetching /transact with filters')
+    global FILTERS
+    print('Fetching /transact with filters: {}'.format(dict(FILTERS)))
+
     global DATA
     DATA = init_data(DB_FILE)
 
     # Get Date Filter
     if request.args.get('date') is not None:
         FILTERS['date'] = request.args.get('date')
+    date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
     # Get Account Filter
     if request.args.get('account') is not None:
@@ -244,11 +194,7 @@ def data_transactions():
     if request.args.get('income_expense') is not None:
         FILTERS['income_expense'] = request.args.get('income_expense').lower()
 
-    print('Active Filters: {}'.format(dict(FILTERS)))
-
     result = fetch_filtered_transactions()
-
-    date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
     if len(result) > 0:
         result.fillna(value='')
@@ -264,8 +210,11 @@ def data_transactions():
             income_expense_filter_default=FILTERS['income_expense'],
         )
     else:
-        print('No transactions meet current filters. redirecting back to /transact')
-        return redirect(url_for('get_transactions'))
+        print('WARNING! No transactions meet current filters. Redirecting back to /transact')
+        LOGGER.debug('No transactions meet current filters. Redirecting back to /transact')
+        LOGGER.debug('Current Filters: {}'.format(dict(FILTERS)))
+        FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
+        return redirect(url_for('data_transactions'))
 
 
 @APP.route("/transact/submit_transaction", methods=['POST'])

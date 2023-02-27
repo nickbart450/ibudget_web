@@ -81,7 +81,7 @@ function setExpenseIncomeFilter(event){
         "date_end": date_end,
         };
 
-    location.href = "/transact/data?"+$.param(server_data);
+    location.href = "/transact/?"+$.param(server_data);
 
 };
 
@@ -113,7 +113,7 @@ function setDateFilter(event){
         "date_end": date_end,
         };
 
-    location.href = "/transact/data?"+$.param(server_data);
+    location.href = "/transact/?"+$.param(server_data);
 };
 
 // Updates Account Filters in <div> and calls filter url
@@ -142,7 +142,7 @@ function setAccountFilter(event){
         "date_end": date_end,
         };
 
-    location.href = "/transact/data?"+$.param(server_data);
+    location.href = "/transact/?"+$.param(server_data);
 };
 
 // Updates Category Filters in <div> and calls filter url
@@ -171,7 +171,7 @@ function setCategoryFilter(event){
         "date_end": date_end,
         };
 
-    location.href = "/transact/data?"+$.param(server_data);
+    location.href = "/transact/?"+$.param(server_data);
 };
 
 // Add Transaction Form - Account Dropdowns <div> updates
