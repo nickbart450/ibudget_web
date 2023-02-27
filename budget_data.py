@@ -41,11 +41,21 @@ class BudgetData:
 
         self.dbConnection = None
         self.dbConnected = False
+        self.db_version = None
         self.connection_attempts = 0
 
         self.transaction_cache = None
 
+        self.accounts = None
+
+    def __del__(self):
+        self.close()
+
     def connect(self, db_file):
+        print('connecting to {}'.format(db_file))
+        self.logger.info('Connecting to SQLite3 db at: {}'.format(db_file))
+        self.logger.debug('db SQL version: {}'.format(self.db_version))
+
         self.connection_attempts += 1
         try:
             if os.path.exists(os.path.abspath(db_file)):
@@ -55,6 +65,7 @@ class BudgetData:
                 test_cursor = self.dbConnection.cursor()
                 self.db_version = test_cursor.execute(test_query).fetchall()[0]
                 self.dbConnected = True
+                print('Successfully Connected')
                 self.logger.info('Successfully Connected')
                 return True
             elif os.path.exists(os.path.abspath('./budget_example.db')):
@@ -64,9 +75,11 @@ class BudgetData:
                 test_cursor = self.dbConnection.cursor()
                 self.db_version = test_cursor.execute(test_query).fetchall()[0]
                 self.dbConnected = True
+                print('Successfully Connected to Example db')
                 self.logger.info('Successfully Connected to Example db')
                 return True
             else:
+                print('Database connection issues. Attempting creation of blank db...')
                 if self.connection_attempts <= 5:
                     self.logger.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath(db_file)))
                     self.create_fresh_database(os.path.abspath(db_file), create_tables=True)
@@ -86,19 +99,22 @@ class BudgetData:
         if self.dbConnected:
             self.dbConnection.close()
             self.dbConnected = False
+            # print('SQLite Connection closed')
             self.logger.info('SQLite Connection closed')
         else:
             # print('No SQLite Connection to close')
             self.logger.info('No SQLite Connection to close')
 
     def get_accounts(self):
-        if self.dbConnected:
-            self.dbConnection.row_factory = sql.Row  # Sets the direction of returned data to work with pd.from_dict
-            accounts = self.dbConnection.cursor().execute('''SELECT * FROM ACCOUNTS''').fetchall()
-            account_table = pd.DataFrame([dict(row) for row in accounts])
-            return account_table
-        else:
+        if not self.dbConnected:
             raise RuntimeError('database not connected')
+
+        self.dbConnection.row_factory = sql.Row  # Sets the direction of returned data to work with pd.from_dict
+        accounts = self.dbConnection.cursor().execute('''SELECT * FROM ACCOUNTS''').fetchall()
+        account_table = pd.DataFrame([dict(row) for row in accounts])
+
+        self.accounts = account_table
+        return account_table
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
                          account_filter='All', expense_income_filter='Both',
