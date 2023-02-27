@@ -300,7 +300,7 @@ def update_transaction():
     return redirect(url_for('data_transactions'))
 
 
-@APP.route("/transact/delete_transaction", methods=['POST'])
+@APP.route("/transact/delete_transaction", methods=['GET'])
 def delete_transaction():
     print('Deleting transaction')
     transaction_id = request.args.get('transaction_id')
