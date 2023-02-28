@@ -154,6 +154,8 @@ class BudgetData:
         accounts = self.get_accounts()
         if account_filter == 'All' or account_filter == 'Account Filter':
             account = list(accounts['account_id'])
+        elif isinstance(account_filter, int) and account_filter in list(accounts['account_id']):
+            account = [account_filter]
         else:
             account = [int(accounts[accounts['name'] == account_filter]['account_id'])]
 
@@ -307,7 +309,7 @@ class BudgetData:
             self.update_credit_card_payment(transaction_id)
 
     def update_transaction(self, transaction_id, transaction_date=None, posted_date=None, category=None, amount=None,
-                           credit_account=False, debit_account=False, description=None, vendor=None, is_posted=None):
+                           credit_account=None, debit_account=None, description=None, vendor=None, is_posted=None):
         """
         Updates provided values for specific transaction_id
 
@@ -324,15 +326,53 @@ class BudgetData:
         :return:
         """
         # Get current transaction details
-        transaction = self.get_transaction(self.dbConnection, transaction_id)
+        transaction = self.get_transaction(self.dbConnection, int(transaction_id))
 
         # Fetch the latest accounts table and store previous account types before updating transaction
         accounts = self.get_accounts().set_index('account_id')
+
+        # Convert account name inputs to id #s
+        if credit_account is not None:
+            credit_account = int(accounts[accounts['name'] == credit_account].index.values[0])
+        if debit_account is not None:
+            debit_account = int(accounts[accounts['name'] == debit_account].index.values[0])
+
+        # Check for duplicate accounts
+        if credit_account is not None and debit_account is not None and credit_account == debit_account:
+            raise RuntimeError('debit_account must be different from credit_account')
+
+        # Store account types from old transaction to monitor changes
         old_credit_account_type = accounts.at[int(transaction['credit_account_id']), 'transaction_type']
-        credit_account_type = old_credit_account_type
         old_debit_account_type = accounts.at[int(transaction['debit_account_id']), 'transaction_type']
+        credit_account_type = old_credit_account_type
         debit_account_type = old_debit_account_type
 
+        # If the account is changing, store both accounts to recalculate any relevant credit card payments
+        recalc_accounts = []
+        if credit_account is not None and credit_account != int(transaction['credit_account_id']):
+            recalc_accounts.append(credit_account)
+            recalc_accounts.append(int(transaction['credit_account_id']))
+
+            transaction['credit_account_id'] = credit_account
+
+            credit_account_type = accounts.at[transaction['credit_account_id'], 'transaction_type']
+        else:
+            pass
+            # print('\tno change to credit account')
+
+        if debit_account is not None and debit_account != int(transaction['debit_account_id']):
+            recalc_accounts.append(debit_account)
+            recalc_accounts.append(int(transaction['debit_account_id']))
+
+            transaction['debit_account_id'] = debit_account
+
+            debit_account_type = accounts.at[transaction['debit_account_id'], 'transaction_type']
+        else:
+            pass
+            # print('\tno change debit account')
+        recalc_accounts = list(set(recalc_accounts))
+
+        # Handle inputs
         if transaction_date is not None:
             transaction['transaction_date'] = pd.to_datetime(transaction_date)
 
@@ -351,26 +391,6 @@ class BudgetData:
         if vendor is not None:
             transaction['vendor'] = vendor
 
-        # Convert account names to id #s. 0 is external account
-        if credit_account and debit_account:
-            if credit_account == debit_account:
-                raise RuntimeError('debit_account must be different from credit_account')
-            else:
-                transaction['credit_account_id'] = int(accounts[accounts['name'] == credit_account].index.values[0])
-                transaction['debit_account_id'] = int(accounts[accounts['name'] == debit_account].index.values[0])
-
-                credit_account_type = accounts.at[transaction['credit_account_id'], 'transaction_type']
-                debit_account_type = accounts.at[transaction['debit_account_id'], 'transaction_type']
-        elif credit_account and not debit_account:
-            self.logger.info('credit_account ONLY provided')
-            transaction['credit_account_id'] = int(accounts[accounts['name'] == credit_account].index.values[0])
-            credit_account_type = accounts.at[transaction['credit_account_id'], 'transaction_type']
-
-        elif debit_account and not credit_account:
-            self.logger.info('debit_account ONLY provided')
-            transaction['debit_account_id'] = int(accounts[accounts['name'] == debit_account].index.values[0])
-            debit_account_type = accounts.at[transaction['debit_account_id'], 'transaction_type']
-
         # convert is_posted
         if is_posted is not None:
             if is_posted:
@@ -386,7 +406,7 @@ class BudgetData:
         print('\tdebit_account:...... ', transaction['debit_account_id'])
         print('\tcategory:........... ', transaction['category'])
         print('\tdescription:........ ', transaction['description'])
-        print('\tamount:.............  ${:.2f}'.format(transaction['amount']))
+        print('\tamount:.............  ${:.2f}'.format(float(transaction['amount'])))
         print('\tvendor:............. ', transaction['vendor'])
         print('\tposted_flag:........ ', transaction['is_posted'])
 
@@ -422,7 +442,12 @@ class BudgetData:
         # print('credit_account_type OLD/NEW {}/{}'.format(str(old_credit_account_type), str(credit_account_type)))
         # print('debit_account_type OLD/NEW {}/{}'.format(str(old_debit_account_type), str(debit_account_type)))
         account_type_checks = [credit_account_type, old_credit_account_type, debit_account_type, old_debit_account_type]
-        if 'credit_card' in account_type_checks:
+        cc_accounts = accounts.loc[accounts['transaction_type'] == 'credit_card']
+        if len(recalc_accounts) > 0:
+            for a in recalc_accounts:
+                if a in list(cc_accounts.index):
+                    self.update_credit_card_payment(transaction_id, account=a)
+        elif 'credit_card' in account_type_checks and transaction['category'] != 'Credit Card Payment':
             self.update_credit_card_payment(transaction_id)
 
     def delete_transaction(self, transaction_id):
@@ -557,49 +582,41 @@ class BudgetData:
             transactions = self.get_transactions()
 
         # Find any existing payments
-        payments = self.get_cc_payments(transactions, account_id)  # Fetch DataFrame of payment transactions
-        payment_dates = list(payments['posted_date'])  # List of payment dates
+        payments = self.get_cc_payments(account_id)  # Fetch DataFrame of payment transactions
+        payment_dates = list(payments['transaction_date'])  # List of payment dates
 
         # Set default values
         previous_payment_id = None
         previous_payment_date = '1970-01-01'
         credit_balance = 0  # Set default credit balance
 
-        if payment_date in list(payments['transaction_date']):
+        if account_id in accounts.index and payment_date <= min(payment_dates):
+            # If payment is first of the year, lookup starting value from accounts db table
+
+            # print('generating first payment for {}'.format(accounts.at[account_id, 'name']))
+            credit_balance = float(accounts.at[account_id, 'starting_value'])
+        elif account_id in accounts.index and payment_date in payment_dates:
             # If the requested date matches an existing date in payments list, find that transaction id and store it
 
             # Determine previous payment id #
             previous_payment_index = payment_dates.index(payment_date) - 1
             previous_payment_date = pd.to_datetime(payment_dates[previous_payment_index])
             previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
-        elif payment_date < min(payment_dates) and account_id in accounts.index:
-            # If payment is first of the year, lookup starting value from accounts db table
-
-            # print('generating first payment for {}'.format(accounts.at[account_id, 'name']))
-            credit_balance = float(accounts.at[account_id, 'starting_value'])
-        elif min(payment_dates) < payment_date < max(payment_dates):
+        elif account_id in accounts.index and min(payment_dates) < payment_date <= max(payment_dates):
             # Wind up here if calculating payment BETWEEN any existing payment transactions
+            previous_payment_date = None
             for x in range(len(payment_dates)):
                 if payment_dates[x] < payment_date < payment_dates[x+1]:
                     previous_payment_date = payment_dates[x]
-                    previous_payment_index = payment_dates.index(previous_payment_date)
-                    previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
-                else:
-                    print('something is wrong if you are here!')
+
+            previous_payment_index = payment_dates.index(previous_payment_date)
+            previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
         else:
             # Wind up here if calculating payment AFTER all existing payment transactions
+            # OR if the account doesn't exist
             previous_payment_date = max(payment_dates)
             previous_payment_index = payment_dates.index(previous_payment_date)
             previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
-
-        self.logger.info('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
-                                                                                              # payment_id,
-                                                                                              previous_payment_date,
-                                                                                              previous_payment_id))
-        print('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
-                                                                                   # payment_id,
-                                                                                   previous_payment_date,
-                                                                                   previous_payment_id))
 
         truth_series_c = (transactions['posted_date'].between(
             previous_payment_date, payment_date - pd.Timedelta(days=1))) \
@@ -624,57 +641,79 @@ class BudgetData:
         debits_sum = round(sum(debit_transactions['amount']), 2)
         payment_amount = round(credits_sum - credit_balance - debits_sum, 2)
 
+        self.logger.info('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                                              # payment_id,
+                                                                                              previous_payment_date,
+                                                                                              previous_payment_id))
+        print('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
+                                                                                   # payment_id,
+                                                                                   previous_payment_date,
+                                                                                   previous_payment_id))
         # print('credits_sum: $', credits_sum, ':: debits_sum:  $', debits_sum)
-        # print('PAYMENT:  $ {:.2f}\n'.format(payment_amount))
+        print('Payment:  $ {:.2f}\n'.format(payment_amount))
         return payment_amount
 
-    def update_credit_card_payment(self, modified_transaction_id, use_cached=False):
+    def update_credit_card_payment(self, modified_transaction_id, account=None):
         """
         When passed a transaction id for a modified transaction, the appropriate CC payment transaction amount gets
-        updated.
+        updated. Specify an account for updates where the transaction was moved away from that account.
 
         :param modified_transaction_id:
+        :param account:
         :return:
         """
-        print('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
-        self.logger.info('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
-        modified_transaction_id = int(modified_transaction_id)
+        print('\nRecalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
+        self.logger.info('\nRecalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
 
-        if use_cached:
-            transactions = self.transaction_cache
+        transactions = self.get_transactions()
+        transactions = transactions.set_index('transaction_id')
+
+        transaction = transactions.loc[int(modified_transaction_id), :]
+
+        credit_account = int(transaction['credit_account_id'])
+        debit_account = int(transaction['debit_account_id'])
+        post_date = transaction['posted_date']
+
+        accounts = self.get_accounts().set_index('account_id')
+        accounts = accounts.loc[accounts['transaction_type'] == 'credit_card']
+        # print('Account columns', accounts.columns)  # ['name', 'transaction_type', 'account_type', 'starting_value']
+
+        if account is None:
+            if credit_account in list(accounts.index):
+                account_id = credit_account
+            elif debit_account in list(accounts.index):
+                account_id = debit_account
+            else:
+                raise RuntimeError('Unknown Account ID')
         else:
-            transactions = self.get_transactions()
+            account_id = int(account)
 
-        accounts = self.get_accounts()
+        cc_payments = self.get_cc_payments(int(account_id)).reset_index(drop=True)
+        if len(cc_payments) == 0:
+            raise RuntimeError("cc payments returned empty")
 
-        transaction = transactions.loc[transactions['transaction_id'] == modified_transaction_id]
-        transaction_account = int(transaction['credit_account_id'])
+        payment_date = payment_id = None
+        for i in cc_payments.index:
+            if post_date < min(cc_payments['transaction_date']):
+                payment_date = min(cc_payments['transaction_date'])
+                payment_id = cc_payments.loc[cc_payments['transaction_date'] == payment_date, 'transaction_id']
+            elif cc_payments.at[i, 'transaction_date'] <= post_date < cc_payments.iloc[i + 1]['transaction_date']:
+                payment = cc_payments.iloc[i + 1]
+                payment_date = payment['transaction_date']
+                payment_id = payment['transaction_id']
+            else:
+                pass
 
-        if str(accounts[accounts['account_id'] == transaction_account]['account_type'].values[0]) == 'liability':
-            # print('Modified Transaction: {} -- {} -- {}'.format(modified_transaction_id,
-            #                                                     str(transaction['description'].values[0]),
-            #                                                     transaction['posted_date'].values[0]))  # numpy.datetime64
+        if payment_date is None or payment_id is None:
+            raise RuntimeError('Could not determine payment date')
 
-            account_id = transaction['credit_account_id'].values[0]
-            post_date = transaction['posted_date'].values[0]
+        print('STEP 1 - Calculate Payment Amount')
+        amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=False)
 
-            cc_payments = self.get_cc_payments(transactions, account_id)
-            payment_date = None
-            for i in cc_payments.index:
-                if cc_payments.iloc[i]['posted_date'] <= post_date < cc_payments.iloc[i + 1]['posted_date']:
-                    payment_date = cc_payments.iloc[i + 1]['posted_date']
-                    payment_id = cc_payments.iloc[i + 1]['transaction_id']
+        print('STEP 2 - Update Database CC Payment')
+        self.update_transaction(int(payment_id), amount=amount)
 
-            if payment_date is None:
-                payment_date = cc_payments.iloc[0]['posted_date']
-                payment_id = cc_payments.iloc[0]['transaction_id']
-
-            self.transaction_cache = transactions
-            amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=True)
-
-            self.update_transaction(payment_id, amount=amount)
-
-            return amount
+        return amount
 
     def category_summary(self, date_filter='all'):
         transactions = self.get_transactions(date_filter=date_filter)
@@ -693,12 +732,10 @@ class BudgetData:
         print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
         print('Net Delta   (in-out): ${:.2f}'.format(credit_sum-debit_sum))
 
-    @staticmethod
-    def get_cc_payments(transactions, account):
+    def get_cc_payments(self, account):
+        transactions = self.get_transactions(account_filter=account)
         payments = transactions[
-            (transactions['debit_account_id'] == int(account)) & (transactions['category'] == 'Credit Card Payment')]
-        payments.reset_index(drop=True, inplace=True)
-
+            (transactions['debit_account_id'] == account) & (transactions['category'] == 'Credit Card Payment')]
         return payments
 
     @staticmethod
