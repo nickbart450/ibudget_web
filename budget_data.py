@@ -225,7 +225,6 @@ class BudgetData:
             posted_date = pd.to_datetime(transaction_date) + pd.Timedelta(days=2)
 
         # handle accounts
-        # accounts = self.get_accounts()
         if credit_account and debit_account:
             if credit_account == debit_account:
                 raise RuntimeError('debit_account must be different from credit_account')
@@ -296,6 +295,16 @@ class BudgetData:
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
+
+        # Determine CC update necessity
+        transaction_id = cursor.lastrowid
+        accounts = self.accounts.set_index('account_id')
+        credit_account_type = accounts.at[credit_account, 'transaction_type']
+        debit_account_type = accounts.at[debit_account, 'transaction_type']
+
+        account_type_checks = [credit_account_type, debit_account_type]
+        if 'credit_card' in account_type_checks:
+            self.update_credit_card_payment(transaction_id)
 
     def update_transaction(self, transaction_id, transaction_date=None, posted_date=None, category=None, amount=None,
                            credit_account=False, debit_account=False, description=None, vendor=None, is_posted=None):
@@ -370,16 +379,16 @@ class BudgetData:
                 transaction['is_posted'] = 0
 
         print('Updating transaction:')
-        print('\ttransaction_id: ', transaction_id)
-        print('\ttransaction_date: ', transaction['transaction_date'])
-        print('\tposted_date: ', transaction['posted_date'])
-        print('\tcredit_account: ', transaction['credit_account_id'])
-        print('\tdebit_account: ', transaction['debit_account_id'])
-        print('\tcategory: ', transaction['category'])
-        print('\tdescription: ', transaction['description'])
-        print('\tdescription: ', transaction['amount'])
-        print('\tvendor: ', transaction['vendor'])
-        print('\tposted_flag: ', transaction['is_posted'])
+        print('\ttransaction_id:..... ', transaction_id)
+        print('\ttransaction_date:... ', transaction['transaction_date'])
+        print('\tposted_date:........ ', transaction['posted_date'])
+        print('\tcredit_account:..... ', transaction['credit_account_id'])
+        print('\tdebit_account:...... ', transaction['debit_account_id'])
+        print('\tcategory:........... ', transaction['category'])
+        print('\tdescription:........ ', transaction['description'])
+        print('\tamount:.............  ${:.2f}'.format(transaction['amount']))
+        print('\tvendor:............. ', transaction['vendor'])
+        print('\tposted_flag:........ ', transaction['is_posted'])
 
         q_update = """
             UPDATE TRANSACTIONS
@@ -416,13 +425,19 @@ class BudgetData:
         if 'credit_card' in account_type_checks:
             self.update_credit_card_payment(transaction_id)
 
-    def delete_transaction(self, id):
+    def delete_transaction(self, transaction_id):
+        transaction_id = int(transaction_id)
+
+        # First set amount to 0 and recalculate CC transaction, if required.
+        self.update_transaction(transaction_id, amount=0)
+
+        # Then commit deletion to database
+        self.logger.info('Deleting Transaction: {}'.format(transaction_id))
         query = '''DELETE FROM TRANSACTIONS
-                WHERE transaction_id={};'''.format(id)
+                WHERE transaction_id={};'''.format(transaction_id)
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
-        self.logger.info('Deleting Transaction: {}'.format(id))
 
     def general_query(self, query, date_columns=None):
         try:
@@ -613,7 +628,7 @@ class BudgetData:
         # print('PAYMENT:  $ {:.2f}\n'.format(payment_amount))
         return payment_amount
 
-    def update_credit_card_payment(self, modified_transaction_id):
+    def update_credit_card_payment(self, modified_transaction_id, use_cached=False):
         """
         When passed a transaction id for a modified transaction, the appropriate CC payment transaction amount gets
         updated.
@@ -625,10 +640,14 @@ class BudgetData:
         self.logger.info('\nRecalculating upcoming credit card payment -- {}'.format(modified_transaction_id))
         modified_transaction_id = int(modified_transaction_id)
 
-        self.transaction_cache = self.get_transactions()
+        if use_cached:
+            transactions = self.transaction_cache
+        else:
+            transactions = self.get_transactions()
+
         accounts = self.get_accounts()
 
-        transaction = self.transaction_cache.loc[self.transaction_cache['transaction_id'] == modified_transaction_id]
+        transaction = transactions.loc[transactions['transaction_id'] == modified_transaction_id]
         transaction_account = int(transaction['credit_account_id'])
 
         if str(accounts[accounts['account_id'] == transaction_account]['account_type'].values[0]) == 'liability':
@@ -639,7 +658,7 @@ class BudgetData:
             account_id = transaction['credit_account_id'].values[0]
             post_date = transaction['posted_date'].values[0]
 
-            cc_payments = self.get_cc_payments(self.transaction_cache, account_id)
+            cc_payments = self.get_cc_payments(transactions, account_id)
             payment_date = None
             for i in cc_payments.index:
                 if cc_payments.iloc[i]['posted_date'] <= post_date < cc_payments.iloc[i + 1]['posted_date']:
@@ -650,6 +669,7 @@ class BudgetData:
                 payment_date = cc_payments.iloc[0]['posted_date']
                 payment_id = cc_payments.iloc[0]['transaction_id']
 
+            self.transaction_cache = transactions
             amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=True)
 
             self.update_transaction(payment_id, amount=amount)
