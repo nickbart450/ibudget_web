@@ -185,7 +185,6 @@ def data_transactions():
 
     # Get Category Filter
     if request.args.get('category') is not None:
-        # print('category: ', len(request.args.get('category')), type(request.args.get('category')))
         FILTERS['category'] = request.args.get('category')
 
     # Get & Reformat expense_income_filter
@@ -266,7 +265,7 @@ def submit_transaction():
 
 @APP.route("/transact/update_transaction", methods=['POST'])
 def update_transaction():
-    print('Update transaction')
+    print('POSTing transaction update')
     transaction_id = request.args.get('transaction_id')
 
     transaction_date = request.form['date']
@@ -360,7 +359,7 @@ if __name__ == '__main__':
     parser.add_argument('--port', nargs='?', const=9000, type=int)
     args = parser.parse_args()
 
-    # Rebuild data object with our args/options and connect to database
+    # Rebuild data object with our args/options and reconnect to database
     # Allows us to specify custom or alternative database file at testing startup
     if args.db_file is not None:
         db_file = os.path.abspath(args.db_file)
@@ -371,10 +370,9 @@ if __name__ == '__main__':
     else:
         port = args.port
 
-    # webbrowser.open('http://127.0.0.1:{}'.format(port), new=2)  # , autoraise=True
     print('Budget Starting at: http://127.0.0.1:{}'.format(port))
     LOGGER.info('Starting Budget at: http://127.0.0.1:{}'.format(port))
     try:
-        APP.run(debug=True, port=port)  # , use_reloader=False
+        APP.run(debug=True, port=port)  # use_reloader=False
     finally:
         DATA.close()
