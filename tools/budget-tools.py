@@ -194,8 +194,10 @@ if __name__ == '__main__':
 
 
     # -- Calculate CC Payment
-    pay = DATA.calculate_credit_card_payment(4895, '2023-12-31')  # 2023-02-24
-    print('Payment: ', pay)
+    account = 4895
+    for date in ['2023-01-01', '2023-02-24', '2023-02-28', '2023-12-31']:
+        print('Acct: {} | Date: {}'.format(account, date))
+        pay = DATA.calculate_credit_card_payment(account, date)  # Actual date w/ different post date
 
 
     # -- Account Values save to csv
