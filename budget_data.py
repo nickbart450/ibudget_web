@@ -44,8 +44,7 @@ class BudgetData:
         self.db_version = None
         self.connection_attempts = 0
 
-        self.transaction_cache = None
-
+        self.transactions = None
         self.accounts = None
 
     def __del__(self):
@@ -67,7 +66,6 @@ class BudgetData:
                 self.dbConnected = True
                 print('Successfully Connected')
                 self.logger.info('Successfully Connected')
-                return True
             elif os.path.exists(os.path.abspath('./budget_example.db')):
                 self.logger.debug('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
                 self.dbConnection = sql.connect('./budget_example.db', check_same_thread=False)
@@ -77,7 +75,6 @@ class BudgetData:
                 self.dbConnected = True
                 print('Successfully Connected to Example db')
                 self.logger.info('Successfully Connected to Example db')
-                return True
             else:
                 print('Database connection issues. Attempting creation of blank db...')
                 if self.connection_attempts <= 5:
@@ -87,7 +84,13 @@ class BudgetData:
                 else:
                     self.logger.warning('attempted db connection/creation 5 times, quitting')
                     self.dbConnected = False
-                    return None
+                    return False
+
+            if self.dbConnected:
+                self.get_transactions()
+                return True
+            else:
+                return False
 
         # Handle errors
         except sql.Error as e:
@@ -104,6 +107,7 @@ class BudgetData:
         else:
             # print('No SQLite Connection to close')
             self.logger.info('No SQLite Connection to close')
+        return None
 
     def get_accounts(self):
         if not self.dbConnected:
@@ -161,14 +165,14 @@ class BudgetData:
 
         debit_truth_series = []
         for i in df.index:
-            if df.iloc[i].debit_account_id in account:
+            if df.at[i, 'debit_account_id'] in account:
                 debit_truth_series.append(True)
             else:
                 debit_truth_series.append(False)
 
         credit_truth_series = []
         for i in df.index:
-            if df.iloc[i].credit_account_id in account:
+            if df.at[i, 'credit_account_id'] in account:
                 credit_truth_series.append(True)
             else:
                 credit_truth_series.append(False)
@@ -197,6 +201,8 @@ class BudgetData:
             df = self.append_total(df, col_names)
             df.fillna('', inplace=True)
 
+        df = df.set_index('transaction_id', drop=False)  # Keeping the transaction_id column for legacy compatability
+        self.transactions = df
         return df
 
     def bulk_import(self, file, table, date_columns=False):
@@ -294,9 +300,13 @@ class BudgetData:
         )
         self.logger.debug('add_transaction query:\n{}'.format(query))
 
+        # Execute query and commit to db
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
+
+        # Refresh transaction table
+        self.get_transactions()
 
         # Determine CC update necessity
         transaction_id = cursor.lastrowid
@@ -304,9 +314,12 @@ class BudgetData:
         credit_account_type = accounts.at[credit_account, 'transaction_type']
         debit_account_type = accounts.at[debit_account, 'transaction_type']
 
+        # Check account types
         account_type_checks = [credit_account_type, debit_account_type]
         if 'credit_card' in account_type_checks:
             self.update_credit_card_payment(transaction_id)
+
+        return None
 
     def update_transaction(self, transaction_id, transaction_date=None, posted_date=None, category=None, amount=None,
                            credit_account=None, debit_account=None, description=None, vendor=None, is_posted=None):
@@ -439,6 +452,8 @@ class BudgetData:
         cursor.execute(q_update)
         self.dbConnection.commit()
 
+        self.get_transactions()  # Refresh transaction table
+
         # print('credit_account_type OLD/NEW {}/{}'.format(str(old_credit_account_type), str(credit_account_type)))
         # print('debit_account_type OLD/NEW {}/{}'.format(str(old_debit_account_type), str(debit_account_type)))
         account_type_checks = [credit_account_type, old_credit_account_type, debit_account_type, old_debit_account_type]
@@ -449,6 +464,8 @@ class BudgetData:
                     self.update_credit_card_payment(transaction_id, account=a)
         elif 'credit_card' in account_type_checks and transaction['category'] != 'Credit Card Payment':
             self.update_credit_card_payment(transaction_id)
+
+        return None
 
     def delete_transaction(self, transaction_id):
         transaction_id = int(transaction_id)
@@ -463,6 +480,9 @@ class BudgetData:
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
+
+        self.get_transactions()  # Refresh transaction table
+        return None
 
     def general_query(self, query, date_columns=None):
         try:
@@ -488,8 +508,8 @@ class BudgetData:
         :return: pandas.DataFrame
         """
         # Fetch transactions from db and order them by date
-        transactions = self.get_transactions()
-        transactions.sort_values(by=['transaction_date', 'transaction_id'], inplace=True)
+        transactions = self.transactions.copy().sort_index()
+        transactions = transactions.sort_values(by=['transaction_date'])
 
         # Fetch account info from database
         accounts = self.get_accounts().set_index('account_id')
@@ -515,11 +535,11 @@ class BudgetData:
         # -- Main Loop: iterates over each transaction to calculate account value over time
         for i in transactions.index:
             # Find Accounts
-            transaction_id = int(transactions.iloc[i]['transaction_id'])
-            transaction_date = transactions.iloc[i]['transaction_date']
-            posted_date = transactions.iloc[i]['posted_date']
-            debit_account = int(transactions.iloc[i]['debit_account_id'])
-            credit_account = int(transactions.iloc[i]['credit_account_id'])
+            transaction_id = i
+            transaction_date = transactions.at[i, 'transaction_date']
+            posted_date = transactions.at[i, 'posted_date']
+            debit_account = int(transactions.at[i, 'debit_account_id'])
+            credit_account = int(transactions.at[i, 'credit_account_id'])
 
             # Find before value of accounts
             debit_acct_0 = values[str(debit_account)]
@@ -531,8 +551,8 @@ class BudgetData:
             values['transaction_date'] = transaction_date
             values['posted_date'] = posted_date
 
-            values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.iloc[i]['amount']), 2)
-            values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.iloc[i]['amount']), 2)
+            values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.at[i, 'amount']), 2)
+            values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.at[i, 'amount']), 2)
 
             # Append that new set of values to the history dataframe
             account_values = pd.concat([account_values, values.to_frame().T])
@@ -548,7 +568,6 @@ class BudgetData:
                 'is_posted',
             ]
             account_values.set_index('transaction_id', inplace=True)
-            transactions.set_index('transaction_id', inplace=True)
             account_values = pd.concat([account_values, transactions], axis=1)
 
         else:
@@ -560,7 +579,7 @@ class BudgetData:
 
         return account_values
 
-    def calculate_credit_card_payment(self, account_id, payment_date, use_cached=False):
+    def calculate_credit_card_payment(self, account_id, payment_date):
         """
         Payment assumed to happen BEFORE the transactions post on the day of the payment even if it technically POSTS
         after the other transactions. The CC company seems to post everything towards EOD and I pay in the AM, so the
@@ -576,13 +595,13 @@ class BudgetData:
         payment_date = pd.to_datetime(payment_date)
 
         # Use cached transactions dataframe from predecessor function
-        if use_cached:
-            transactions = self.transaction_cache
-        else:
-            transactions = self.get_transactions()
+        transactions = self.transactions.copy()
 
         # Find any existing payments
-        payments = self.get_cc_payments(account_id)  # Fetch DataFrame of payment transactions
+        # Fetch DataFrame of payment transactions and reset index such that it matches the index of list payment_dates
+        # Yes, payment_dates is unecessary and maybe a little clunky, but its easier for now and not causing issues
+        #   so it stays. In the future, a refactor here could clean up this section.
+        payments = self.get_cc_payments(account_id).reset_index(drop=True)
         payment_dates = list(payments['transaction_date'])  # List of payment dates
 
         # Set default values
@@ -601,7 +620,7 @@ class BudgetData:
             # Determine previous payment id #
             previous_payment_index = payment_dates.index(payment_date) - 1
             previous_payment_date = pd.to_datetime(payment_dates[previous_payment_index])
-            previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
+            previous_payment_id = int(payments.at[previous_payment_index, 'transaction_id'])
         elif account_id in accounts.index and min(payment_dates) < payment_date <= max(payment_dates):
             # Wind up here if calculating payment BETWEEN any existing payment transactions
             previous_payment_date = None
@@ -610,13 +629,13 @@ class BudgetData:
                     previous_payment_date = payment_dates[x]
 
             previous_payment_index = payment_dates.index(previous_payment_date)
-            previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
+            previous_payment_id = int(payments.at[previous_payment_index, 'transaction_id'])
         else:
             # Wind up here if calculating payment AFTER all existing payment transactions
             # OR if the account doesn't exist
             previous_payment_date = max(payment_dates)
             previous_payment_index = payment_dates.index(previous_payment_date)
-            previous_payment_id = int(payments.iloc[previous_payment_index]['transaction_id'])
+            previous_payment_id = int(payments.at[previous_payment_index, 'transaction_id'])
 
         truth_series_c = (transactions['posted_date'].between(
             previous_payment_date, payment_date - pd.Timedelta(days=1))) \
@@ -625,7 +644,7 @@ class BudgetData:
         truth_series_d = (transactions['posted_date'].between(previous_payment_date,
                                                               payment_date - pd.Timedelta(days=1))) \
                           & (transactions['debit_account_id'] == int(account_id)) \
-                          & (transactions['transaction_id'] != previous_payment_id) \
+                          & (transactions.index != previous_payment_id) \
                           & (transactions['category'] != 'Credit Card Payment')
 
         # Expenses:
@@ -665,14 +684,12 @@ class BudgetData:
         print('\nRecalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
         self.logger.info('\nRecalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
 
-        transactions = self.get_transactions()
-        transactions = transactions.set_index('transaction_id')
-
+        transactions = self.transactions.copy()
         transaction = transactions.loc[int(modified_transaction_id), :]
 
         credit_account = int(transaction['credit_account_id'])
         debit_account = int(transaction['debit_account_id'])
-        post_date = transaction['posted_date']
+        post_date = pd.to_datetime(transaction['posted_date'])
 
         accounts = self.get_accounts().set_index('account_id')
         accounts = accounts.loc[accounts['transaction_type'] == 'credit_card']
@@ -708,7 +725,7 @@ class BudgetData:
             raise RuntimeError('Could not determine payment date')
 
         print('STEP 1 - Calculate Payment Amount')
-        amount = self.calculate_credit_card_payment(account_id, payment_date, use_cached=False)
+        amount = self.calculate_credit_card_payment(account_id, payment_date)
 
         print('STEP 2 - Update Database CC Payment')
         self.update_transaction(int(payment_id), amount=amount)
@@ -731,6 +748,7 @@ class BudgetData:
         print('Net Debits (outflow): ${:.2f}'.format(debit_sum))
         print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
         print('Net Delta   (in-out): ${:.2f}'.format(credit_sum-debit_sum))
+        return None
 
     def get_cc_payments(self, account):
         transactions = self.get_transactions(account_filter=account)
@@ -826,10 +844,12 @@ class BudgetData:
                 print("Database tables created")
 
                 # self.add_transaction('2000-01-01', 'Test Category', '0.00')
+                return True
 
         except Exception as e:
             print("Database not formed")
             print(e)
+            return False
 
     @staticmethod
     def append_total(data, column_names):
