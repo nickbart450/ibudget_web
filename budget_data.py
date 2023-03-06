@@ -591,15 +591,16 @@ class BudgetData:
         else:
             account_values = self.account_values
 
-        posted_today = pd.Series()
+        posted_today = None
         # Find the latest posted transaction
         for a in account_values.iterrows():
             post_date = pd.to_datetime(a[1].posted_date)
-            date_check = pd.Timedelta(days=0) < (today-post_date) < pd.Timedelta(days=4)
+            date_check = pd.Timedelta(days=0) < (today-post_date)  # < pd.Timedelta(days=4)
             post_check = a[1].is_posted == 1
 
-            print(post_check, (today-post_date), date_check)
+            # print(a[1].transaction_id, a[1].posted_date, post_check, date_check)
             if date_check and post_check:
+                # print(posted_today)
                 posted_today = a[1]
 
         todays_values = {}
@@ -627,7 +628,7 @@ class BudgetData:
             todays_values['Total Liabilities'] = total_liabilities
             todays_values['Total Assets'] = total_assets
         else:
-            todays_values['account'] = 'n/a'
+            todays_values['error'] = 0
 
         return todays_values
 
