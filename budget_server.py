@@ -155,10 +155,15 @@ def get_home():
     result.columns = new_cols
     result.fillna(value='')
 
+    todays_accounts = DATA.calculate_todays_account_values()
+    for t in todays_accounts:
+        todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
+
     return render_template(
         'index.html',
         data=result.to_dict('records'),
         account_values=account_values,
+        account_values_today=todays_accounts,
         burn_time=burn_time,
     )
 

@@ -1,6 +1,7 @@
 # budget_data.py
 __version__ = '0.1.1'
 
+import datetime
 import os.path
 import pandas as pd
 import sqlite3 as sql
@@ -46,6 +47,7 @@ class BudgetData:
 
         self.transactions = None
         self.accounts = None
+        self.account_values = None
 
     def __del__(self):
         self.close()
@@ -557,6 +559,9 @@ class BudgetData:
             # Append that new set of values to the history dataframe
             account_values = pd.concat([account_values, values.to_frame().T])
 
+        # Append is_posted column
+        account_values['is_posted'] = list(transactions['is_posted'])
+
         if append_transaction_details:
             details_list = [
                 'credit_account_id',
@@ -570,14 +575,56 @@ class BudgetData:
             account_values.set_index('transaction_id', inplace=True)
             account_values = pd.concat([account_values, transactions], axis=1)
 
-        else:
-            # Append is_posted column
-            account_values['is_posted'] = list(transactions['is_posted'])
-
         # Reset index of table so it is sequential
         account_values.reset_index(inplace=True, drop=True)
 
+        self.account_values = account_values
         return account_values
+
+    def calculate_todays_account_values(self):
+        today = datetime.datetime.today()
+        print("\nCalculating Today's Account Values {}...".format(today))
+
+        if self.account_values is not None:
+            account_values = self.calculate_account_values()
+        else:
+            account_values = self.account_values
+
+        posted_today = pd.Series()
+        # Find the latest posted transaction
+        for a in account_values.iterrows():
+            post_date = pd.to_datetime(a[1].posted_date)
+            # print(today-post_date, pd.Timedelta(days=0) < (today-post_date) < pd.Timedelta(days=1))
+            date_check = pd.Timedelta(days=0) < (today-post_date) < pd.Timedelta(days=2)
+            post_check = a[1].is_posted = 1
+            if date_check and post_check:
+                posted_today = a[1]
+
+        todays_values = {}
+        total_assets = 0
+        total_liabilities = 0
+        accounts = self.accounts.set_index('account_id', drop=False)
+        for account in accounts['account_id']:
+            if accounts.at[account, 'account_type'] == 'asset':
+                v = posted_today[str(account)]
+                account_name = accounts.at[account, 'name']
+                todays_values[account_name] = float(v)
+
+                asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
+                total_assets = sum(posted_today[list(asset_accounts.index.astype(str))])
+
+            elif accounts.at[account, 'account_type'] == 'liability':
+                v = posted_today[str(account)]
+                account_name = accounts.at[account, 'name']
+                todays_values[account_name] = float(v)
+
+                liability_accounts = accounts.loc[accounts['account_type'] == 'liability']
+                total_liabilities = sum(posted_today[list(liability_accounts.index.astype(str))])
+
+        todays_values['Total Liabilities'] = total_liabilities
+        todays_values['Total Assets'] = total_assets
+
+        return todays_values
 
     def calculate_credit_card_payment(self, account_id, payment_date):
         """

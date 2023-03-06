@@ -19,33 +19,40 @@
   </script>
 </head>
 
-<body style="color: whitesmoke; background-color: #0b0d1a; margin-top:100px">
+<body style="color: whitesmoke; background-color: #0b0d1a; margin-top:65px">
 
 <div id="nav_menu" class="w3-top w3-2018-sailor-blue">
-    <div class="w3-bar w3-theme w3-xlarge">
-      <span class="w3-bar-item"><i class="fa fa-bank"></i> - Nick's Budget</span>
+  <div class="w3-bar w3-theme w3-xlarge">
+    <span class="w3-bar-item"><i class="fa fa-bank"></i> - Nick's Budget</span>
 
-      <div class="w3-bar w3-large">
-        <a href="/" class="w3-bar-item w3-button w3-hover-deep-purple" style="text-shadow:2px 2px 0 #444;"><b>//HOME</b></a>  <!-- style="width: 7%; min-width: 100px" -->
-        <!--              <a href="/tasks/" class="w3-bar-item w3-button" style="width: 7%; min-width: 100px">TASKS</a>-->
-        <a href="{{ url_for('data_transactions') }}" class="w3-bar-item w3-button">TRANSACT</a>  <!-- style="width: 7%; min-width: 100px" -->
-        <div class="w3-dropdown-hover">
-          <button class="w3-button">Links</button>  <!-- onclick="dropdownFunction()" -->
-          <div id="dropdown" class="w3-dropdown-content w3-bar-block w3-card-4 w3-deep-purple w3-medium">
-            <a href="https://www.skylacu.com/" target="_blank" class="w3-bar-item w3-button">Skyla Credit Union</a>
-            <a href="https://www.td.com/us/en/personal-banking" target="_blank" class="w3-bar-item w3-button">TD Bank</a>
-            <a href="https://www.chase.com/" target="_blank" class="w3-bar-item w3-button">Chase</a>
-            <a href="https://www.capitalone.com/" target="_blank" class="w3-bar-item w3-button">Capital One</a>
-            <a href="https://www.mortgagequestions.com/" target="_blank" class="w3-bar-item w3-button">PHH Mortgage</a>
-            <a href="https://github.com/nickbart450/ibudget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
-          </div>
-        </div>
-<!--        <a class="w3-bar-item w3-button w3-right" href="#"><i class="fa fa-search"></i></a>-->
+    <a href="/" class="w3-bar-item w3-button w3-hover-deep-purple" style="text-shadow:2px 2px 0 #444;"><b>//HOME</b></a>  <!-- style="width: 7%; min-width: 100px" -->
+
+    <a href="{{ url_for('data_transactions') }}" class="w3-bar-item w3-button">TRANSACT</a>  <!-- style="width: 7%; min-width: 100px" -->
+
+    <div class="w3-dropdown-hover">
+      <button class="w3-button">Links</button>  <!-- onclick="dropdownFunction()" -->
+      <div id="dropdown" class="w3-dropdown-content w3-bar-block w3-card-4 w3-deep-purple w3-medium">
+        <a href="https://www.skylacu.com/" target="_blank" class="w3-bar-item w3-button">Skyla Credit Union</a>
+        <a href="https://www.td.com/us/en/personal-banking" target="_blank" class="w3-bar-item w3-button">TD Bank</a>
+        <a href="https://www.chase.com/" target="_blank" class="w3-bar-item w3-button">Chase</a>
+        <a href="https://www.capitalone.com/" target="_blank" class="w3-bar-item w3-button">Capital One</a>
+        <a href="https://www.mortgagequestions.com/" target="_blank" class="w3-bar-item w3-button">PHH Mortgage</a>
+        <a href="https://github.com/nickbart450/ibudget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
       </div>
     </div>
+<!-- <a href="/tasks/" class="w3-bar-item w3-button" style="width: 7%; min-width: 100px">TASKS</a>-->
+<!-- <a class="w3-bar-item w3-button w3-right" href="#"><i class="fa fa-search"></i></a>-->
   </div>
+</div>
 
 {% block body %}
+<!-- CanvasJS Charts Import-->
+<script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+
+<!-- DataTables Import -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+
 <!-- on page load script -->
 <script>
 $(function(){
@@ -150,16 +157,34 @@ $("#burn_time_chart").CanvasJSChart(burn_time_options);
 });
 </script>
 
-<div class="w3-row-padding">
-    <!-- CanvasJS Charts Import-->
-    <script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+<div id="homepage_body" class="w3-row-padding">
+  <!-- Left Sidebar -->
+  <div id="home_left_sidebar" class="w3-quarter w3-card w3-margin-right">
+      <div class="w3-row w3-padding w3-2018-sailor-blue w3-round w3-border w3-center w3-large"><u><b>Current Account Values</b></u></div>
 
-    <!-- DataTables Import -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+      <!-- Current Account Values Table -->
+      <table class="w3-table w3-bordered">
+        <thead>
+          <tr>
+            <th class="w3-right-align">Account</th>
+            <th class="w3-center">Value (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in account_values_today %}
+            <tr>
+              <!-- Data-->
+              <td class="w3-right-align">{{ account }}</td>
+              <td class="w3-left-align"><b>{{ account_values_today[account] }}</b></td>
+            </tr>
 
-    <div class="w3-row-padding">
+          {% endfor %}
+        </tbody>
+      </table>
 
+    </div>
+
+    <div class="w3-rest w3-row-padding" style="border-left-style: solid; border-color: white; border-width: 1.5px">
       <!-- Stacked Account Value Chart -->
       <div id="account_value_chart" class="w3-content w3-card" style="height: 400px; max-width:1200px;"></div><br>
 
@@ -211,6 +236,7 @@ $("#burn_time_chart").CanvasJSChart(burn_time_options);
         </table>
 
       </div>
+
     </div>
 </div>
 {% endblock %}
