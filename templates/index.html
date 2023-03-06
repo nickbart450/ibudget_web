@@ -67,6 +67,10 @@ $(function(){
     title:{
         text: "Account Values"
     },
+    axisX:{
+        interval: 30,
+        intervalType: "day",
+    },
     axisY:{
         title:"Value ($)",
         minimum: 0,
@@ -96,7 +100,6 @@ var burn_time_options = {
 		text: "Burn Time"
 	},
 	axisX:{
-		valueFormatString: "DD MMM",
 		crosshair: {
 			enabled: true,
 			snapToDataPoint: true
@@ -121,7 +124,7 @@ var burn_time_options = {
 		yValueFormatString: "0.00",
 		dataPoints: [
     		{% for i in burn_time %}
-                { x: new Date({{ i['year'] }}, {{ i['month'] }}, {{ i['day'] }}), y: {{ i['burn'] }} },
+                { x: new Date({{ i['year'] }}, {{ i['month'] }} - 1, {{ i['day'] }}), y: {{ i['burn'] }} },
     		{% endfor %}
         ],
 	}],
