@@ -59,7 +59,8 @@ $(function(){
   initDataTables();
   console.log('datatable initialized');
 
-  //Better to construct options first and then pass it as a parameter
+  // Account Values Stacked Column Chart
+  // Better to construct options first and then pass it as a parameter
   var stacked_options = {
     theme: "dark2",
     animationEnabled: true,
@@ -76,41 +77,15 @@ $(function(){
         reversed: true
     },
     data: [
-      {
-        type: "stackedColumn",
-        name: "Skyla Emergency Savings",
-        showInLegend: "true",
-        yValueFormatString: "$ #.##",
-        dataPoints: {{ account_values['102'] | safe }},
-      },
-      {
-        type: "stackedColumn",
-        name: "Skyla Main Savings",
-        showInLegend: "true",
-        yValueFormatString: "$ #.##",
-        dataPoints: {{ account_values['101'] | safe }},
-      },
-      {
+      {% for account in account_view_order %}
+        {
           type: "stackedColumn",
-          name: "Cash",
+          name: "{{ accounts[account]["name"] }}",
           showInLegend: "true",
           yValueFormatString: "$ #.##",
-          dataPoints: {{ account_values['Cash'] | safe }},
-      },
-      {
-          type: "stackedColumn",
-          name: "TD Combined",
-          showInLegend: "true",
-          yValueFormatString: "$ #.##",
-          dataPoints: {{ account_values['TD'] | safe }},
-      },
-      {
-          type: "stackedColumn",
-          name: "Skyla Checking",
-          showInLegend: "true",
-          yValueFormatString: "$ #.##",
-          dataPoints: {{ account_values['100'] | safe }},
-      },
+          dataPoints: {{ account_values[account] | safe }},
+        },
+      {% endfor %}
     ]
 };
 
