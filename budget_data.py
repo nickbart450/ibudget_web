@@ -556,11 +556,12 @@ class BudgetData:
             values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.at[i, 'amount']), 2)
             values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.at[i, 'amount']), 2)
 
+            # Append is_posted column
+            values['is_posted'] = transactions.at[i, 'is_posted']
+
             # Append that new set of values to the history dataframe
             account_values = pd.concat([account_values, values.to_frame().T])
 
-        # Append is_posted column
-        account_values['is_posted'] = list(transactions['is_posted'])
 
         if append_transaction_details:
             details_list = [
@@ -594,35 +595,39 @@ class BudgetData:
         # Find the latest posted transaction
         for a in account_values.iterrows():
             post_date = pd.to_datetime(a[1].posted_date)
-            # print(today-post_date, pd.Timedelta(days=0) < (today-post_date) < pd.Timedelta(days=1))
-            date_check = pd.Timedelta(days=0) < (today-post_date) < pd.Timedelta(days=2)
-            post_check = a[1].is_posted = 1
+            date_check = pd.Timedelta(days=0) < (today-post_date) < pd.Timedelta(days=4)
+            post_check = a[1].is_posted == 1
+
+            print(post_check, (today-post_date), date_check)
             if date_check and post_check:
                 posted_today = a[1]
 
         todays_values = {}
         total_assets = 0
         total_liabilities = 0
-        accounts = self.accounts.set_index('account_id', drop=False)
-        for account in accounts['account_id']:
-            if accounts.at[account, 'account_type'] == 'asset':
-                v = posted_today[str(account)]
-                account_name = accounts.at[account, 'name']
-                todays_values[account_name] = float(v)
+        if posted_today is not None:
+            accounts = self.accounts.set_index('account_id', drop=False)
+            for account in accounts['account_id']:
+                if accounts.at[account, 'account_type'] == 'asset':
+                    v = posted_today[str(account)]
+                    account_name = accounts.at[account, 'name']
+                    todays_values[account_name] = float(v)
 
-                asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
-                total_assets = sum(posted_today[list(asset_accounts.index.astype(str))])
+                    asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
+                    total_assets = sum(posted_today[list(asset_accounts.index.astype(str))])
 
-            elif accounts.at[account, 'account_type'] == 'liability':
-                v = posted_today[str(account)]
-                account_name = accounts.at[account, 'name']
-                todays_values[account_name] = float(v)
+                elif accounts.at[account, 'account_type'] == 'liability':
+                    v = posted_today[str(account)]
+                    account_name = accounts.at[account, 'name']
+                    todays_values[account_name] = float(v)
 
-                liability_accounts = accounts.loc[accounts['account_type'] == 'liability']
-                total_liabilities = sum(posted_today[list(liability_accounts.index.astype(str))])
+                    liability_accounts = accounts.loc[accounts['account_type'] == 'liability']
+                    total_liabilities = sum(posted_today[list(liability_accounts.index.astype(str))])
 
-        todays_values['Total Liabilities'] = total_liabilities
-        todays_values['Total Assets'] = total_assets
+            todays_values['Total Liabilities'] = total_liabilities
+            todays_values['Total Assets'] = total_assets
+        else:
+            todays_values['account'] = 'n/a'
 
         return todays_values
 
