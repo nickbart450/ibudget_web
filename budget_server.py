@@ -121,17 +121,6 @@ def get_home():
 
             prev_date = date
 
-    # Translate Account Names for Datatables Columns
-    new_cols = []
-    for c in result.columns:
-        try:
-            c = accounts.at[int(c), 'name']
-        except:
-            pass
-        new_cols.append(c)
-    result.columns = new_cols
-    result.fillna(value='')
-
     # Fetch today's account values from data object
     todays_accounts = DATA.calculate_todays_account_values()
     for t in todays_accounts:
@@ -145,6 +134,17 @@ def get_home():
         for y in account_order:
             if y[1] == account_sums[x]:
                 account_view_reorder.append(y[0])
+
+    # Translate Account Names for Datatables Columns
+    new_cols = []
+    for c in result.columns:
+        try:
+            c = accounts.at[int(c), 'name']
+        except:
+            pass
+        new_cols.append(c)
+    result.columns = new_cols
+    result.fillna(value='')
 
     return render_template(
         'index.html',
