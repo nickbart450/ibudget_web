@@ -34,7 +34,7 @@
                             <!-- Top Row -->
                             <div class="w3-row-padding w3-section">
                                 <div class="w3-half">
-                                    <input class="w3-input w3-border" type="date" name="date">
+                                    <input class="w3-input w3-border" type="date" name="date" required="required">
                                     <label>Transaction Date</label>
                                 </div>
                                 <div class="w3-half">
@@ -47,7 +47,7 @@
                             <div class="w3-row-padding w3-section">
                                 <div class="w3-half">
                                     <div class="w3-dropdown-hover" style="width:100%">
-                                        <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" placeholder="Account-From" pattern="[^()/><\][\\\x22;|]+">
+                                        <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" required="required" placeholder="Account-From" pattern="[^()/><\][\\\x22;|]+">
                                         <div id="cred_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
                                             {% for i in accounts %}
                                                 <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
@@ -72,12 +72,12 @@
                             <!-- Third Row -->
                             <div class="w3-row-padding w3-section">
                                 <div class="w3-half">
-                                    <input class="w3-input w3-border" type="number" name="amount" step="0.01" placeholder="69.42">
+                                    <input class="w3-input w3-border" type="number" name="amount" step="0.01" required="required" placeholder="69.42">
                                     <label>Amount</label>
                                 </div>
                                 <div class="w3-half">
                                     <div class="w3-dropdown-hover" style="width:100%">
-                                        <input id="cat_input" class="w3-input w3-border" type="text" name="category" placeholder="Category" pattern="[^()/><\][\\\x22;|]+">
+                                        <input id="cat_input" class="w3-input w3-border" type="text" name="category" required="required" placeholder="Category" pattern="[^()/><\][\\\x22;|]+">
                                         <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
                                             <input id="cat_1" type="button" value="Alcohol" class="cat_btn w3-bar-item w3-button">
                                             <input id="cat_2" type="button" value="Automotive" class="cat_btn w3-bar-item w3-button">
