@@ -189,10 +189,10 @@ def data_transactions():
 
     result = fetch_filtered_transactions()
 
-    if result is None:
+    if result is None or len(result) == 0:
         print('WARNING! No transactions meet current filters. Redirecting back to /transact')
-        LOGGER.debug('No transactions meet current filters. Redirecting back to /transact')
-        LOGGER.debug('Current Filters: {}'.format(dict(FILTERS)))
+        LOGGER.warning('No transactions meet current filters. Redirecting back to /transact')
+        LOGGER.warning('Current Filters: {}'.format(dict(FILTERS)))
         FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
         return redirect(url_for('data_transactions'))
     elif len(result) > 0:
@@ -209,7 +209,9 @@ def data_transactions():
             income_expense_filter_default=FILTERS['income_expense'],
         )
     else:
-        # Really unlikely to wind up here
+        # Really unlikely to wind up here, but want to recover safely nonetheless
+        LOGGER.error('No transactions meet current filters. Redirecting back to /transact')
+        FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
         return redirect(url_for('data_transactions'))
 
 
