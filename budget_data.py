@@ -80,9 +80,25 @@ class BudgetData:
             else:
                 print('Database connection issues. Attempting creation of blank db...')
                 if self.connection_attempts <= 5:
-                    self.logger.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath(db_file)))
-                    self.create_fresh_database(os.path.abspath(db_file), create_tables=True)
-                    self.connect(db_file)  # reattempt connection
+                    self.logger.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath('./iBudget_web.db')))
+
+                    # Build new database file with appropriate tables to make app work
+                    self.create_fresh_database(os.path.abspath('./iBudget_web.db'), create_tables=True)
+
+                    # Update config file to reference new database file on subsequent launches
+                    # Overwrites config.ini file location with new database file
+                    env = self.config['env']['environ']
+                    self.config['database.{}'.format(env)]['file'] = os.path.abspath('./iBudget_web.db')
+                    self.config.remove_section('env')
+
+                    with open(config.main_config_file, 'w') as f:
+                        self.config.write(f)
+
+                    self.config.add_section('env')
+                    self.config.set('env', 'environ', env)
+
+                    # Reattempt connection to new file
+                    self.connect('./iBudget_web.db')
                 else:
                     self.logger.warning('attempted db connection/creation 5 times, quitting')
                     self.dbConnected = False
@@ -823,7 +839,8 @@ class BudgetData:
                                    (account_id INTEGER PRIMARY KEY NOT NULL,
                                    name TEXT NOT NULL,
                                    transaction_type TEXT NOT NULL,
-                                   account_type TEXT NOT NULL
+                                   account_type TEXT NOT NULL,
+                                   starting_value REAL NOT NULL
                                    );
                                 '''
                 conn.execute(create_accounts_query)
@@ -832,19 +849,32 @@ class BudgetData:
                                     (account_id,
                                     name,
                                     transaction_type,
-                                    account_type
+                                    account_type,
+                                    starting_value
                                     )
                                     VALUES
                                     ({account_id},
                                     '{name}',
                                     '{transaction_type}',
-                                    '{account_type}');'''.format(
-                    account_id=100,
-                    name='test',
-                    transaction_type='cash',
-                    account_type='other'
+                                    '{account_type}',
+                                    '{start_value}');'''
+                add_external = add_account_query.format(
+                    account_id=0,
+                    name='External',
+                    transaction_type='external',
+                    account_type='other',
+                    start_value=0.00,
                 )
-                conn.execute(add_account_query)
+                conn.execute(add_external)
+
+                add_test = add_account_query.format(
+                    account_id=100,
+                    name='Checking',
+                    transaction_type='bank',
+                    account_type='asset',
+                    start_value=0.00,
+                )
+                conn.execute(add_test)
                 conn.commit()
 
                 create_transactions_query = '''CREATE TABLE TRANSACTIONS
@@ -896,7 +926,6 @@ class BudgetData:
 
                 print("Database tables created")
 
-                # self.add_transaction('2000-01-01', 'Test Category', '0.00')
                 return True
 
         except Exception as e:

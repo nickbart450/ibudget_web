@@ -189,7 +189,13 @@ def data_transactions():
 
     result = fetch_filtered_transactions()
 
-    if len(result) > 0:
+    if result is None:
+        print('WARNING! No transactions meet current filters. Redirecting back to /transact')
+        LOGGER.debug('No transactions meet current filters. Redirecting back to /transact')
+        LOGGER.debug('Current Filters: {}'.format(dict(FILTERS)))
+        FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
+        return redirect(url_for('data_transactions'))
+    elif len(result) > 0:
         result.fillna(value='')
         return render_template(
             'transactions_table.html',
@@ -203,10 +209,7 @@ def data_transactions():
             income_expense_filter_default=FILTERS['income_expense'],
         )
     else:
-        print('WARNING! No transactions meet current filters. Redirecting back to /transact')
-        LOGGER.debug('No transactions meet current filters. Redirecting back to /transact')
-        LOGGER.debug('Current Filters: {}'.format(dict(FILTERS)))
-        FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
+        # Really unlikely to wind up here
         return redirect(url_for('data_transactions'))
 
 
@@ -309,6 +312,10 @@ def fetch_filtered_transactions():
         expense_income_filter=FILTERS['income_expense'],
         append_total=False,
     )
+
+    if result is None:
+        print('Empty DataFrame after filters')
+        return None
 
     if FILTERS['category'] == 'All':
         pass
