@@ -139,7 +139,7 @@ class BudgetData:
         return account_table
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
-                         account_filter='All', expense_income_filter='both',
+                         account_filter='All', expense_income_filter='both', category_filter='All',
                          append_total=False):  # alternative date_type: posted_date
         """ Can provide either filter code string (ex. 'January', 'Q3') defined by date_filters dict
                             OR  start and end dates of format 'YYYY-mm-dd'
@@ -150,7 +150,7 @@ class BudgetData:
                    ORDER BY transaction_date ASC;
                 """
 
-        # Query (Date Filter happens here)
+        # Query Database, Filtering by Date - other filters handled on the dataframe after
         if date_filter == 'Date Filter':
             date_filter = 'all'
 
@@ -213,15 +213,22 @@ class BudgetData:
         elif expense_income_filter == 'income':
             df = pd.concat([df[df['credit_account_id'] == 0], df[df['credit_account_id'] == 300]])
 
+        # Category filter
+        if category_filter != 'All' and category_filter is not None:
+            df = df[df['category'] == str(category_filter)]
+
         # Append Total
         if append_total:
             col_names = ['amount']
             df = self.append_total(df, col_names)
             df.fillna('', inplace=True)
 
-        df = df.set_index('transaction_id', drop=False)  # Keeping the transaction_id column for legacy compatability
-        self.transactions = df
-        return df
+        if len(df) == 0:
+            return None
+        else:
+            df = df.set_index('transaction_id', drop=False)  # Keeping transaction_id column for legacy compatibility
+            self.transactions = df
+            return df
 
     def bulk_import(self, file, table, date_columns=False):
         # Load data from csv
