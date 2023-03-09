@@ -533,7 +533,7 @@ class BudgetData:
         :return: pandas.DataFrame
         """
         # Fetch transactions from db and order them by date
-        transactions = self.transactions.copy().sort_index()
+        transactions = self.get_transactions().copy().sort_index()
         transactions = transactions.sort_values(by=['transaction_date'])
 
         # Fetch account info from database
@@ -585,7 +585,6 @@ class BudgetData:
             # Append that new set of values to the history dataframe
             account_values = pd.concat([account_values, values.to_frame().T])
 
-
         if append_transaction_details:
             details_list = [
                 'credit_account_id',
@@ -609,7 +608,7 @@ class BudgetData:
         today = datetime.datetime.today()
         print("\nCalculating Today's Account Values {}...".format(today))
 
-        if self.account_values is not None:
+        if self.account_values is None:
             account_values = self.calculate_account_values()
         else:
             account_values = self.account_values
@@ -621,7 +620,7 @@ class BudgetData:
             date_check = pd.Timedelta(days=0) < (today-post_date)  # < pd.Timedelta(days=4)
             post_check = a[1].is_posted == 1
 
-            # print(a[1].transaction_id, a[1].posted_date, post_check, date_check)
+            # print(a[1].transaction_id, a[1].posted_date, a[1].is_posted, post_check, date_check)
             if date_check and post_check:
                 # print(posted_today)
                 posted_today = a[1]

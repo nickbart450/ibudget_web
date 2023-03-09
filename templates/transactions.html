@@ -130,9 +130,9 @@
                 </div>
             </div>
 
-            <br>
+            <br><br>
             <div class="w3-bar w3-2018-meerkat">
-                <div class="w3-bar-item">FILTERS -</div>
+                <div class="w3-bar-item"><b><u>FILTERS -</u></b></div>
             </div>
 
             <!-- Transaction Type Filter -->
@@ -197,6 +197,32 @@
                 </div>
             </div>
 
+            <!-- Today's Account Values Table -->
+            <br>
+            <div class="w3-card w3-round w3-border">
+                <div class="w3-bar w3-round w3-2018-meerkat">
+                    <div class="w3-bar-item"><b><u>TODAY'S ACCOUNT VALUES -</u></b></div>
+                </div>
+
+                <table class="w3-table w3-bordered">
+                    <thead>
+                      <tr>
+                        <th class="w3-right-align">Account</th>
+                        <th class="w3-center">Value (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for account in account_values_today %}
+                        <tr>
+                          <!-- Data-->
+                          <td class="w3-right-align">{{ account }}</td>
+                          <td class="w3-left-align"><b>{{ account_values_today[account] }}</b></td>
+                        </tr>
+
+                      {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!--  Main Transactions Table  -->

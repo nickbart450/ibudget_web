@@ -186,8 +186,11 @@ def data_transactions():
         FILTERS['income_expense'] = request.args.get('income_expense').lower()
 
     print('Fetching /transact with filters: {}'.format(dict(FILTERS)))
-
     result = fetch_filtered_transactions()
+
+    todays_accounts = DATA.calculate_todays_account_values()
+    for t in todays_accounts:
+        todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
 
     if result is None or len(result) == 0:
         print('WARNING! No transactions meet current filters. Redirecting back to /transact')
@@ -202,6 +205,7 @@ def data_transactions():
             data=result.to_dict('records'),
             date_filter=date_filters,
             accounts=['All'] + list(DATA.accounts['name']),
+            account_values_today=todays_accounts,  # Account value dictionary for just today
             categories=CATEGORIES,
             date_filter_default=FILTERS['date'],
             account_filter_default=FILTERS['account'],
@@ -320,6 +324,8 @@ def fetch_filtered_transactions():
         return None
 
     else:
+        result = result.copy()
+
         # Reformat amount column
         result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
 
