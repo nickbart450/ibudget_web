@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"/>
   <link rel="stylesheet" href="https://www.w3schools.com/lib/w3-colors-2018.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
-<!--  <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}"/>-->
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
 
   <script src="{{ url_for('static', filename='index.js') }}"></script>
@@ -19,10 +18,10 @@
   </script>
 </head>
 
-<body style="color: whitesmoke; background-color: #0b0d1a; margin-top:65px">
+<body style="color: whitesmoke; background: linear-gradient(165deg, rgba(28,24,45,1) 10%, rgba(0,0,10,1) 60%); margin-top:65px">
   <!-- Navigation Menu Bar -->
-  <div id="nav_menu" class="w3-top w3-2018-sailor-blue">
-    <div class="w3-bar w3-theme w3-large">
+  <div id="nav_menu" class="w3-top">
+    <div class="w3-bar w3-theme w3-large" style="background: linear-gradient(90deg, rgba(24,20,39,1) 20%, rgba(0,0,10,1) 100%);">
       <span class="w3-bar-item"><i class="fa fa-bank"></i> - Nick's Budget</span>
 
       <a href="/" class="w3-bar-item w3-button w3-hover-deep-purple" style="text-shadow:2px 2px 0 #444;">//HOME</a>  <!-- style="width: 7%; min-width: 100px" -->
@@ -40,8 +39,6 @@
           <a href="https://github.com/nickbart450/ibudget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
         </div>
       </div>
-  <!-- <a href="/tasks/" class="w3-bar-item w3-button" style="width: 7%; min-width: 100px">TASKS</a>-->
-  <!-- <a class="w3-bar-item w3-button w3-right" href="#"><i class="fa fa-search"></i></a>-->
     </div>
   </div>
 
@@ -161,8 +158,8 @@
   <div id="homepage_body" class="w3-row-padding">
     <!-- Left Sidebar -->
     <div id="home_left_sidebar" class="w3-quarter w3-card w3-margin-right">
-      <div class="w3-row w3-padding w3-2018-sailor-blue w3-round w3-border w3-center w3-large">
-        <u><b>Current Account Values</b></u>
+      <div class="w3-row w3-padding w3-round w3-border w3-center w3-large" style="background-color: #343E3C">
+        <b>Current Account Values</b>
       </div>
 
       <!-- Current Account Values Table -->
