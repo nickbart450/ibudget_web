@@ -20,125 +20,150 @@
 </head>
 
 <body style="color: whitesmoke; background-color: #0b0d1a; margin-top:65px">
+  <!-- Navigation Menu Bar -->
+  <div id="nav_menu" class="w3-top w3-2018-sailor-blue">
+    <div class="w3-bar w3-theme w3-xlarge">
+      <span class="w3-bar-item"><i class="fa fa-bank"></i> - Nick's Budget</span>
 
-<div id="nav_menu" class="w3-top w3-2018-sailor-blue">
-  <div class="w3-bar w3-theme w3-xlarge">
-    <span class="w3-bar-item"><i class="fa fa-bank"></i> - Nick's Budget</span>
+      <a href="/" class="w3-bar-item w3-button w3-hover-deep-purple" style="text-shadow:2px 2px 0 #444;"><b>//HOME</b></a>  <!-- style="width: 7%; min-width: 100px" -->
 
-    <a href="/" class="w3-bar-item w3-button w3-hover-deep-purple" style="text-shadow:2px 2px 0 #444;"><b>//HOME</b></a>  <!-- style="width: 7%; min-width: 100px" -->
+      <a href="{{ url_for('data_transactions') }}" class="w3-bar-item w3-button">TRANSACT</a>  <!-- style="width: 7%; min-width: 100px" -->
 
-    <a href="{{ url_for('data_transactions') }}" class="w3-bar-item w3-button">TRANSACT</a>  <!-- style="width: 7%; min-width: 100px" -->
-
-    <div class="w3-dropdown-hover">
-      <button class="w3-button">Links</button>  <!-- onclick="dropdownFunction()" -->
-      <div id="dropdown" class="w3-dropdown-content w3-bar-block w3-card-4 w3-deep-purple w3-medium">
-        <a href="https://www.skylacu.com/" target="_blank" class="w3-bar-item w3-button">Skyla Credit Union</a>
-        <a href="https://www.td.com/us/en/personal-banking" target="_blank" class="w3-bar-item w3-button">TD Bank</a>
-        <a href="https://www.chase.com/" target="_blank" class="w3-bar-item w3-button">Chase</a>
-        <a href="https://www.capitalone.com/" target="_blank" class="w3-bar-item w3-button">Capital One</a>
-        <a href="https://www.mortgagequestions.com/" target="_blank" class="w3-bar-item w3-button">PHH Mortgage</a>
-        <a href="https://github.com/nickbart450/ibudget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
+      <div class="w3-dropdown-hover">
+        <button class="w3-button">Links</button>  <!-- onclick="dropdownFunction()" -->
+        <div id="dropdown" class="w3-dropdown-content w3-bar-block w3-card-4 w3-deep-purple w3-medium">
+          <a href="https://www.skylacu.com/" target="_blank" class="w3-bar-item w3-button">Skyla Credit Union</a>
+          <a href="https://www.td.com/us/en/personal-banking" target="_blank" class="w3-bar-item w3-button">TD Bank</a>
+          <a href="https://www.chase.com/" target="_blank" class="w3-bar-item w3-button">Chase</a>
+          <a href="https://www.capitalone.com/" target="_blank" class="w3-bar-item w3-button">Capital One</a>
+          <a href="https://www.mortgagequestions.com/" target="_blank" class="w3-bar-item w3-button">PHH Mortgage</a>
+          <a href="https://github.com/nickbart450/ibudget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
+        </div>
       </div>
+  <!-- <a href="/tasks/" class="w3-bar-item w3-button" style="width: 7%; min-width: 100px">TASKS</a>-->
+  <!-- <a class="w3-bar-item w3-button w3-right" href="#"><i class="fa fa-search"></i></a>-->
     </div>
-<!-- <a href="/tasks/" class="w3-bar-item w3-button" style="width: 7%; min-width: 100px">TASKS</a>-->
-<!-- <a class="w3-bar-item w3-button w3-right" href="#"><i class="fa fa-search"></i></a>-->
   </div>
-</div>
 
-{% block body %}
-<!-- CanvasJS Charts Import-->
-<script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+  {% block body %}
+  <!-- CanvasJS Charts Import-->
+  <script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
 
-<!-- DataTables Import -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+  <!-- DataTables Import -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+  <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
 
-<!-- on page load script -->
-<script>
-$(function(){
-  initDataTables();
-  console.log('datatable initialized');
+  <!-- on page load script -->
+  <script>
+  $(function(){
+    initDataTables();
+    console.log('datatable initialized');
 
-  // Account Values Stacked Column Chart
-  // Better to construct options first and then pass it as a parameter
-  var stacked_options = {
-    theme: "dark2",
-    animationEnabled: true,
-    title:{
+    // Account Values Stacked Column Chart
+    // Better to construct options first and then pass it as a parameter
+    var stacked_options = {
+      theme: "dark2",
+      animationEnabled: true,
+      title:{
         text: "Account Values"
-    },
-    axisX:{
+      },
+      axisX:{
         interval: 30,
         intervalType: "day",
-    },
-    axisY:{
+      },
+      axisY:{
         title:"Value ($)",
         minimum: 0,
         maximum: 30000,
-    },
-    toolTip: {
+      },
+      toolTip: {
         shared: true,
         reversed: true
-    },
-    data: [
-      {% for account in account_view_order %}
-        {
-          type: "stackedColumn",
-          name: "{{ accounts[account]["name"] }}",
-          showInLegend: "true",
-          yValueFormatString: "$ #.##",
-          dataPoints: {{ account_values[account] | safe }},
-        },
-      {% endfor %}
-    ]
-};
+      },
+      data: [
+        {% for account in account_view_order %}
+          {
+            type: "stackedColumn",
+            name: "{{ accounts[account]["name"] }}",
+            showInLegend: "true",
+            yValueFormatString: "$ #.##",
+            dataPoints: {{ account_values_by_day[account] | safe }},
+          },
+        {% endfor %}
+      ]
+    };
 
-var burn_time_options = {
-    theme: "dark2",
-	animationEnabled: true,
-	title:{
-		text: "Burn Time"
-	},
-	axisX:{
-		crosshair: {
-			enabled: true,
-			snapToDataPoint: true
-		}
-	},
-	axisY: {
-		title: "Months to 0",
-		valueFormatString: "0.00",
-		minimum: 0,
-		maximum: 12,
-		crosshair: {
-			enabled: true,
-			snapToDataPoint: true,
-			labelFormatter: function(e) {
-				return "$" + CanvasJS.formatNumber(e.value, "0.00");
-			}
-		}
-	},
-	data: [{
-		type: "area",
-		xValueFormatString: "DD MMM",
-		yValueFormatString: "0.00",
-		dataPoints: [
-    		{% for i in burn_time %}
-                { x: new Date({{ i['year'] }}, {{ i['month'] }} - 1, {{ i['day'] }}), y: {{ i['burn'] }} },
-    		{% endfor %}
+    var burn_time_options = {
+      theme: "dark2",
+      animationEnabled: true,
+      title:{
+        text: "Burn Time"
+      },
+      axisX:{
+        crosshair: {
+          enabled: true,
+          snapToDataPoint: true
+        }
+      },
+      axisY: {
+        title: "Months to 0",
+        valueFormatString: "0.00",
+        minimum: 0,
+        maximum: 18,
+        crosshair: {
+          enabled: true,
+          snapToDataPoint: true,
+          labelFormatter: function(e) {
+            return "$" + CanvasJS.formatNumber(e.value, "0.00");
+          }
+        }
+      },
+      data: [
+      {
+        name: "Maximum Burn",
+        showInLegend: true,
+        legendMarkerType: "square",
+        type: "area",
+        color: "rgba(41,0,66,0.8)",
+        markerSize: 0,
+        xValueFormatString: "DD MMM",
+        yValueFormatString: "0.00",
+        dataPoints: [
+          {% for i in burn_time_by_day %}
+            { x: new Date({{ i['year'] }}, {{ i['month'] }} - 1, {{ i['day'] }}), y: {{ i['burn'] }} },
+          {% endfor %}
+        ]
+      },
+      {
+        name: "Cash-Only Burn",
+        showInLegend: true,
+        legendMarkerType: "square",
+        type: "area",
+        color: "rgba(131,60,60,0.7)",
+        markerSize: 0,
+        xValueFormatString: "DD MMM",
+        yValueFormatString: "0.00",
+        dataPoints: [
+          {% for j in burn_time_by_day_no_invest %}
+            { x: new Date({{ j['year'] }}, {{ j['month'] }} - 1, {{ j['day'] }}), y: {{ j['burn'] }} },
+          {% endfor %}
         ],
-	}],
-};
+      }]
+    };
 
-$("#account_value_chart").CanvasJSChart(stacked_options);
-$("#burn_time_chart").CanvasJSChart(burn_time_options);
-});
-</script>
+    $("#account_value_chart").CanvasJSChart(stacked_options);
+    $("#burn_time_chart").CanvasJSChart(burn_time_options);
+  });
+  </script>
 
-<div id="homepage_body" class="w3-row-padding">
-  <!-- Left Sidebar -->
-  <div id="home_left_sidebar" class="w3-quarter w3-card w3-margin-right">
-      <div class="w3-row w3-padding w3-2018-sailor-blue w3-round w3-border w3-center w3-large"><u><b>Current Account Values</b></u></div>
+
+  <!-- Main -->
+  <div id="homepage_body" class="w3-row-padding">
+    <!-- Left Sidebar -->
+    <div id="home_left_sidebar" class="w3-quarter w3-card w3-margin-right">
+      <div class="w3-row w3-padding w3-2018-sailor-blue w3-round w3-border w3-center w3-large">
+        <u><b>Current Account Values</b></u>
+      </div>
 
       <!-- Current Account Values Table -->
       <table class="w3-table w3-bordered">
@@ -176,48 +201,38 @@ $("#burn_time_chart").CanvasJSChart(burn_time_options);
             <tr>
               <th class="w3-center"></th>
               <th class="w3-center">Date</th>
-              <th class="w3-center">Skyla Emergency Savings</th>
-              <th class="w3-center">Skyla Checking</th>
-              <th class="w3-center">Skyla Main Savings</th>
-              <th class="w3-center">Wallet</th>
-              <th class="w3-center">Cash Stash</th>
-              <th class="w3-center">TD Bank Checking</th>
-              <th class="w3-center">TD Bank Savings</th>
-              <!-- <th class="w3-center">Chase 4895</th>-->
-              <!-- <th class="w3-center">Capital One 5735</th>-->
+              {% for account in account_view_order %}
+                <th class="w3-center">{{ accounts[account]["name"] }}</th>
+              {% endfor %}
             </tr>
           </thead>
-          <tbody style="font-size:12px">
-          {% for item in data %}
-            <tr>
-              <!-- Details Button-->
-              {% if item['is_posted'] -%}
-                <td class="w3-center"><button onclick="alert({{ item['transaction_id'] }})" class="w3-black w3-round-large"><i class="fa fa-bars"></i></button></td>
-              {% else -%}
-                <td></td>
-              {% endif %}
 
-              <!-- Data-->
-              <td class="w3-center">{{ item['transaction_date'] }}</td>
-              <td class="w3-center">{{ item['Skyla Home-Emergency Savings'] }}</td>
-              <td class="w3-center">{{ item['Skyla Checking'] }}</td>
-              <td class="w3-center">{{ item['Skyla Main Savings'] }}</td>
-              <td class="w3-center">{{ item['Wallet'] }}</td>
-              <td class="w3-center">{{ item['Cash Stash'] }}</td>
-              <td class="w3-center">{{ item['TD Bank Checking'] }}</td>
-              <td class="w3-center">{{ item['TD Bank Savings'] }}</td>
-              <!-- <td class="w3-center">{{ item['Chase 4895 Freedom Unlimited'] }}</td>-->
-              <!-- <td class="w3-center">{{ item['Capital One 5737'] }}</td>-->
-            </tr>
-          {% endfor %}
+          <tbody style="font-size:12px">
+            {% for row in account_values_by_transaction %}
+              <tr>
+                <!-- Details Button-->
+                {% if row['is_posted'] -%}
+                  <td class="w3-center"><button onclick="alert({{ row['transaction_id'] }})" class="w3-black w3-round-large"><i class="fa fa-bars"></i></button></td>
+                {% else -%}
+                  <td></td>
+                {% endif %}
+
+                <!-- Data-->
+                <td class="w3-center">{{ row['transaction_date'] }}</td>
+
+                {% for account in account_view_order %}
+                  <td class="w3-center">{{ row[account] }}</td>
+                {% endfor %}
+
+              </tr>
+            {% endfor %}
           </tbody>
         </table>
 
       </div>
-
     </div>
-</div>
-{% endblock %}
+  </div>
+  {% endblock %}
 
 </body>
 </html>

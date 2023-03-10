@@ -1,15 +1,25 @@
+String.prototype.format = function () {
+  var i = 0, args = arguments;
+  return this.replace(/{}/g, function () {
+    return typeof args[i] != 'undefined' ? args[i++] : '';
+  });
+};
+
+
 // Setup Function for DataTables
+var checking_column = 5
+
 function initDataTables(){
     $('#account_value_table').DataTable({
         paging: false,
-        scrollY: 0.65*($( window ).height())+'px',
+        scrollY: 0.666*($( window ).height())+'px',
         scrollCollapse: true,
         order: [[1, 'asc']],
         rowCallback: function(row, data, index) {
-            if (data[3] > 1000) {
-                $(row).find('td:eq(3)').css('color', 'blue');
-            } else if (data[3] <= 0) {
-                $(row).find('td:eq(3)').css('background-color', 'red');
+            if (data[checking_column] > 1000) {
+                $(row).find('td:eq({})'.format(checking_column)).css('color', 'blue');
+            } else if (data[checking_column] <= 0) {
+                $(row).find('td:eq({})'.format(checking_column)).css('background-color', 'red');
             }
         }
     });

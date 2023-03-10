@@ -88,13 +88,20 @@ def get_home():
     accounts = DATA.get_accounts().set_index('account_id', drop=False)
     accounts.index = accounts.index.astype(str)
     asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
+    asset_accounts_no_invest = asset_accounts.loc[asset_accounts['transaction_type'] != 'investment']
+
+    # Fetch today's account values from data object
+    todays_accounts = DATA.calculate_todays_account_values()
+    for t in todays_accounts:
+        todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
 
     # Loop through the account values dataframe to calculate and construct CanvasJS dictionaries
     prev_date = 19700101
     asset_account_values = {}
     for a in list(asset_accounts.index):
         asset_account_values[str(a)] = []
-    burn_time = []
+    burn_time_full = []
+    burn_time_no_invest = []
     for i in result.index:
         date = int(result.iloc[i]['transaction_date'].strftime('%Y%m%d'))
 
@@ -102,29 +109,37 @@ def get_home():
             pass
         else:
             account_sum = 0
+            account_sum_no_invest = 0
             for acc in list(asset_accounts.index):
+                if '401k' in accounts.at[acc, 'name']:
+                    # pre-tax money gets adjusted here
+                    y = float(result.at[i, str(acc)])*(1-float(CONFIG['personal']['retirement_tax_rate']))
+                else:
+                    y = result.at[i, str(acc)]
+
+                label = result.at[i, 'transaction_date'].strftime('%Y-%m-%d')
                 asset_account_values[str(acc)].append(
-                    {"y": result.at[i, str(acc)],
-                     "label": result.at[i, 'transaction_date'].strftime('%Y-%m-%d')}
+                    {"y": y,
+                     "label": label}
                 )
                 account_sum += float(result.at[i, str(acc)])
 
-            # Calculate Burn Time for CanvasJS Line chart
+            for acc in list(asset_accounts_no_invest.index):
+                account_sum_no_invest += float(result.at[i, str(acc)])
+
+            # Assemble Burn Time CanvasJS Line chart
             y = result.at[i, 'transaction_date'].year
             m = result.at[i, 'transaction_date'].month
             d = result.at[i, 'transaction_date'].day
 
-            investment_est = 7500
+            monthly_expense = float(CONFIG['personal']['average_monthly_expend'])
+            b_full = round(account_sum/monthly_expense, 2)
+            burn_time_full.append({"year": y, "month": m, "day": d, "burn": b_full})
 
-            burn = round((account_sum + investment_est) / 3800, 2)
-            burn_time.append({"year": y, "month": m, "day": d, "burn": burn})
+            b_part = round(account_sum_no_invest/monthly_expense, 2)
+            burn_time_no_invest.append({"year": y, "month": m, "day": d, "burn": b_part})
 
             prev_date = date
-
-    # Fetch today's account values from data object
-    todays_accounts = DATA.calculate_todays_account_values()
-    for t in todays_accounts:
-        todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
 
     # Sort accounts for stacked chart
     account_order = [(i, sum(result[i])) for i in list(asset_account_values.keys())]
@@ -134,6 +149,8 @@ def get_home():
         for y in account_order:
             if y[1] == account_sums[x]:
                 account_view_reorder.append(y[0])
+
+    asset_accounts_no_invest = [i for i in account_view_reorder if i in list(asset_accounts_no_invest.index)]
 
     # Translate Account Names for Datatables Columns
     new_cols = []
@@ -146,14 +163,24 @@ def get_home():
     result.columns = new_cols
     result.fillna(value='')
 
+    # print('\nHOME page returns - ')
+    # print('\naccount_values_by_transaction', result.to_dict('records'))
+    # print('\naccount_values_by_day', asset_account_values)
+    # print('\nburn_time_by_day', burn_time_full)
+    # print('\nburn_time_by_day sans investment', burn_time_no_invest)
+    # print('\naccounts', accounts.to_dict('index'))
+    # print('\naccount_values_today', todays_accounts)
+    # print('\naccount_view_order', asset_accounts_no_invest)
+
     return render_template(
         'index.html',
-        data=result.to_dict('records'),         # Used in table for account value per transaction
-        accounts=accounts.to_dict('index'),     # Used to translate account_id to name
-        account_values=asset_account_values,    # Account value dictionary by day for CanvasJS stacked bar chart
-        account_view_order=account_view_reorder,  # List of account ids, ordered by average value largest to smallest
-        account_values_today=todays_accounts,   # Account value dictionary for just today
-        burn_time=burn_time,                    # List of dictionaries describing burn time
+        account_values_by_day=asset_account_values,  # Account value dictionary by day for CanvasJS stacked bar chart
+        burn_time_by_day=burn_time_full,  # List of dictionaries describing burn time
+        burn_time_by_day_no_invest=burn_time_no_invest,  # List of dictionaries describing burn time
+        account_values_by_transaction=result.to_dict('records'),  # Used in table for account value per transaction
+        accounts=accounts.to_dict('index'),  # Used to translate account_id to name
+        account_values_today=todays_accounts,  # Account value dictionary for just today
+        account_view_order=asset_accounts_no_invest,  # List of account ids, ordered by total value largest to smallest
     )
 
 
