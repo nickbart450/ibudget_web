@@ -985,6 +985,54 @@ class BudgetData:
         return data
 
 
+def fetch_filtered_transactions(filters):
+    # Fetch filtered results
+    result = DATA.get_transactions(
+        date_filter=filters['date'],
+        start_date=None,
+        end_date=None,
+        date_type='transaction_date',
+        account_filter=filters['account'],
+        expense_income_filter=filters['income_expense'],
+        category_filter=filters['category'],
+        append_total=False)
+
+    if result is None:
+        print('Empty DataFrame after filters')
+        return None
+
+    else:
+        result = result.copy()
+
+        # Reformat amount column
+        result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
+
+        # Reformat date columns
+        result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
+        result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
+
+        # Reformat is_posted column
+        result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
+
+        # Append account names
+        account_id_list = [0] + list(DATA.accounts['account_id'])
+        account_translate_dict = {}
+        for i in list(range(len(account_id_list))):
+            account_translate_dict[account_id_list[i]] = (['All'] + list(DATA.accounts['name']))[i]
+        result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
+        result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
+
+        return result
+
+
+CONFIG = config.CONFIG
+
+environ = CONFIG['env']['environ']
+db_file = CONFIG['database.{}'.format(environ)]['file']
+
+DATA = BudgetData()
+DATA.connect(db_file)
+
 if __name__ == "__main__":
     CONFIG = config.CONFIG
 
