@@ -122,7 +122,7 @@ def get_home():
                     {"y": y,
                      "label": label}
                 )
-                account_sum += float(result.at[i, str(acc)])
+                account_sum += y
 
             for acc in list(asset_accounts_no_invest.index):
                 account_sum_no_invest += float(result.at[i, str(acc)])
