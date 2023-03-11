@@ -1,4 +1,4 @@
-from budget_app import APP
+from budget_app import APP, LOGGER
 from budget_data import DATA
 from flask import request, redirect, url_for
 

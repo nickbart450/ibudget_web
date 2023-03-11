@@ -1,5 +1,5 @@
 from config import CONFIG
-from budget_app import APP
+from budget_app import APP, LOGGER
 from budget_data import DATA
 from flask import render_template
 

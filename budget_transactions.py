@@ -1,9 +1,5 @@
-import os
-import logging
-import datetime
-
 from config import CONFIG
-from budget_app import APP
+from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
 from flask import request, render_template, redirect, url_for
 
@@ -11,24 +7,6 @@ CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
 CATEGORIES = CATEGORIES.split(',')
 
 FILTERS = dict(CONFIG['ui_settings.default_filters'])
-
-
-def init_logger(log_directory='./logs'):
-    # Start Logger
-    log_path = os.path.abspath(log_directory)
-    if not os.path.exists(log_path):
-        os.mkdir(log_path)
-
-    logging.basicConfig(level=logging.DEBUG,
-                        filename=os.path.join(
-                            log_path,
-                            'budget_{}.log'.format(datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))))
-    logger = logging.getLogger()  # Creates root logger
-    return logger
-
-
-# Start Logger
-LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
 
 @APP.route("/transact/", methods=['GET'])

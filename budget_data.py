@@ -512,6 +512,7 @@ class BudgetData:
         try:
             result = pd.read_sql_query(query, self.dbConnection, parse_dates=date_columns)
         except Exception as e:
+            print(e)
             result = self.dbConnection.execute(query).fetchall()
         self.dbConnection.commit()
 
@@ -585,15 +586,6 @@ class BudgetData:
             account_values = pd.concat([account_values, values.to_frame().T])
 
         if append_transaction_details:
-            details_list = [
-                'credit_account_id',
-                'debit_account_id',
-                'category',
-                'description',
-                'amount',
-                'vendor',
-                'is_posted',
-            ]
             account_values.set_index('transaction_id', inplace=True)
             account_values = pd.concat([account_values, transactions], axis=1)
 
@@ -605,7 +597,7 @@ class BudgetData:
 
     def calculate_todays_account_values(self):
         today = datetime.datetime.today()
-        print("\nCalculating Today's Account Values {}...".format(today))
+        self.logger.info("Calculating Today's Account Values {}...".format(today))
 
         if self.account_values is None:
             account_values = self.calculate_account_values()
@@ -619,9 +611,9 @@ class BudgetData:
             date_check = pd.Timedelta(days=0) < (today-post_date)  # < pd.Timedelta(days=4)
             post_check = a[1].is_posted == 1
 
-            # print(a[1].transaction_id, a[1].posted_date, a[1].is_posted, post_check, date_check)
+            self.logger.debug(a[1].transaction_id, a[1].posted_date, a[1].is_posted, post_check, date_check)
             if date_check and post_check:
-                # print(posted_today)
+                self.logger.debug(posted_today)
                 posted_today = a[1]
 
         todays_values = {}
@@ -659,7 +651,6 @@ class BudgetData:
         after the other transactions. The CC company seems to post everything towards EOD and I pay in the AM, so the
         amount paid is determined before they post.
 
-        :param use_cached:
         :param account_id:
         :param payment_date:
         :return:
@@ -673,7 +664,7 @@ class BudgetData:
 
         # Find any existing payments
         # Fetch DataFrame of payment transactions and reset index such that it matches the index of list payment_dates
-        # Yes, payment_dates is unecessary and maybe a little clunky, but its easier for now and not causing issues
+        # Yes, payment_dates is unnecessary and maybe a little clunky, but it is easier for now and not causing issues
         #   so it stays. In the future, a refactor here could clean up this section.
         payments = self.get_cc_payments(account_id).reset_index(drop=True)
         payment_dates = list(payments['transaction_date'])  # List of payment dates
@@ -1027,20 +1018,14 @@ def fetch_filtered_transactions(filters):
 CONFIG = config.CONFIG
 
 environ = CONFIG['env']['environ']
-db_file = CONFIG['database.{}'.format(environ)]['file']
+DB_FILE = CONFIG['database.{}'.format(environ)]['file']
 
 DATA = BudgetData()
-DATA.connect(db_file)
+DATA.connect(DB_FILE)
 
 if __name__ == "__main__":
-    CONFIG = config.CONFIG
-
-    environ = CONFIG['env']['environ']
     print('Config environment: {}'.format(CONFIG['env']['environ']))
 
-    DATA = BudgetData()
-    db_file_ = CONFIG['database.{}'.format(environ)]['file']
-    DATA.connect(db_file_)
     connection = DATA.dbConnection
 
     # ['q1', 'q2', 'q3', 'q4', 'all']

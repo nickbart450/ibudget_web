@@ -2,33 +2,14 @@
 __version__ = '0.2.0'
 
 import os
-import logging
-import datetime
 import argparse
 import config
 
 from budget_data import BudgetData, DATA
-from budget_app import APP
-
-
-def init_logger(log_directory='./logs'):
-    # Start Logger
-    log_path = os.path.abspath(log_directory)
-    if not os.path.exists(log_path):
-        os.mkdir(log_path)
-
-    logging.basicConfig(level=logging.DEBUG,
-                        filename=os.path.join(
-                            log_path,
-                            'budget_{}.log'.format(datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))))
-    logger = logging.getLogger()  # Creates root logger
-    return logger
+from budget_app import APP, LOGGER
 
 
 if __name__ == '__main__':
-    # Start Logger
-    LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
-
     # Load Config File
     CONFIG = config.CONFIG
 
