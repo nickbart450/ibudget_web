@@ -1,7 +1,7 @@
 from config import CONFIG
-from app import APP
-from flask import render_template
+from budget_app import APP
 from budget_data import DATA
+from flask import render_template
 
 
 @APP.route("/", methods=['GET'])

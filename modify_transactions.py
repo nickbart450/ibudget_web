@@ -1,4 +1,4 @@
-from app import APP
+from budget_app import APP
 from budget_data import DATA
 from flask import request, redirect, url_for
 
@@ -28,11 +28,9 @@ def submit_transaction():
     else:
         posted_flag = False
 
-    # accounts = DATA.get_accounts()
     credit_account = int(DATA.accounts[DATA.accounts['name'] == credit_account]['account_id'])
 
     if debit_account == '':
-        # print('debit account is None: {}'.format(debit_account))
         debit_account = None
     else:
         debit_account = int(DATA.accounts[DATA.accounts['name'] == debit_account]['account_id'])

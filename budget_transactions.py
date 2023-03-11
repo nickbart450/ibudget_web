@@ -1,10 +1,11 @@
-from app import APP
-from config import CONFIG
-from budget_data import DATA, fetch_filtered_transactions
-from flask import request, render_template, redirect, url_for
+import os
 import logging
 import datetime
-import os
+
+from config import CONFIG
+from budget_app import APP
+from budget_data import DATA, fetch_filtered_transactions
+from flask import request, render_template, redirect, url_for
 
 CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
 CATEGORIES = CATEGORIES.split(',')

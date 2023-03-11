@@ -6,7 +6,6 @@ import os.path
 import pandas as pd
 import sqlite3 as sql
 import logging
-# import configparser
 import config
 
 QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
