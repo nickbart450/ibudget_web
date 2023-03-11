@@ -611,7 +611,7 @@ class BudgetData:
             date_check = pd.Timedelta(days=0) < (today-post_date)  # < pd.Timedelta(days=4)
             post_check = a[1].is_posted == 1
 
-            self.logger.debug(a[1].transaction_id, a[1].posted_date, a[1].is_posted, post_check, date_check)
+            # print(a[1].transaction_id, a[1].posted_date, a[1].is_posted, post_check, date_check)
             if date_check and post_check:
                 self.logger.debug(posted_today)
                 posted_today = a[1]
