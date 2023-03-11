@@ -1,18 +1,14 @@
 # budget_server.py
-__version__ = '0.1.1'
-
-from budget_data import BudgetData, DATA
+__version__ = '0.2.0'
 
 import os
 import logging
 import datetime
 import argparse
 import config
-from app import APP
 
-import budget_home
-import budget_transactions
-import modify_transactions
+from budget_data import BudgetData, DATA
+from budget_app import APP
 
 
 def init_logger(log_directory='./logs'):
@@ -25,7 +21,7 @@ def init_logger(log_directory='./logs'):
                         filename=os.path.join(
                             log_path,
                             'budget_{}.log'.format(datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))))
-    logger = logging.getLogger() # Creates root logger
+    logger = logging.getLogger()  # Creates root logger
     return logger
 
 
@@ -52,7 +48,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog='budget_web',
         description='Individual Financial Tracking and Analysis Web Application',
-        # epilog='Text at the bottom of help'
     )
     parser.add_argument('--db_file')
     parser.add_argument('--port', nargs='?', const=9000, type=int)

@@ -4,3 +4,7 @@ from flask import Flask
 APP = Flask(__name__,
             template_folder="./templates",
             static_folder="./static", )
+
+import budget_home
+import budget_transactions
+import modify_transactions
