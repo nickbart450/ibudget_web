@@ -1,11 +1,8 @@
 import os
-import os.path
-os.chdir('../')
-
 import sqlite3 as sql
-import config
 import pandas as pd
 from budget_data import BudgetData
+import config
 
 
 # Fetch config

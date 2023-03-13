@@ -3,7 +3,8 @@ import logging
 import datetime
 from flask import Flask
 
-ROOT = os.getcwd()
+ROOT = os.path.dirname(os.path.realpath(__file__))
+os.chdir(ROOT)
 
 # Create Flask Object
 APP = Flask(__name__,

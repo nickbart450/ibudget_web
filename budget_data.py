@@ -1,8 +1,12 @@
 # budget_data.py
 __version__ = '0.1.1'
 
-import datetime
 import os.path
+ROOT = os.path.dirname(os.path.realpath(__file__))
+os.chdir(ROOT)
+
+
+import datetime
 import pandas as pd
 import sqlite3 as sql
 import logging
