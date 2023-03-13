@@ -3,13 +3,15 @@ import logging
 import datetime
 from flask import Flask
 
+ROOT = os.getcwd()
+
 # Create Flask Object
 APP = Flask(__name__,
-            template_folder="./templates",
-            static_folder="./static", )
+            template_folder=os.path.join(ROOT, "templates"),
+            static_folder=os.path.join(ROOT, "static"))
 
-
-def init_logger(log_directory='./logs'):
+log_dir = os.path.join(ROOT, 'logs')
+def init_logger(log_directory=log_dir):
     log_path = os.path.abspath(log_directory)
     if not os.path.exists(log_path):
         os.mkdir(log_path)
@@ -30,3 +32,4 @@ LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.get
 import budget_home
 import budget_transactions
 import modify_transactions
+import update
