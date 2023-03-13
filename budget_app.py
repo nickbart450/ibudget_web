@@ -10,6 +10,7 @@ APP = Flask(__name__,
             template_folder=os.path.join(ROOT, "templates"),
             static_folder=os.path.join(ROOT, "static"))
 
+
 log_dir = os.path.join(ROOT, 'logs')
 def init_logger(log_directory=log_dir):
     log_path = os.path.abspath(log_directory)
@@ -29,7 +30,7 @@ LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.get
 
 
 # Attach modules
-import budget_home
-import budget_transactions
-import modify_transactions
-import update
+import budget_home          #  Home Page
+import budget_transactions  #  Transaction table display
+import modify_transactions  #  Transaction add, remove, update functions
+import update               #  Update website from when github webhook posts

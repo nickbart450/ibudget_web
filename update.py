@@ -1,4 +1,4 @@
-from budget_app import APP, ROOT
+from budget_app import APP
 from flask import request
 import subprocess
 
@@ -10,10 +10,9 @@ def git_update():
 
     :return:
     """
-    print('Receiving UPDATE hook from GitHub!')
+    print('Receiving webhook from GitHub')
     if request.method == 'POST':
-        r = subprocess.call(['git', 'pull'])
-        print('Subprocess Return: ', r)
+        subprocess.call(['git', 'pull'])
         return 'Updated PythonAnywhere successfully', 200
     else:
         return 'Wrong event type', 400
