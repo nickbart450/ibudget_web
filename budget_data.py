@@ -603,10 +603,7 @@ class BudgetData:
         today = datetime.datetime.today()
         self.logger.info("Calculating Today's Account Values {}...".format(today))
 
-        if self.account_values is None:
-            account_values = self.calculate_account_values()
-        else:
-            account_values = self.account_values
+        account_values = self.calculate_account_values()
 
         posted_today = None
         # Find the latest posted transaction
