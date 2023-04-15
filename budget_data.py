@@ -10,7 +10,7 @@ import datetime
 import pandas as pd
 import sqlite3 as sql
 import logging
-import config
+from components import config
 
 QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
            'show_all_transactions': '''SELECT * from TRANSACTIONS''',

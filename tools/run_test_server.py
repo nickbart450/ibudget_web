@@ -6,7 +6,7 @@ import argparse
 
 from budget_app import APP, LOGGER
 from budget_data import BudgetData, DATA
-import config
+from components import config
 
 
 if __name__ == '__main__':
