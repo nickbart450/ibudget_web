@@ -1,4 +1,4 @@
-from config import CONFIG
+from components.config import CONFIG
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
 from flask import request, render_template, redirect, url_for

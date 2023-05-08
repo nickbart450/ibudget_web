@@ -1,7 +1,7 @@
 import os
 import configparser
 
-main_config_file = './config.ini'
+main_config_file = './components/config.ini'
 environment_def_file = './environ.ini'
 
 config_files = [

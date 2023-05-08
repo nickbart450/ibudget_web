@@ -7,19 +7,19 @@
 <script type="text/javascript" src="{{ url_for('static', filename='transactions.js') }}"></script>
 
 <div id="transactions" class="w3-margin">
-    <!--  Top Row (Sidebar + Main Transaction Table) -->
-    <div class="w3-section w3-row">
-        <!--  Filter Sidebar  -->
-        <div id="date_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
-            <!-- Add Transaction Modal & Button -->
-            <div>
-                <!-- Add Transaction Button -->
-                <div class="w3-row w3-margin w3-padding w3-2018-meerkat w3-border w3-hover-blue w3-round w3-margin-left w3-margin-right" onclick="document.getElementById('transaction_add_modal').style.display='block'">
-                    <span><b>ADD TRANSACTION</b></span><span style="float:right"><i class="fa fa-plus"></i></span>
-                </div>
+  <!--  Top Row (Sidebar + Main Transaction Table) -->
+  <div class="w3-section w3-row">
+    <!--  Filter/Account Values Sidebar  -->
+    <div id="date_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
+      <!-- Add Transaction Modal & Button -->
+      <div>
+        <!-- Add Transaction Button -->
+        <div class="w3-row w3-margin w3-padding w3-2018-meerkat w3-border w3-hover-blue w3-round w3-margin-left w3-margin-right" onclick="document.getElementById('transaction_add_modal').style.display='block'">
+          <span><b>ADD TRANSACTION</b></span><span style="float:right"><i class="fa fa-plus"></i></span>
+        </div>
 
-                <!-- Add Transaction Modal -->
-                <div id="transaction_add_modal" class="w3-modal">
+        <!-- Add Transaction Modal -->
+          <div id="transaction_add_modal" class="w3-modal">
                     <!-- Transaction Add Form -->
                     <div class="w3-modal-content w3-border w3-dark-grey w3-round" id="transaction_add_form">
 
@@ -128,77 +128,80 @@
                     </div>
 
                 </div>
-            </div>
+      </div>
 
-            <div class="w3-bar" style="background-color: #343E3C">
-                <div class="w3-bar-item"><b>FILTERS -</b></div>
-            </div>
-
-            <!-- Transaction Type Filter -->
-            <div id="transact_type_filter" class="w3-bar-block w3-section">
-                <span class="w3-bar-item w3-card-4">Expenses/Income</span>
-                <div class="w3-margin-left">
-                    <input class="income_expense_btn w3-radio" id="both" type="radio" name="expense_income_selector" value="Both"/>
-                    <label for="both">Both</label>
-                </div>
-                <div class="w3-margin-left">
-                    <input class="income_expense_btn w3-radio" id="income" type="radio" name="expense_income_selector" value="Income"/>
-                    <label for="income">Income</label>
-                </div>
-                <div class="w3-margin-left">
-                    <input class="income_expense_btn w3-radio" id="expenses" type="radio" name="expense_income_selector" value="Expenses"/>
-                    <label for="expenses">Expenses</label>
-                </div>
-            </div>
-
-            <!-- Transaction Date Filter -->
-            <div id="transact_date_filter" class="w3-bar-block w3-section">
-                <span class="w3-bar-item w3-card-4">Date</span>
-                <div class="w3-dropdown-hover" style="width:100%">
-                    <div class="w3-button w3-white w3-row">
-                        <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+      <!-- Transaction Table Filters -->
+      <div>
+        <div class="w3-bar" style="background-color: #343E3C">
+            <div class="w3-bar-item"><b>FILTERS -</b></div>
+        </div>
+        <!-- Transaction Type Filter -->
+        <div id="transact_type_filter" class="w3-bar-block w3-section">
+                    <span class="w3-bar-item w3-card-4">Expenses/Income</span>
+                    <div class="w3-margin-left">
+                        <input class="income_expense_btn w3-radio" id="both" type="radio" name="expense_income_selector" value="Both"/>
+                        <label for="both">Both</label>
                     </div>
-                    <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
-                        {% for i in date_filter %}
-                        <input class="date_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                        {% endfor %}
+                    <div class="w3-margin-left">
+                        <input class="income_expense_btn w3-radio" id="income" type="radio" name="expense_income_selector" value="Income"/>
+                        <label for="income">Income</label>
+                    </div>
+                    <div class="w3-margin-left">
+                        <input class="income_expense_btn w3-radio" id="expenses" type="radio" name="expense_income_selector" value="Expenses"/>
+                        <label for="expenses">Expenses</label>
                     </div>
                 </div>
-            </div>
 
-            <!-- Account Filter -->
-            <div id="account_filter_container" class="w3-bar-block w3-section">
-                <span class="w3-bar-item w3-card-4">Account</span>
-                <div class="w3-dropdown-hover" style="width:100%">
-                    <div class="w3-button w3-white w3-row">
-                        <span id="account_filter">{{ account_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
-                    </div>
-                    <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
-                        {% for i in accounts %}
-                        <input class="account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                        {% endfor %}
+        <!-- Transaction Date Filter -->
+        <div id="transact_date_filter" class="w3-bar-block w3-section">
+                    <span class="w3-bar-item w3-card-4">Date</span>
+                    <div class="w3-dropdown-hover" style="width:100%">
+                        <div class="w3-button w3-white w3-row">
+                            <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+                        </div>
+                        <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+                            {% for i in date_filter %}
+                            <input class="date_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Category Filter -->
-            <div id="category_filter_container" class="w3-bar-block w3-section">
-                <span class="w3-bar-item w3-card-4">Category</span>
-                <div class="w3-dropdown-hover" style="width:100%">
-                    <div class="w3-button w3-white w3-row">
-                        <span id="category_filter">{{ category_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
-                    </div>
-                    <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
-                        {% for i in categories %}
-                        <input class="category_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                        {% endfor %}
+        <!-- Account Filter -->
+        <div id="account_filter_container" class="w3-bar-block w3-section">
+                    <span class="w3-bar-item w3-card-4">Account</span>
+                    <div class="w3-dropdown-hover" style="width:100%">
+                        <div class="w3-button w3-white w3-row">
+                            <span id="account_filter">{{ account_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+                        </div>
+                        <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+                            {% for i in accounts %}
+                            <input class="account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Today's Account Values Table -->
-            <br>
-            <div class="w3-card w3-round w3-border">
+        <!-- Category Filter -->
+        <div id="category_filter_container" class="w3-bar-block w3-section">
+                    <span class="w3-bar-item w3-card-4">Category</span>
+                    <div class="w3-dropdown-hover" style="width:100%">
+                        <div class="w3-button w3-white w3-row">
+                            <span id="category_filter">{{ category_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+                        </div>
+                        <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+                            {% for i in categories %}
+                            <input class="category_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+      </div>
+
+      <!-- Today's Account Values Table -->
+      <div>
+        <br>
+        <div class="w3-card w3-round w3-border">
                 <div class="w3-bar w3-round" style="background-color: #343E3C">
                     <div class="w3-bar-item"><b>TODAY'S ACCOUNT VALUES -</b></div>
                 </div>
@@ -221,15 +224,17 @@
                       {% endfor %}
                     </tbody>
                 </table>
-            </div>
-        </div>
+          </div>
+      </div>
+    </div>
 
-        <!--  Main Transactions Table  -->
+    <!--  Main Transactions Table  -->
+    <div>
         {% block table %}
         <div class="w3-container">Transaction Table Here</div>
         {% endblock %}
-
     </div>
+  </div>
 </div>
 
 {% endblock %}

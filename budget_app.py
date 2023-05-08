@@ -26,12 +26,12 @@ def init_logger(log_directory=log_dir):
     return logger
 
 
-# Start Logger
+# Start Logger if another viable instance doesn't exist
 LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.getLogger()
 
 
 # Attach modules
-import budget_home          #  Home Page
-import budget_transactions  #  Transaction table display
-import modify_transactions  #  Transaction add, remove, update functions
-import update               #  Update website from when github webhook posts
+from components import budget_home          #  Home Page
+from components import budget_transactions  #  Transaction table display
+from components import modify_transactions  #  Transaction add, remove, update functions
+from components import update               #  Update website from when github webhook posts

@@ -10,7 +10,7 @@ import datetime
 import pandas as pd
 import sqlite3 as sql
 import logging
-import config
+from components import config
 
 QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
            'show_all_transactions': '''SELECT * from TRANSACTIONS''',
@@ -603,10 +603,7 @@ class BudgetData:
         today = datetime.datetime.today()
         self.logger.info("Calculating Today's Account Values {}...".format(today))
 
-        if self.account_values is None:
-            account_values = self.calculate_account_values()
-        else:
-            account_values = self.account_values
+        account_values = self.calculate_account_values()
 
         posted_today = None
         # Find the latest posted transaction
