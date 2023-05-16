@@ -6,6 +6,7 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 os.chdir(ROOT)
 
 
+import warnings
 import datetime
 import pandas as pd
 import sqlite3 as sql
@@ -138,6 +139,7 @@ class BudgetData:
         accounts = self.dbConnection.cursor().execute('''SELECT * FROM ACCOUNTS''').fetchall()
         account_table = pd.DataFrame([dict(row) for row in accounts])
 
+        account_table = account_table.set_index('account_id', drop=False)
         self.accounts = account_table
         return account_table
 
@@ -347,7 +349,7 @@ class BudgetData:
         if 'credit_card' in account_type_checks:
             self.update_credit_card_payment(transaction_id)
 
-        return None
+        return transaction_id
 
     def update_transaction(self, transaction_id, transaction_date=None, posted_date=None, category=None, amount=None,
                            credit_account=None, debit_account=None, description=None, vendor=None, is_posted=None):
@@ -758,37 +760,62 @@ class BudgetData:
         post_date = pd.to_datetime(transaction['posted_date'])
 
         accounts = self.get_accounts().set_index('account_id')
-        accounts = accounts.loc[accounts['transaction_type'] == 'credit_card']
+        cc_accounts = accounts.loc[accounts['transaction_type'] == 'credit_card']
         # print('Account columns', accounts.columns)  # ['name', 'transaction_type', 'account_type', 'starting_value']
 
         if account is None:
-            if credit_account in list(accounts.index):
-                account_id = credit_account
-            elif debit_account in list(accounts.index):
-                account_id = debit_account
+            if credit_account in list(cc_accounts.index):
+                account_id = int(credit_account)
+            elif debit_account in list(cc_accounts.index):
+                account_id = int(debit_account)
             else:
                 raise RuntimeError('Unknown Account ID')
         else:
             account_id = int(account)
 
-        cc_payments = self.get_cc_payments(int(account_id)).reset_index(drop=True)
+        cc_payments = self.get_cc_payments(account_id).reset_index(drop=True)
         if len(cc_payments) == 0:
-            raise RuntimeError("cc payments returned empty")
+            print('\nCREATING NEW CC PAYMENT')
+            t_date = pd.to_datetime(transaction['transaction_date'])
 
-        payment_date = payment_id = None
-        for i in cc_payments.index:
-            if post_date < min(cc_payments['transaction_date']):
-                payment_date = min(cc_payments['transaction_date'])
-                payment_id = cc_payments.loc[cc_payments['transaction_date'] == payment_date, 'transaction_id']
-            elif cc_payments.at[i, 'transaction_date'] <= post_date < cc_payments.iloc[i + 1]['transaction_date']:
-                payment = cc_payments.iloc[i + 1]
-                payment_date = payment['transaction_date']
-                payment_id = payment['transaction_id']
-            else:
-                pass
+            payment_account = accounts.loc[accounts['transaction_type'] == 'income']
+            pay_dates = transactions.loc[transactions['credit_account_id'] == int(payment_account.index[0])]['transaction_date']
+            payment_date = None
+            for d in pay_dates.index:
+                if pay_dates[d] > t_date:  # Find next paycheck after the transaction and set CC payment date
+                    payment_date = pay_dates[d]
+                    break
+            if payment_date is None:
+                payment_date = t_date  # Fallback to the date of the modified transaction instead of crashing
+
+            payment_id = self.add_transaction(payment_date,
+                                              'Credit Card Payment',
+                                              10.00,
+                                              posted_date=payment_date,
+                                              debit_account=account_id,
+                                              description='CC Payment',
+                                              vendor=accounts.loc[account_id]['name'])
+        elif len(cc_payments) == 1:
+            print('Only one cc_payment')
+            payment = cc_payments.loc[cc_payments.index[0]]
+            payment_date = payment['transaction_date']
+            payment_id = payment['transaction_id']
+        else:
+            payment_date = payment_id = None
+            print('cc_payments', cc_payments)
+            for i in cc_payments.index:
+                if post_date < min(cc_payments['transaction_date']):
+                    payment_date = min(cc_payments['transaction_date'])
+                    payment_id = cc_payments.loc[cc_payments['transaction_date'] == payment_date, 'transaction_id']
+                elif cc_payments.at[i, 'transaction_date'] <= post_date < cc_payments.iloc[i + 1]['transaction_date']:
+                    payment = cc_payments.iloc[i + 1]
+                    payment_date = payment['transaction_date']
+                    payment_id = payment['transaction_id']
+                else:
+                    pass
 
         if payment_date is None or payment_id is None:
-            raise RuntimeError('Could not determine payment date')
+            raise RuntimeError('Could not determine payment date or payment_id')
 
         print('STEP 1 - Calculate Payment Amount')
         amount = self.calculate_credit_card_payment(account_id, payment_date)
@@ -817,6 +844,10 @@ class BudgetData:
         return None
 
     def get_cc_payments(self, account):
+        if account not in list(self.get_accounts().index):
+            warnings.warn('Incorrect account id entered')
+            return
+
         transactions = self.get_transactions(account_filter=account)
         payments = transactions[
             (transactions['debit_account_id'] == account) & (transactions['category'] == 'Credit Card Payment')]
@@ -1030,7 +1061,7 @@ if __name__ == "__main__":
     connection = DATA.dbConnection
 
     # ['q1', 'q2', 'q3', 'q4', 'all']
-    for n in ['january', 'february', 'march', 'april', 'all']:
+    for n in ['january', 'february', 'march', 'april', 'q1']:
         print('\n\t{}'.format(n.upper()))
         DATA.category_summary(date_filter=n)
 

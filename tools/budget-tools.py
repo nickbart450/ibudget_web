@@ -2,7 +2,7 @@ import os
 import sqlite3 as sql
 import pandas as pd
 from budget_data import BudgetData
-import config
+from components import config
 
 
 # Fetch config
@@ -135,6 +135,7 @@ if __name__ == '__main__':
 
     # ----- TABLES -----
     # -- DELETES ALL EXISTING TABLES   ---   !!! CAUTION !!!
+    # tables = DATA.quick_query('list_tables')
     # for t in tables:
     #     print('Deleting Table: ', t)
     #     delete_table(connection, t)
@@ -146,7 +147,10 @@ if __name__ == '__main__':
     # rebuild_transactions()
 
 
-    # ----- TRANSACTIONS -----
+    # ----- TRANSACTIONS
+    # all_transactions = DATA.get_transactions()
+    # print(all_transactions.columns, all_transactions.shape)
+
     # -- Bulk import transactions
     # file = './table_imports/combined_transactions_v6_rest-of-Dec.csv'
     # DATA.bulk_import(file, 'TRANSACTIONS', date_columns=['transaction_date', 'posted_date'])
@@ -165,6 +169,9 @@ if __name__ == '__main__':
     # all_transactions.sort_values(by=['posted_date', 'transaction_id'])
     # all_transactions.to_csv('./2023_transactions.csv')
 
+    # -- Find unique categories
+    # unique_data = pd.Series({c: all_transactions[c].unique() for c in all_transactions})
+    # print(unique_data['category'])
 
     # ----- ACCOUNTS -----
     # -- Add starting_values column to database ACCOUNTS table
@@ -188,6 +195,14 @@ if __name__ == '__main__':
                  ]
     # account_values = DATA.calculate_account_values()  # [SHOW_COLS]
     # account_values.to_csv('./tools/2023_acct_values.csv')
+
+
+    # ----- TESTS -----
+    # - https://github.com/nickbart450/ibudget_web/issues/1#issue-1681295182
+    # DATA.delete_transaction(843)
+    # DATA.update_transaction(207, amount=23.09)
+    # trans = DATA.get_cc_payments(9721)
+    # print(trans)
 
 
     # ----- OTHER -----
