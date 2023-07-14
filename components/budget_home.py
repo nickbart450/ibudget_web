@@ -34,6 +34,13 @@ def get_home():
         asset_account_values[str(a)] = []
     burn_time_full = []
     burn_time_no_invest = []
+
+    include_retire = str(CONFIG['ui_settings']['include_retirement_in_burn']).lower() == "true"
+    if include_retire:
+        include_retire_str = '[with Retirement Account(s)]'
+    else:
+        include_retire_str = '[excl. Retirement Account(s)]'
+
     for i in result.index:
         date = int(result.iloc[i]['transaction_date'].strftime('%Y%m%d'))
 
@@ -43,9 +50,12 @@ def get_home():
             account_sum = 0
             account_sum_no_invest = 0
             for acc in list(asset_accounts.index):
-                if '401k' in accounts.at[acc, 'name']:
-                    # pre-tax money gets adjusted here
-                    y = float(result.at[i, str(acc)])*(1-float(CONFIG['personal']['retirement_tax_rate']))
+                if 'retire' in accounts.at[acc, 'name'].lower():
+                    # pre-tax money gets adjusted here if you decide to include these accounts in your burn
+                    if include_retire:
+                        y = float(result.at[i, str(acc)])*(1-float(CONFIG['personal']['retirement_tax_rate']))
+                    else:
+                        y = 0
                 else:
                     y = result.at[i, str(acc)]
 
@@ -109,6 +119,7 @@ def get_home():
         account_values_by_day=asset_account_values,  # Account value dictionary by day for CanvasJS stacked bar chart
         burn_time_by_day=burn_time_full,  # List of dictionaries describing burn time
         burn_time_by_day_no_invest=burn_time_no_invest,  # List of dictionaries describing burn time
+        burn_time_retirement=include_retire_str,
         account_values_by_transaction=result.to_dict('records'),  # Used in table for account value per transaction
         accounts=accounts.to_dict('index'),  # Used to translate account_id to name
         account_values_today=todays_accounts,  # Account value dictionary for just today

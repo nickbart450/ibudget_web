@@ -131,7 +131,7 @@ def add_accounts(database_connector):
 
 if __name__ == '__main__':
     # -- Setup
-    pd.set_option("display.max_rows", None, "display.max_columns", None)  # makes pandas print full table
+    pd.set_option("display.max_rows", None, "display.max_columns", None, "display.width", 2000)  # makes pandas print full table
 
     # ----- TABLES -----
     # -- DELETES ALL EXISTING TABLES   ---   !!! CAUTION !!!
@@ -178,6 +178,7 @@ if __name__ == '__main__':
     # print('Adding starting_values column to ACCOUNTS table in: ', db_file)
     # add_starting_values_to_accounts(connection)
     # update_starting_values_in_accounts(connection)
+    print(DATA.accounts)
 
     # -- Add Accounts
     # add_accounts(connection)
@@ -214,7 +215,7 @@ if __name__ == '__main__':
 
     # -- Quick Queries
     # print('DATA db tables:\n', DATA.quick_query('list_tables'))
-    print('DATA db accounts:\n', DATA.quick_query('show_all_accounts'))
+    # print('DATA db accounts:\n', DATA.quick_query('show_all_accounts'))
     # print(DATA.quick_query('show_transactions_dtypes'))
 
     DATA.close()
