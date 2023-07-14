@@ -1,4 +1,5 @@
-from components.config import CONFIG
+from components import config
+CONFIG = config.CONFIG
 from budget_app import APP, LOGGER
 from budget_data import DATA
 from flask import render_template
@@ -12,6 +13,8 @@ def get_home():
     :return:
     """
     print('Fetching HOME')
+    CONFIG = config.reload()
+
     result = DATA.calculate_account_values()
 
     accounts = DATA.get_accounts().set_index('account_id', drop=False)

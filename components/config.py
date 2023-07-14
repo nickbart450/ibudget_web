@@ -28,6 +28,14 @@ for i in range(len(config_files)):
         else:
             raise FileNotFoundError(file)
 
+
+def reload():
+    global CONFIG
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read(config_files)
+    return CONFIG
+
+
 # Load Config File(s)
 CONFIG = configparser.ConfigParser()
 CONFIG.read(config_files)
