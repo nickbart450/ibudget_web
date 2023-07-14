@@ -289,14 +289,14 @@ class BudgetData:
 
         print('adding transaction:')
         print('\ttransaction_date: ', transaction_date)
-        print('\tposted_date: ', posted_date)
-        print('\tcredit_account: ', credit_account)
-        print('\tdebit_account: ', debit_account)
-        print('\tamount: ', amount)
+        # print('\tposted_date: ', posted_date)
+        # print('\tcredit_account: ', credit_account)
+        # print('\tdebit_account: ', debit_account)
+        # print('\tamount: ', amount)
         print('\tcategory: ', category)
         print('\tdescription: ', description)
-        print('\tvendor: ', vendor)
-        print('\tposted_flag: ', is_posted)
+        # print('\tvendor: ', vendor)
+        # print('\tposted_flag: ', is_posted)
 
         query = '''INSERT INTO TRANSACTIONS
                     (transaction_date,
@@ -444,14 +444,14 @@ class BudgetData:
         print('Updating transaction:')
         print('\ttransaction_id:..... ', transaction_id)
         print('\ttransaction_date:... ', transaction['transaction_date'])
-        print('\tposted_date:........ ', transaction['posted_date'])
-        print('\tcredit_account:..... ', transaction['credit_account_id'])
-        print('\tdebit_account:...... ', transaction['debit_account_id'])
+        # print('\tposted_date:........ ', transaction['posted_date'])
+        # print('\tcredit_account:..... ', transaction['credit_account_id'])
+        # print('\tdebit_account:...... ', transaction['debit_account_id'])
         print('\tcategory:........... ', transaction['category'])
         print('\tdescription:........ ', transaction['description'])
-        print('\tamount:.............  ${:.2f}'.format(float(transaction['amount'])))
-        print('\tvendor:............. ', transaction['vendor'])
-        print('\tposted_flag:........ ', transaction['is_posted'])
+        # print('\tamount:.............  ${:.2f}'.format(float(transaction['amount'])))
+        # print('\tvendor:............. ', transaction['vendor'])
+        # print('\tposted_flag:........ ', transaction['is_posted'])
 
         q_update = """
             UPDATE TRANSACTIONS
@@ -484,6 +484,7 @@ class BudgetData:
 
         self.get_transactions()  # Refresh transaction table
 
+        # Check for CC accounts in transaction and update relevant payments
         # print('credit_account_type OLD/NEW {}/{}'.format(str(old_credit_account_type), str(credit_account_type)))
         # print('debit_account_type OLD/NEW {}/{}'.format(str(old_debit_account_type), str(debit_account_type)))
         account_type_checks = [credit_account_type, old_credit_account_type, debit_account_type, old_debit_account_type]
@@ -1058,11 +1059,37 @@ DATA.connect(DB_FILE)
 if __name__ == "__main__":
     print('Config environment: {}'.format(CONFIG['env']['environ']))
 
-    connection = DATA.dbConnection
+    # help(pd.set_option)
+    pd.set_option('display.max_rows', 1000)
+    pd.set_option('display.min_rows', 50)
+    pd.options.display.width = 0
+    pd.set_option('display.max_columns', 30)
 
-    # ['q1', 'q2', 'q3', 'q4', 'all']
-    for n in ['january', 'february', 'march', 'april', 'q1']:
-        print('\n\t{}'.format(n.upper()))
-        DATA.category_summary(date_filter=n)
+    # -- ADD
+    # DATA.add_transaction('2023-06-15', 'Test', 123, credit_account=9721)
+    # print(DATA.get_transactions(account_filter=9721))
+    # print(DATA.get_cc_payments(account=9721))
+
+    # -- DELETE
+    # for i in [872]:
+    #     DATA.delete_transaction(i)
+    # print(DATA.get_transactions(account_filter=9721))
+    # print(DATA.get_cc_payments(account=9721))
+
+    # -- UPDATE
+    # DATA.update_transaction(896)
+    # print(DATA.get_transactions(account_filter=9721))
+    # print(DATA.get_cc_payments(account=9721))
+
+    # print(DATA.get_cc_payments(9721))
+
+    DATA.get_transactions().to_csv('./2023transacts.csv')
+
+    print(DATA.calculate_account_values(append_transaction_details=True))
+
+    # ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'q1']
+    # for n in ['q1', 'q2', 'q3', 'q4', 'all']:
+    #     print('\n\t{}'.format(n.upper()))
+    #     DATA.category_summary(date_filter=n)
 
     DATA.close()
