@@ -16,18 +16,13 @@ if __name__ == '__main__':
     # Fetch database file location from the config. Defaults to live version
     ENVIRON = CONFIG['env']['environ']
     LOGGER.debug('Config environment: {}'.format(ENVIRON))
-    DB_FILE = CONFIG['database.{}'.format(ENVIRON)]['file']
-
-    CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
-    CATEGORIES = CATEGORIES.split(',')
-
-    FILTERS = dict(CONFIG['ui_settings.default_filters'])
+    db_file = CONFIG['database.{}'.format(ENVIRON)]['file']
 
     # argparse setup -- Available Arguments:
     #   --db_file   specify new .db file to open
     #   --port      specify alternative port number to launch development server on (Default: 9000)
     parser = argparse.ArgumentParser(
-        prog='budget_web',
+        prog='ibudget_web',
         description='Individual Financial Tracking and Analysis Web Application',
     )
     parser.add_argument('--db_file')
