@@ -19,7 +19,6 @@ class TransactionsPage(page.Page):
         self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
     def current_filter_url(self):
-        print(url_for('data_transactions'), type(url_for('data_transactions')))
 
         url = url_for('data_transactions') + \
               "?income_expense={}&date={}&account={}&category={}&date_start=&date_end=".format(
@@ -33,8 +32,6 @@ class TransactionsPage(page.Page):
         return url
 
     def get(self):
-        print('Fetching /transact with filters: {}'.format(dict(self.filters)))
-
         # Get Date Filter
         if request.args.get('date') is not None:
             self.filters['date'] = request.args.get('date')
@@ -50,6 +47,9 @@ class TransactionsPage(page.Page):
         # Get & Reformat expense_income_filter
         if request.args.get('income_expense') is not None:
             self.filters['income_expense'] = request.args.get('income_expense').lower()
+
+        print('Fetching /transact with filters: {}'.format(dict(self.filters)))
+        LOGGER.debug('Fetching /transact with filters: {}'.format(dict(self.filters)))
 
         # Get transaction data from database table with current filters
         result = fetch_filtered_transactions(self.filters)

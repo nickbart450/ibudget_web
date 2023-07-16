@@ -287,17 +287,6 @@ class BudgetData:
         if description is None:
             description = ''
 
-        print('adding transaction:')
-        print('\ttransaction_date: ', transaction_date)
-        # print('\tposted_date: ', posted_date)
-        # print('\tcredit_account: ', credit_account)
-        # print('\tdebit_account: ', debit_account)
-        # print('\tamount: ', amount)
-        print('\tcategory: ', category)
-        print('\tdescription: ', description)
-        # print('\tvendor: ', vendor)
-        # print('\tposted_flag: ', is_posted)
-
         query = '''INSERT INTO TRANSACTIONS
                     (transaction_date,
                     posted_date,
@@ -334,6 +323,21 @@ class BudgetData:
         cursor = self.dbConnection.cursor()
         cursor.execute(query)
         self.dbConnection.commit()
+
+        transaction_id = cursor.lastrowid
+
+        print('added transaction to db:')
+        print('\ttransaction_id: ', transaction_id)
+        print('\ttransaction_date: ', transaction_date)
+        # print('\tposted_date: ', posted_date)
+        # print('\tcredit_account: ', credit_account)
+        # print('\tdebit_account: ', debit_account)
+        # print('\tamount: ', amount)
+        print('\tcategory: ', category)
+        print('\tdescription: ', description)
+        # print('\tvendor: ', vendor)
+        # print('\tposted_flag: ', is_posted)
+
 
         # Refresh transaction table
         self.get_transactions()
@@ -445,11 +449,11 @@ class BudgetData:
         print('\ttransaction_id:..... ', transaction_id)
         print('\ttransaction_date:... ', transaction['transaction_date'])
         # print('\tposted_date:........ ', transaction['posted_date'])
-        # print('\tcredit_account:..... ', transaction['credit_account_id'])
-        # print('\tdebit_account:...... ', transaction['debit_account_id'])
+        print('\tcredit_account:..... ', transaction['credit_account_id'])
+        print('\tdebit_account:...... ', transaction['debit_account_id'])
         print('\tcategory:........... ', transaction['category'])
         print('\tdescription:........ ', transaction['description'])
-        # print('\tamount:.............  ${:.2f}'.format(float(transaction['amount'])))
+        print('\tamount:.............  ${:.2f}'.format(float(transaction['amount'])))
         # print('\tvendor:............. ', transaction['vendor'])
         # print('\tposted_flag:........ ', transaction['is_posted'])
 
@@ -492,6 +496,9 @@ class BudgetData:
         if len(recalc_accounts) > 0:
             for a in recalc_accounts:
                 if a in list(cc_accounts.index):
+                    c = recalc_accounts.index(a)
+                    tot = len(recalc_accounts)
+                    print('Recalculating Credit Card Payment from update_transaction {}/{}'.format(c+1, tot))
                     self.update_credit_card_payment(transaction_id, account=a)
         elif 'credit_card' in account_type_checks and transaction['category'] != 'Credit Card Payment':
             self.update_credit_card_payment(transaction_id)
@@ -733,12 +740,12 @@ class BudgetData:
                                                                                               # payment_id,
                                                                                               previous_payment_date,
                                                                                               previous_payment_id))
-        print('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}\n'.format(payment_date,
+        print('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}'.format(payment_date,
                                                                                    # payment_id,
                                                                                    previous_payment_date,
                                                                                    previous_payment_id))
         # print('credits_sum: $', credits_sum, ':: debits_sum:  $', debits_sum)
-        print('Payment:  $ {:.2f}\n'.format(payment_amount))
+        print('\tPayment:  $ {:.2f}\n'.format(payment_amount))
         return payment_amount
 
     def update_credit_card_payment(self, modified_transaction_id, account=None):
@@ -750,11 +757,16 @@ class BudgetData:
         :param account:
         :return:
         """
-        print('\nRecalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
-        self.logger.info('\nRecalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
+        print('Recalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
+        self.logger.info('Recalculating upcoming credit card payment -- {} modified'.format(modified_transaction_id))
 
         transactions = self.transactions.copy()
         transaction = transactions.loc[int(modified_transaction_id), :]
+
+        if transaction['category'] == 'Credit Card Payment':
+            print('-- Credit Card Payment Updated, Skipping Recalc --')
+            self.logger.info('-- Credit Card Payment Updated, Skipping Recalc --')
+            return None
 
         credit_account = int(transaction['credit_account_id'])
         debit_account = int(transaction['debit_account_id'])
@@ -775,7 +787,7 @@ class BudgetData:
             account_id = int(account)
 
         cc_payments = self.get_cc_payments(account_id).reset_index(drop=True)
-        if len(cc_payments) == 0:
+        if len(cc_payments) == 0 or post_date > max(cc_payments['transaction_date']):
             print('\nCREATING NEW CC PAYMENT')
             t_date = pd.to_datetime(transaction['transaction_date'])
 
@@ -796,14 +808,9 @@ class BudgetData:
                                               debit_account=account_id,
                                               description='CC Payment',
                                               vendor=accounts.loc[account_id]['name'])
-        elif len(cc_payments) == 1:
-            print('Only one cc_payment')
-            payment = cc_payments.loc[cc_payments.index[0]]
-            payment_date = payment['transaction_date']
-            payment_id = payment['transaction_id']
         else:
             payment_date = payment_id = None
-            print('cc_payments', cc_payments)
+            # print('cc_payments', cc_payments)
             for i in cc_payments.index:
                 if post_date < min(cc_payments['transaction_date']):
                     payment_date = min(cc_payments['transaction_date'])
