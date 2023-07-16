@@ -1,12 +1,166 @@
-from components.config import CONFIG
+from components import page
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
 from flask import request, render_template, redirect, url_for
 
-CATEGORIES = CONFIG['ui_settings']['categories'].replace('\n', '')
-CATEGORIES = CATEGORIES.split(',')
 
-FILTERS = dict(CONFIG['ui_settings.default_filters'])
+class TransactionsPage(page.Page):
+    def __init__(self):
+        """
+        /transact/<arguments>
+        """
+
+        super().__init__()
+        self.template = 'transactions_table.html'
+        self.name = 'transact'
+
+        self.categories = self.config['ui_settings']['categories'].replace('\n', '').split(',')
+        self.filters = dict(self.config['ui_settings.default_filters'])
+        self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
+
+    def current_filter_url(self):
+        print(url_for('data_transactions'), type(url_for('data_transactions')))
+
+        url = url_for('data_transactions') + \
+              "?income_expense={}&date={}&account={}&category={}&date_start=&date_end=".format(
+                  self.filters['income_expense'],
+                  self.filters['date'],
+                  self.filters['account'],
+                  self.filters['category'],
+                  # self.filters['date_start'],  # not implemented
+                  # self.filters['date_end'],  # not implemented
+              )
+        return url
+
+    def get(self):
+        print('Fetching /transact with filters: {}'.format(dict(self.filters)))
+
+        # Get Date Filter
+        if request.args.get('date') is not None:
+            self.filters['date'] = request.args.get('date')
+
+        # Get Account Filter
+        if request.args.get('account') is not None:
+            self.filters['account'] = request.args.get('account')
+
+        # Get Category Filter
+        if request.args.get('category') is not None:
+            self.filters['category'] = request.args.get('category')
+
+        # Get & Reformat expense_income_filter
+        if request.args.get('income_expense') is not None:
+            self.filters['income_expense'] = request.args.get('income_expense').lower()
+
+        # Get transaction data from database table with current filters
+        result = fetch_filtered_transactions(self.filters)
+        result.fillna(value='')
+        self.transactions = result
+
+        # Calculate today's account values from database
+        self.todays_accounts = DATA.calculate_todays_account_values()
+        for t in self.todays_accounts:
+            self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
+
+        if self.transactions is None or len(self.transactions) == 0:
+            print('WARNING! No transactions meet current filters. Redirecting back to /transact')
+            LOGGER.warning('No transactions meet current filters. Redirecting back to /transact')
+            LOGGER.warning('Current Filters: {}'.format(dict(self.filters)))
+            self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
+            return redirect(url_for('data_transactions'))
+
+        elif len(self.transactions) > 0:
+            return render_template(
+                self.template,
+                data=self.transactions.to_dict('records'),
+                date_filter=self.date_filters,
+                accounts=['All'] + list(DATA.accounts['name']),
+                account_values_today=self.todays_accounts,  # Account value dictionary for just today
+                categories=self.categories,
+                date_filter_default=self.filters['date'],
+                account_filter_default=self.filters['account'],
+                category_filter_default=self.filters['category'],
+                income_expense_filter_default=self.filters['income_expense'],
+            )
+
+        else:
+            # Really unlikely to wind up here, but want to recover safely nonetheless
+            LOGGER.error('No transactions meet current filters. Redirecting back to /transact')
+            self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
+            return redirect(url_for('data_transactions'))
+
+    def update(self):
+        print('POSTing transaction update')
+        transaction_id = request.args.get('transaction_id')
+
+        transaction_date = request.form['date']
+        posted_date = request.form['post_date']
+        credit_account = request.form['account-credit']
+        debit_account = request.form['account-debit']
+        amount = request.form['amount']
+        category = request.form['category']
+        description = request.form['description']
+        vendor = request.form['vendor']
+        posted_flag = request.form.get('is_posted_selector')
+        if posted_flag == 'on':
+            posted_flag = True
+        else:
+            posted_flag = False
+
+        DATA.update_transaction(transaction_id,
+                                transaction_date=transaction_date,
+                                posted_date=posted_date,
+                                category=category,
+                                amount=amount,
+                                credit_account=credit_account,
+                                debit_account=debit_account,
+                                description=description,
+                                vendor=vendor,
+                                is_posted=posted_flag)
+
+        return redirect(self.current_filter_url())
+
+    def submit(self):
+        print('POSTing transaction')
+        transaction_date = request.form['date']
+        posted_date = request.form['post_date']
+        credit_account = request.form['account-credit']
+        debit_account = request.form['account-debit']
+        amount = request.form['amount']
+        category = request.form['category']
+        description = request.form['description']
+        vendor = request.form['vendor']
+        posted_flag = request.form.get('is_posted_selector')
+
+        if posted_flag == 'on':
+            posted_flag = True
+        else:
+            posted_flag = False
+
+        credit_account = int(DATA.accounts[DATA.accounts['name'] == credit_account]['account_id'])
+
+        if debit_account == '':
+            debit_account = None
+        else:
+            debit_account = int(DATA.accounts[DATA.accounts['name'] == debit_account]['account_id'])
+
+        DATA.add_transaction(
+            transaction_date=transaction_date,
+            category=category,
+            amount=amount,
+            posted_date=posted_date,
+            credit_account=credit_account,
+            debit_account=debit_account,
+            description=description,
+            vendor=vendor,
+            is_posted=posted_flag)
+
+    def delete(self):
+        print('Deleting transaction')
+        transaction_id = request.args.get('transaction_id')
+        DATA.delete_transaction(transaction_id)
+
+
+TRANSACTION_PAGE = TransactionsPage()
 
 
 @APP.route("/transact/", methods=['GET'])
@@ -14,56 +168,31 @@ def data_transactions():
     """
     /transact/<arguments>
 
-    :return:
+    :return: render_template
     """
-    global FILTERS
 
-    # Get Date Filter
-    if request.args.get('date') is not None:
-        FILTERS['date'] = request.args.get('date')
-    date_filters = [i.title() for i in list(DATA.date_filters.keys())]
+    return TRANSACTION_PAGE.get()
 
-    # Get Account Filter
-    if request.args.get('account') is not None:
-        FILTERS['account'] = request.args.get('account')
 
-    # Get Category Filter
-    if request.args.get('category') is not None:
-        FILTERS['category'] = request.args.get('category')
+@APP.route("/transact/submit_transaction", methods=['POST'])
+def submit_transaction():
+    """
+    /transact/submit_transaction
+       Accessed by form
 
-    # Get & Reformat expense_income_filter
-    if request.args.get('income_expense') is not None:
-        FILTERS['income_expense'] = request.args.get('income_expense').lower()
+    :return: redirect
+    """
+    TRANSACTION_PAGE.submit()
+    return redirect(TRANSACTION_PAGE.current_filter_url())
 
-    print('Fetching /transact with filters: {}'.format(dict(FILTERS)))
-    result = fetch_filtered_transactions(FILTERS)
 
-    todays_accounts = DATA.calculate_todays_account_values()
-    for t in todays_accounts:
-        todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
+@APP.route("/transact/update_transaction", methods=['POST'])
+def update_transaction():
+    TRANSACTION_PAGE.update()
+    return redirect(TRANSACTION_PAGE.current_filter_url())
 
-    if result is None or len(result) == 0:
-        print('WARNING! No transactions meet current filters. Redirecting back to /transact')
-        LOGGER.warning('No transactions meet current filters. Redirecting back to /transact')
-        LOGGER.warning('Current Filters: {}'.format(dict(FILTERS)))
-        FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
-        return redirect(url_for('data_transactions'))
-    elif len(result) > 0:
-        result.fillna(value='')
-        return render_template(
-            'transactions_table.html',
-            data=result.to_dict('records'),
-            date_filter=date_filters,
-            accounts=['All'] + list(DATA.accounts['name']),
-            account_values_today=todays_accounts,  # Account value dictionary for just today
-            categories=CATEGORIES,
-            date_filter_default=FILTERS['date'],
-            account_filter_default=FILTERS['account'],
-            category_filter_default=FILTERS['category'],
-            income_expense_filter_default=FILTERS['income_expense'],
-        )
-    else:
-        # Really unlikely to wind up here, but want to recover safely nonetheless
-        LOGGER.error('No transactions meet current filters. Redirecting back to /transact')
-        FILTERS = dict(CONFIG['ui_settings.default_filters'])  # reset filters to default and reset page
-        return redirect(url_for('data_transactions'))
+
+@APP.route("/transact/delete_transaction", methods=['GET'])
+def delete_transaction():
+    TRANSACTION_PAGE.delete()
+    return redirect(TRANSACTION_PAGE.current_filter_url())

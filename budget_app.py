@@ -33,5 +33,4 @@ LOGGER = init_logger() if not logging.getLogger().hasHandlers() else logging.get
 # Attach modules
 from components import budget_home          #  Home Page
 from components import budget_transactions  #  Transaction table display
-from components import modify_transactions  #  Transaction add, remove, update functions
 from components import update               #  Update website from when github webhook posts
