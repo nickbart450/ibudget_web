@@ -541,7 +541,7 @@ class BudgetData:
         """
         # Fetch transactions from db and order them by date
         transactions = self.get_transactions().copy().sort_index()
-        transactions = transactions.sort_values(by=['transaction_date'])
+        transactions = transactions.sort_values(by=['posted_date', 'transaction_date'])
 
         # Fetch account info from database
         accounts = self.get_accounts().set_index('account_id')
@@ -1008,6 +1008,38 @@ class BudgetData:
         return data
 
 
+class Account:
+    def __init__(self, account_id: int, database: BudgetData):
+        self.account_id = int(account_id)
+
+        account = database.get_accounts().loc[account_id]
+        self.name = account['name']
+        self.starting_balance = account['starting_value']
+        self.transaction_type = account['transaction_type']
+        self.account_type = account['account_type']
+
+        self.transactions = database.get_transactions(account_filter=account_id)
+        self.balance = 0
+
+        print('\nConfiguring account {} from database...'.format(self.account_id))
+        print('account id:', self.account_id,
+              '\naccount name:', self.name,
+              '\nstarting balance:', self.starting_balance,
+              '\ntransaction type:', self.transaction_type,
+              '\nacccount type:', self.account_type)
+        if self.transactions is None:
+            print('No transactions')
+        else:
+            print('transactions df info', self.transactions.info())
+
+
+class CreditCard(Account):
+    def __init__(self, account_id, database):
+        super().__init__(account_id, database)
+
+
+
+
 def fetch_filtered_transactions(filters):
     # Fetch filtered results
     result = DATA.get_transactions(
@@ -1081,15 +1113,21 @@ if __name__ == "__main__":
     # print(DATA.get_transactions(account_filter=9721))
     # print(DATA.get_cc_payments(account=9721))
 
-    # print(DATA.get_cc_payments(9721))
-
-    DATA.get_transactions().to_csv('./2023transacts.csv')
-
-    print(DATA.calculate_account_values(append_transaction_details=True))
-
     # ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'q1']
     # for n in ['q1', 'q2', 'q3', 'q4', 'all']:
     #     print('\n\t{}'.format(n.upper()))
     #     DATA.category_summary(date_filter=n)
+
+    # print(DATA.get_cc_payments(9721))
+    # DATA.get_transactions().to_csv('./2023transacts.csv')
+    # print(DATA.calculate_account_values(append_transaction_details=True))
+    DATA.calculate_account_values(append_transaction_details=True).to_csv('./2023_account_vals.csv')
+
+    ACCOUNTS = DATA.get_accounts()
+
+    for i in ACCOUNTS.iterrows():
+        acc = CreditCard(i[0], DATA)
+        print(acc.account_id, acc.name)
+
 
     DATA.close()
