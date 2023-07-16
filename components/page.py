@@ -1,7 +1,5 @@
 # page.py -- Base webpage class and associated functions for iBudget-web
 # External Imports
-import os
-os.chdir('/mnt/Data-x/Documents/1-Projects/Code/ibudget_web')
 
 from flask import render_template
 
