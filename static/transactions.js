@@ -7,12 +7,34 @@ var cred_account_btns = document.getElementsByClassName("cred_account_btn"); // 
 var deb_account_btns = document.getElementsByClassName("deb_account_btn"); // Dropdown buttons for Debit Account Input (Transaction Add Form)
 var category_btns = document.getElementsByClassName("cat_btn"); // Dropdown buttons for Category Input (Transaction Add Form)
 
+const today = new Date();
+
 // Setup Function for DataTables
-function initDataTables(raw_data){
-    const today = new Date();
-    $('#budget_table').DataTable({
+function initPostedTable(raw_data){
+    $('#budget_table_posted').DataTable({
         paging: false,
-        scrollY: 0.805*($( window ).height())+'px',
+        scrollY: 0.205*($( window ).height())+'px',
+        scrollCollapse: true,
+        order: [[1, 'desc']],
+        rowCallback: function(row, data, index) {
+            var date_table = new Date(raw_data[index]['transaction_date']+ "T00:00:00");
+            // console.log(date_table, today)
+            if (raw_data[index]['is_posted'] == 'checked') {}
+            else {
+                $(row).css('background-color', '#2E4A62');
+            };
+            if (date_table > today) {
+                $(row).css('background-color', 'rgba(76, 115, 149, 0.36)');
+                $(row).css('color', 'rgba(255, 255, 255, 0.53)');
+            } else { };
+        }
+    });
+};
+
+function initUpcomingTable(raw_data){
+    $('#budget_table_upcoming').DataTable({
+        paging: false,
+        scrollY: 0.55*($( window ).height())+'px',
         scrollCollapse: true,
         order: [[1, 'asc']],
         rowCallback: function(row, data, index) {

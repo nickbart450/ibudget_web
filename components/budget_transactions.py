@@ -51,15 +51,19 @@ class TransactionsPage(page.Page):
         print('Fetching /transact with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /transact with filters: {}'.format(dict(self.filters)))
 
-        # Get transaction data from database table with current filters
-        result = fetch_filtered_transactions(self.filters)
-        result.fillna(value='')
-        self.transactions = result
-
         # Calculate today's account values from database
         self.todays_accounts = DATA.calculate_todays_account_values()
         for t in self.todays_accounts:
             self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
+
+        # Get transaction data from database table with current filters
+        result = fetch_filtered_transactions(self.filters)
+        result.fillna(value='')
+
+        # Split Transactions by posted status
+        self.transactions = result.groupby('is_posted')
+        self.posted_transactions = self.transactions.get_group('checked')
+        self.upcoming_transactions = self.transactions.get_group('')
 
         if self.transactions is None or len(self.transactions) == 0:
             print('WARNING! No transactions meet current filters. Redirecting back to /transact')
@@ -68,10 +72,11 @@ class TransactionsPage(page.Page):
             self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
             return redirect(url_for('data_transactions'))
 
-        elif len(self.transactions) > 0:
+        elif len(self.posted_transactions) > 0 or len(self.upcoming_transactions) > 0:
             return render_template(
                 self.template,
-                data=self.transactions.to_dict('records'),
+                posted_data=self.posted_transactions.to_dict('records'),
+                upcoming_data=self.upcoming_transactions.to_dict('records'),
                 date_filter=self.date_filters,
                 accounts=['All'] + list(DATA.accounts['name']),
                 account_values_today=self.todays_accounts,  # Account value dictionary for just today

@@ -6,6 +6,21 @@
 
 <script type="text/javascript" src="{{ url_for('static', filename='transactions.js') }}"></script>
 
+<!-- OnLoad jQuery Script-->
+<script type="text/javascript">
+    $(function(){
+        $('#'+'{{ income_expense_filter_default }}').prop('checked',true);
+        console.log('radio button set on {{ income_expense_filter_default }}');
+
+        initPostedTable( {{ posted_data | safe }} );
+        initUpcomingTable( {{ upcoming_data | safe }} );
+        console.log('datatable initialized');
+
+        initListeners();
+        console.log('listeners initialized');
+    });
+</script>
+
 <div id="transactions" class="w3-margin">
   <!--  Top Row (Sidebar + Main Transaction Table) -->
   <div class="w3-section w3-row">
@@ -230,9 +245,9 @@
 
     <!--  Main Transactions Table  -->
     <div>
-        {% block table %}
+      {% block table %}
         <div class="w3-container">Transaction Table Here</div>
-        {% endblock %}
+      {% endblock %}
     </div>
   </div>
 </div>
