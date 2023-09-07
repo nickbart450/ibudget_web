@@ -132,6 +132,7 @@ class BudgetData:
         return None
 
     def get_accounts(self):
+        """Returns a pandas dataframe version of the database table. Index is account_id."""
         if not self.dbConnected:
             raise RuntimeError('database not connected')
 
@@ -833,12 +834,169 @@ class BudgetData:
 
         return amount
 
+    def calculate_burn_from_date(self, date):
+        """
+            Returns dataframe of account values over time. Index is sequential after reordering transactions chronologically
+
+            Returned columns:
+                ['transaction_id', 'transaction_date', 'posted_date', '0', '100', '101', '102', '103', '104', '201', '202',
+                '300', '4895', '5737', '9721', 'is_posted']
+
+            :param date: Date after which no income occurs
+            :return: pandas.DataFrame
+        """
+        # Fetch transactions from db and order them by date
+        transactions = self.get_transactions().copy().sort_index()
+        transactions = transactions.sort_values(by=['posted_date', 'transaction_date'])
+
+        # Fetch account info from database
+        accounts = self.get_accounts().set_index('account_id')
+        asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
+        asset_accounts_no_invest = asset_accounts.loc[asset_accounts['transaction_type'] != 'investment']
+
+        # Fix type of date input
+        date = pd.to_datetime(date)
+
+        # Setup transient series to use through iterations
+        account_values: pd.DataFrame = pd.DataFrame()  # Setup dataframe
+        starting_vals_dict = {
+            'transaction_id': 'start',
+            'transaction_date': 'start',
+            'posted_date': 'start'}
+        try:
+            for v in accounts.index:
+                starting_vals_dict[str(v)] = [float(accounts.at[v, 'starting_value'])]
+            values = pd.Series(pd.DataFrame.from_dict(starting_vals_dict).iloc[0])
+        except KeyError as err:
+            if 'starting_value' in str(err):
+                print('WARNING! Old database detected. Please update account table with starting_value column')
+                self.logger.warning('Old database detected. Please update account table with starting_value column')
+                raise RuntimeError('missing starting_value column in ACCOUNTS table of db')
+            else:
+                raise RuntimeError('Unknown db error while accessing starting values')
+
+        # -- Main Loop: iterates over each transaction to calculate account value over time
+        i = 0
+        include_retire = False
+        monthly_expense = float(self.config['personal']['average_monthly_expend'])
+
+        last = transactions.iloc[-1]
+        outstanding_transactions = transactions.copy()
+        for transaction_id in transactions.index:
+            transaction_date = transactions.at[transaction_id, 'transaction_date']
+            posted_date = transactions.at[transaction_id, 'posted_date']
+            debit_account = int(transactions.at[transaction_id, 'debit_account_id'])  # To
+            credit_account = int(transactions.at[transaction_id, 'credit_account_id'])  # From
+
+            # Skip iteration if after burn start date
+            income_check = accounts.loc[credit_account]['transaction_type'] == 'income'
+            date_check = posted_date > date
+            if income_check and date_check:
+                # print(self.get_transaction(self.dbConnection, transaction_id))
+                outstanding_transactions = outstanding_transactions.drop(transaction_id)
+                continue
+
+            # Find before value of accounts
+            debit_acct_0 = values[str(debit_account)]
+            credit_acct_0 = values[str(credit_account)]
+
+            # Update value dictionary information
+            values['transaction_id'] = transaction_id
+            values['transaction_date'] = transaction_date
+            values['posted_date'] = posted_date
+            values['is_posted'] = transactions.at[transaction_id, 'is_posted']
+
+            # Calculate new account values
+            values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.at[transaction_id, 'amount']), 2)
+            values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.at[transaction_id, 'amount']), 2)
+
+            # Calculate Combined Account Values Loop
+            account_sum = 0
+            for acc in list(asset_accounts.index):
+                if 'retire' in accounts.at[acc, 'name'].lower():
+                    # pre-tax money gets adjusted here if you decide to include these accounts in your burn
+                    if include_retire:
+                        y = float(values[str(acc)]) * (1 - float(self.config['personal']['retirement_tax_rate']))
+                    else:
+                        y = 0
+                else:
+                    y = values[str(acc)]
+
+                account_sum += round(y, 2)
+            values['account_sum'] = account_sum
+
+            account_sum_no_invest = 0
+            for acc in list(asset_accounts_no_invest.index):
+                account_sum_no_invest += float(values[str(acc)])
+
+            account_sum_no_invest = round(account_sum_no_invest, 2)
+            values['account_sum_no_invest'] = account_sum_no_invest
+
+            # Calculate Burn Loop
+            outstanding_expenses = outstanding_transactions.loc[transactions['debit_account_id'] == 0]
+
+            expense_sum = 0
+            burn_time, burn_time_full, burn_time_part = 0, 0, 0
+            full_set = False
+            no_invest_set = False
+            for e in outstanding_expenses.iterrows():
+                expense_sum += round(float(e[1]['amount']), 2)
+
+                if expense_sum > account_sum_no_invest and not no_invest_set:
+                    # Result.value is in nanoseconds. Converting ns to months (assumed 30 days/month)
+                    burn_time_part = pd.Timedelta(e[1]['transaction_date'] - transaction_date).value/(30*24*3600*1000000000)
+                    no_invest_set = True
+
+                if expense_sum > account_sum and not full_set:
+                    # Result.value is in nanoseconds. Converting ns to months (assumed 30 days/month)
+                    burn_time_full = pd.Timedelta(e[1]['transaction_date'] - transaction_date).value/(30*24*3600*1000000000)
+                    full_set = True
+
+                if e[1]['transaction_id'] == outstanding_expenses.iloc[-1]['transaction_id']:
+                    # Result.value is in nanoseconds. Converting ns to months (assumed 30 days/month)
+                    burn_time = pd.Timedelta(last['transaction_date'] - transaction_date).value/(30*24*3600*1000000000)
+                    if not full_set:
+                        burn_time_full = burn_time + (account_sum - expense_sum)/monthly_expense
+                        full_set = True
+
+                    if not no_invest_set:
+                        burn_time_part = burn_time + (account_sum_no_invest - expense_sum)/monthly_expense
+                        no_invest_set = True
+
+                if full_set and no_invest_set:
+                    break
+
+            values['burntime_full'] = burn_time_full
+            values['burntime_no_invest'] = burn_time_part
+
+            # Drop
+            outstanding_transactions = outstanding_transactions.drop(transaction_id)
+
+            # Append that new set of values to the history dataframe
+            account_values = pd.concat([account_values, values.to_frame().T])
+
+            i += 1
+
+        # Append other info from transactions table
+        account_values.set_index('transaction_id', inplace=True)
+        account_val_cols = list(account_values.columns)
+        append_cols = [i for i in transactions.columns if i not in account_val_cols]
+        account_values = pd.concat([account_values, transactions.loc[list(account_values.index), append_cols]], axis=1)
+
+        # Reset index of table so it is sequential
+        account_values.reset_index(inplace=True, drop=True)
+
+        self.account_values = account_values
+        return account_values
+
     def category_summary(self, date_filter='all'):
         transactions = self.get_transactions(date_filter=date_filter)
         cat_width = 30
         amount_width = 10
 
-        for i in transactions.category.unique():
+        transactions = transactions.loc[transactions['category'] != 'Investment']
+
+        for i in sorted(transactions.category.unique()):
             str_1 = '{}{}'.format('_' * (cat_width - len(i) - 9), i)
             str_2 = '${:.2f}'.format(round(sum(transactions[transactions['category'] == i].amount), 2))
             print('Category:', str_1, 'Amount:', '_' * (amount_width - len(str_2)), str_2)
@@ -1045,8 +1203,6 @@ class CreditCard(Account):
         super().__init__(account_id, database)
 
 
-
-
 def fetch_filtered_transactions(filters):
     # Fetch filtered results
     result = DATA.get_transactions(
@@ -1120,21 +1276,22 @@ if __name__ == "__main__":
     # print(DATA.get_transactions(account_filter=9721))
     # print(DATA.get_cc_payments(account=9721))
 
-    # ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'q1']
-    # for n in ['q1', 'q2', 'q3', 'q4', 'all']:
-    #     print('\n\t{}'.format(n.upper()))
-    #     DATA.category_summary(date_filter=n)
+    # ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']
+    for n in ['q1', 'q2', 'q3', 'q4', 'all']:
+        print('\n\t{}'.format(n.upper()))
+        DATA.category_summary(date_filter=n)
 
     # print(DATA.get_cc_payments(9721))
     # DATA.get_transactions().to_csv('./2023transacts.csv')
     # print(DATA.calculate_account_values(append_transaction_details=True))
-    DATA.calculate_account_values(append_transaction_details=True).to_csv('./2023_account_vals.csv')
+    # DATA.calculate_account_values(append_transaction_details=True).to_csv('./2023_account_vals.csv')
 
-    ACCOUNTS = DATA.get_accounts()
+    # ACCOUNTS = DATA.get_accounts()
+    #
+    # for i in ACCOUNTS.iterrows():
+    #     acc = CreditCard(i[0], DATA)
+    #     print(acc.account_id, acc.name)
 
-    for i in ACCOUNTS.iterrows():
-        acc = CreditCard(i[0], DATA)
-        print(acc.account_id, acc.name)
-
+    # print(DATA.calculate_burn_from_date('2023-12-30'))
 
     DATA.close()
