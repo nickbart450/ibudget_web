@@ -166,9 +166,16 @@ class BudgetData:
             d2 = self.date_filters[date_filter][1]
             query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
             query = query.format(date_type, d1, d2)
-        elif start_date is not None and end_date is not None:
-            d1 = start_date
-            d2 = end_date
+        elif start_date is not None or end_date is not None:
+            if start_date is None:
+                d1 = '1970-01-01'
+                d2 = end_date
+            elif end_date is None:
+                d1 = start_date
+                d2 = '2100-12-31'
+            else:
+                d1 = start_date
+                d2 = end_date
             query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
             query = query.format(date_type, d1, d2)
         else:
@@ -845,17 +852,13 @@ class BudgetData:
             :param date: Date after which no income occurs
             :return: pandas.DataFrame
         """
-        # Fetch transactions from db and order them by date
-        transactions = self.get_transactions().copy().sort_index()
-        transactions = transactions.sort_values(by=['posted_date', 'transaction_date'])
+        # Fix type of date input
+        date = pd.to_datetime(date)
 
         # Fetch account info from database
         accounts = self.get_accounts().set_index('account_id')
         asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
         asset_accounts_no_invest = asset_accounts.loc[asset_accounts['transaction_type'] != 'investment']
-
-        # Fix type of date input
-        date = pd.to_datetime(date)
 
         # Setup transient series to use through iterations
         account_values: pd.DataFrame = pd.DataFrame()  # Setup dataframe
@@ -880,9 +883,15 @@ class BudgetData:
         include_retire = False
         monthly_expense = float(self.config['personal']['average_monthly_expend'])
 
+        # Fetch transactions from db and order them by date
+        transactions = self.get_transactions(start_date=date).copy().sort_index()
+        # print(transactions)
+        transactions = transactions.sort_values(by=['posted_date', 'transaction_date'])
+
         last = transactions.iloc[-1]
         outstanding_transactions = transactions.copy()
         for transaction_id in transactions.index:
+            # print(transaction_id)
             transaction_date = transactions.at[transaction_id, 'transaction_date']
             posted_date = transactions.at[transaction_id, 'posted_date']
             debit_account = int(transactions.at[transaction_id, 'debit_account_id'])  # To
@@ -1277,9 +1286,9 @@ if __name__ == "__main__":
     # print(DATA.get_cc_payments(account=9721))
 
     # ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']
-    for n in ['q1', 'q2', 'q3', 'q4', 'all']:
-        print('\n\t{}'.format(n.upper()))
-        DATA.category_summary(date_filter=n)
+    # for n in ['q1', 'q2', 'q3', 'q4', 'all']:
+    #     print('\n\t{}'.format(n.upper()))
+    #     DATA.category_summary(date_filter=n)
 
     # print(DATA.get_cc_payments(9721))
     # DATA.get_transactions().to_csv('./2023transacts.csv')
@@ -1292,6 +1301,10 @@ if __name__ == "__main__":
     #     acc = CreditCard(i[0], DATA)
     #     print(acc.account_id, acc.name)
 
-    # print(DATA.calculate_burn_from_date('2023-12-30'))
+    # --- SANDBOX ---
+    # date = pd.to_datetime('2023-09-01')
+    # print(DATA.get_transactions(start_date=date))
+    print(DATA.calculate_burn_from_date('2023-09-01'))
+
 
     DATA.close()
