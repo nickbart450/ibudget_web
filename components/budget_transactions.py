@@ -1,3 +1,5 @@
+import pandas as pd
+
 from components import page
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
@@ -62,8 +64,17 @@ class TransactionsPage(page.Page):
 
         # Split Transactions by posted status
         self.transactions = result.groupby('is_posted')
-        self.posted_transactions = self.transactions.get_group('checked')
-        self.upcoming_transactions = self.transactions.get_group('')
+        try:
+            self.posted_transactions = self.transactions.get_group('checked')
+        except KeyError as e:
+            self.posted_transactions = pd.DataFrame(columns=result.columns)
+            LOGGER.exception(e)
+
+        try:
+            self.upcoming_transactions = self.transactions.get_group('')
+        except KeyError as e:
+            self.upcoming_transactions = pd.DataFrame(columns=result.columns)
+            LOGGER.exception(e)
 
         if self.transactions is None or len(self.transactions) == 0:
             print('WARNING! No transactions meet current filters. Redirecting back to /transact')
@@ -71,7 +82,6 @@ class TransactionsPage(page.Page):
             LOGGER.warning('Current Filters: {}'.format(dict(self.filters)))
             self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
             return redirect(url_for('data_transactions'))
-
         elif len(self.posted_transactions) > 0 or len(self.upcoming_transactions) > 0:
             return render_template(
                 self.template,
