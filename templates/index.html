@@ -183,42 +183,6 @@
       <!-- Burn Time Chart -->
       <div id="burn_time_chart" class="w3-content w3-card" style="height: 400px; max-width:1200px ;"></div><br>
 
-      <!-- Account Value Table -->
-      <div class="w3-content w3-card" style="max-width:1200px">
-        <table id="account_value_table" class="w3-table-all" style="width:100%; color:black">
-          <thead>
-            <tr>
-              <th class="w3-center"></th>
-              <th class="w3-center">Date</th>
-              {% for account in account_view_order %}
-                <th class="w3-center">{{ accounts[account]["name"] }}</th>
-              {% endfor %}
-            </tr>
-          </thead>
-
-          <tbody style="font-size:12px">
-            {% for row in account_values_by_transaction %}
-              <tr>
-                <!-- Details Button-->
-                {% if row['is_posted'] -%}
-                  <td class="w3-center"><button onclick="alert({{ row['transaction_id'] }})" class="w3-black w3-round-large"><i class="fa fa-bars"></i></button></td>
-                {% else -%}
-                  <td></td>
-                {% endif %}
-
-                <!-- Data-->
-                <td class="w3-center">{{ row['transaction_date'] }}</td>
-
-                {% for account in account_view_order %}
-                  <td class="w3-center">{{ row[account] }}</td>
-                {% endfor %}
-
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-
-      </div>
     </div>
   </div>
   {% endblock %}

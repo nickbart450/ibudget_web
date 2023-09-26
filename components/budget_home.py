@@ -136,13 +136,12 @@ class Home(page.Page):
 
         return self.render(
             self.template,
+            accounts=self.accounts.to_dict('index'),  # Used to translate account_id to name
             account_values_today=self.todays_accounts,  # Account value dictionary for just today
             account_values_by_day=self.asset_account_values,  # Account value dictionary by day for CanvasJS stacked bar chart
             burn_time_by_day=self.burn_time_full,  # List of dictionaries describing burn time
             burn_time_by_day_no_invest=self.burn_time_no_invest,  # List of dictionaries describing burn time
             burn_time_retirement=include_retire_str,
-            account_values_by_transaction=self.account_vals.to_dict('records'),  # Used in table for account value per transaction
-            accounts=self.accounts.to_dict('index'),  # Used to translate account_id to name
             account_view_order=self.asset_accounts_no_invest,  # List of account ids, ordered by total value largest to smallest
         )
 
