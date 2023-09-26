@@ -97,6 +97,8 @@
         text: "Burn Time"
       },
       axisX:{
+        interval: 30,
+        intervalType: "day",
         crosshair: {
           enabled: true,
           snapToDataPoint: true
@@ -106,12 +108,12 @@
         title: "Months to 0",
         valueFormatString: "0.00",
         minimum: 0,
-        maximum: 18,
+        maximum: 12,
         crosshair: {
           enabled: true,
           snapToDataPoint: true,
           labelFormatter: function(e) {
-            return "$" + CanvasJS.formatNumber(e.value, "0.00");
+            return CanvasJS.formatNumber(e.value, "0.00");
           }
         }
       },
@@ -123,13 +125,8 @@
         type: "area",
         color: "rgba(41,0,66,0.8)",
         markerSize: 0,
-        xValueFormatString: "DD MMM",
         yValueFormatString: "0.00",
-        dataPoints: [
-          {% for i in burn_time_by_day %}
-            { x: new Date({{ i['year'] }}, {{ i['month'] }} - 1, {{ i['day'] }}), y: {{ i['burn'] }} },
-          {% endfor %}
-        ]
+        dataPoints: {{ burn_time_by_day | safe }},
       },
       {
         name: "Cash-Only Burn",
@@ -138,13 +135,8 @@
         type: "area",
         color: "rgba(131,60,60,0.7)",
         markerSize: 0,
-        xValueFormatString: "DD MMM",
         yValueFormatString: "0.00",
-        dataPoints: [
-          {% for j in burn_time_by_day_no_invest %}
-            { x: new Date({{ j['year'] }}, {{ j['month'] }} - 1, {{ j['day'] }}), y: {{ j['burn'] }} },
-          {% endfor %}
-        ],
+        dataPoints: {{ burn_time_by_day_no_invest | safe }},
       }]
     };
 

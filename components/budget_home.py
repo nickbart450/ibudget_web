@@ -89,11 +89,9 @@ class Home(page.Page):
 
                 monthly_expense = float(self.config['personal']['average_monthly_expend'])
                 b_full = round(account_sum / monthly_expense, 2)
-                self.burn_time_full.append({"year": y, "month": m, "day": d, "burn": b_full})
-
                 b_part = round(account_sum_no_invest / monthly_expense, 2)
-                self.burn_time_no_invest.append({"year": y, "month": m, "day": d, "burn": b_part})
-
+                self.burn_time_full.append({"label": self.account_vals.at[i, 'transaction_date'].strftime('%Y-%m-%d'), "y": b_full})
+                self.burn_time_no_invest.append({"label": self.account_vals.at[i, 'transaction_date'].strftime('%Y-%m-%d'), "y": b_part})
                 prev_date = date
 
         # Sort accounts for stacked chart based on cumulative value over the year
