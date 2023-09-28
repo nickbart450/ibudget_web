@@ -841,8 +841,10 @@ class BudgetData:
 
         return amount
 
-    def calculate_burn_from_date(self, date):
+    def calculate_burn_from_date(self, date, include_retirement=False):
         """
+            INACTIVE -- Work in Progress function
+
             Returns dataframe of account values over time. Index is sequential after reordering transactions chronologically
 
             Returned columns:
@@ -880,7 +882,6 @@ class BudgetData:
 
         # -- Main Loop: iterates over each transaction to calculate account value over time
         i = 0
-        include_retire = False
         monthly_expense = float(self.config['personal']['average_monthly_expend'])
 
         # Fetch transactions from db and order them by date
@@ -896,14 +897,6 @@ class BudgetData:
             posted_date = transactions.at[transaction_id, 'posted_date']
             debit_account = int(transactions.at[transaction_id, 'debit_account_id'])  # To
             credit_account = int(transactions.at[transaction_id, 'credit_account_id'])  # From
-
-            # Skip iteration if after burn start date
-            income_check = accounts.loc[credit_account]['transaction_type'] == 'income'
-            date_check = posted_date > date
-            if income_check and date_check:
-                # print(self.get_transaction(self.dbConnection, transaction_id))
-                outstanding_transactions = outstanding_transactions.drop(transaction_id)
-                continue
 
             # Find before value of accounts
             debit_acct_0 = values[str(debit_account)]
@@ -924,7 +917,7 @@ class BudgetData:
             for acc in list(asset_accounts.index):
                 if 'retire' in accounts.at[acc, 'name'].lower():
                     # pre-tax money gets adjusted here if you decide to include these accounts in your burn
-                    if include_retire:
+                    if include_retirement:
                         y = float(values[str(acc)]) * (1 - float(self.config['personal']['retirement_tax_rate']))
                     else:
                         y = 0
@@ -1003,17 +996,28 @@ class BudgetData:
         cat_width = 30
         amount_width = 10
 
-        transactions = transactions.loc[transactions['category'] != 'Investment']
+        transactions = transactions.loc[
+            (transactions['category'] != 'Investment') &
+            (transactions['category'] != 'Transfer') &
+            (transactions['category'] != 'Transfer ')
+        ]
 
-        for i in sorted(transactions.category.unique()):
-            str_1 = '{}{}'.format('_' * (cat_width - len(i) - 9), i)
-            str_2 = '${:.2f}'.format(round(sum(transactions[transactions['category'] == i].amount), 2))
-            print('Category:', str_1, 'Amount:', '_' * (amount_width - len(str_2)), str_2)
+        out_transactions = transactions.loc[transactions['debit_account_id'] == 0]
+        in_transactions = transactions.loc[
+            (transactions['credit_account_id'] == 0) |
+            (transactions['credit_account_id'] == 300)
+        ]
 
-        debit_sum = round(sum(transactions[transactions['debit_account_id'] == 0].amount), 2)
-        credit_sum = round(sum(transactions[(transactions['credit_account_id'] == 0) |
-                                            (transactions['credit_account_id'] == 300)].amount), 2)
-        print('Net Debits (outflow): ${:.2f}'.format(debit_sum))
+        print('            Category |  Inflow   |  Outflow  |')
+        for category in sorted(transactions.category.unique()):
+            str_1 = '{}{}'.format(' ' * (cat_width - len(category) - 9), category)
+            str_2 = '${:.2f}'.format(round(sum(in_transactions[transactions['category'] == category].amount), 2))
+            str_3 = '${:.2f}'.format(round(sum(out_transactions[transactions['category'] == category].amount), 2))
+            print(str_1, '_' * (amount_width - len(str_2)), str_2, '_' * (amount_width - len(str_3)), str_3)
+
+        debit_sum = round(sum(out_transactions.amount), 2)
+        credit_sum = round(sum(in_transactions.amount), 2)
+        print('\nNet Debits (outflow): ${:.2f}'.format(debit_sum))
         print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
         print('Net Delta   (in-out): ${:.2f}'.format(credit_sum-debit_sum))
         return None
@@ -1285,26 +1289,22 @@ if __name__ == "__main__":
     # print(DATA.get_transactions(account_filter=9721))
     # print(DATA.get_cc_payments(account=9721))
 
-    # ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']
-    # for n in ['q1', 'q2', 'q3', 'q4', 'all']:
-    #     print('\n\t{}'.format(n.upper()))
-    #     DATA.category_summary(date_filter=n)
+    # -- TOOLS
+    # COPY HERE: ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']['july', 'august', 'september', 'october', 'november', 'december']
+    for n in ['july', 'august', 'september', 'october', 'november', 'december', 'all']:
+        print('\n\t{}'.format(n.upper()))
+        DATA.category_summary(date_filter=n)
 
-    # print(DATA.get_cc_payments(9721))
     # DATA.get_transactions().to_csv('./2023transacts.csv')
-    # print(DATA.calculate_account_values(append_transaction_details=True))
-    # DATA.calculate_account_values(append_transaction_details=True).to_csv('./2023_account_vals.csv')
 
-    # ACCOUNTS = DATA.get_accounts()
-    #
-    # for i in ACCOUNTS.iterrows():
-    #     acc = CreditCard(i[0], DATA)
-    #     print(acc.account_id, acc.name)
+    # DATA.calculate_account_values(append_transaction_details=True).to_csv('./2023_account_vals.csv')
 
     # --- SANDBOX ---
     # date = pd.to_datetime('2023-09-01')
     # print(DATA.get_transactions(start_date=date))
-    print(DATA.calculate_burn_from_date('2023-09-01'))
+    # burn_table = DATA.calculate_burn_from_date('2023-09-01')
+    # print(burn_table.columns)
+    # print(burn_table[['transaction_date', 'account_sum', 'account_sum_no_invest', 'burntime_full', 'burntime_no_invest']])
 
 
     DATA.close()
