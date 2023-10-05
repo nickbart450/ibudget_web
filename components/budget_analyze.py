@@ -20,6 +20,8 @@ class AnalyzePage(page.Page):
         self.filters = dict(self.config['ui_settings.default_filters'])
         self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
+        self.category_summary_columns = ['Category', 'Expenses', 'Expenses %', 'Income', 'Income %']
+
     def current_filter_url(self):
 
         url = url_for('analyze') + \
@@ -58,34 +60,14 @@ class AnalyzePage(page.Page):
         for t in self.todays_accounts:
             self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
 
-        result = self.category_summary()
+        # Get category summary data and render page
+        try:
+            result = self.category_summary()
+        except KeyError as e:
+            result = pd.DataFrame(columns=self.category_summary_columns)
+            LOGGER.exception(e)
+            LOGGER.warning('No data met current filters: {}'.format(dict(self.filters)))
 
-        # # Get transaction data from database table with current filters
-        # result = fetch_filtered_transactions(self.filters)
-        # result = result.fillna(value='')
-        #
-        # # Split Transactions by posted status
-        # self.transactions = result.groupby('is_posted')
-        # try:
-        #     self.posted_transactions = self.transactions.get_group('checked')
-        # except KeyError as e:
-        #     self.posted_transactions = pd.DataFrame(columns=result.columns)
-        #     LOGGER.exception(e)
-        #
-        # try:
-        #     self.upcoming_transactions = self.transactions.get_group('')
-        # except KeyError as e:
-        #     self.upcoming_transactions = pd.DataFrame(columns=result.columns)
-        #     LOGGER.exception(e)
-        #
-        # if self.transactions is None or len(self.transactions) == 0:
-        #     print('WARNING! No transactions meet current filters. Redirecting back to /analyze')
-        #     LOGGER.warning('No transactions meet current filters. Redirecting back to /analyze')
-        #     LOGGER.warning('Current Filters: {}'.format(dict(self.filters)))
-        #     self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
-        #     return redirect(url_for('analyze'))
-        #
-        # elif len(self.posted_transactions) > 0 or len(self.upcoming_transactions) > 0:
         return render_template(
             self.template,
             data_columns=result.columns.to_list(),
@@ -99,12 +81,6 @@ class AnalyzePage(page.Page):
             category_filter_default=self.filters['category'],
             income_expense_filter_default=self.filters['income_expense'],
         )
-        #
-        # else:
-        #     # Really unlikely to wind up here, but want to recover safely nonetheless
-        #     LOGGER.error('No transactions meet current filters. Redirecting back to /analyze')
-        #     self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
-        #     return redirect(url_for('analyze'))
 
     def category_summary(self):
         # Summary by category
@@ -155,7 +131,7 @@ class AnalyzePage(page.Page):
         result = result.reindex(index=new_index)
 
         result['Category'] = result.index  # Duplicate Category index labels to column
-        result = result[['Category', 'Expenses', 'Expenses %', 'Income', 'Income %']]  # Reorder columns
+        result = result[self.category_summary_columns]  # Reorder columns
 
         return result
 
