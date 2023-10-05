@@ -1,5 +1,10 @@
 {% extends 'index.html' %}
 {% block body %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+
+<!-- Page Functions -->
+<script type="text/javascript" src="{{ url_for('static', filename='analyze.js') }}"></script>
 
 <!-- OnLoad jQuery Script-->
 <script type="text/javascript">
@@ -86,10 +91,26 @@
     </div>
 
     <!--  Category Summary Table  -->
-    <div>
-      {% block cat_table %}
-        <div class="w3-container">Category Summary Table Here</div>
-      {% endblock %}
+    <div id="category_summary_table" class="w3-rest" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
+      <!-- Category Summary-->
+      <table id="analyze_category_summary">
+        <thead>
+          <tr>
+            {% for col in data_columns %}
+            <th class="w3-center">{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody style="font-size:12px">
+          {% for item in data %}
+          <tr>
+            {% for col in data_columns %}
+            <td class="w3-center">{{ item[col] }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

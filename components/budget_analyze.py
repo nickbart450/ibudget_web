@@ -13,7 +13,7 @@ class AnalyzePage(page.Page):
         """
 
         super().__init__()
-        self.template = 'analyze_table.html'
+        self.template = 'analyze.html'
         self.name = 'analyze'
 
         self.categories = self.config['ui_settings']['categories'].replace('\n', '').split(',')
@@ -25,7 +25,7 @@ class AnalyzePage(page.Page):
     def current_filter_url(self):
 
         url = url_for('analyze') + \
-              "?income_expense={}&date={}&account={}&category={}&date_start=&date_end=".format(
+              "?date={}&account={}&date_start=&date_end=".format(
                   self.filters['income_expense'],
                   self.filters['date'],
                   self.filters['account'],
