@@ -26,7 +26,6 @@ class AnalyzePage(page.Page):
 
         url = url_for('analyze') + \
               "?date={}&account={}&date_start=&date_end=".format(
-                  self.filters['income_expense'],
                   self.filters['date'],
                   self.filters['account'],
                   self.filters['category'],
@@ -44,14 +43,6 @@ class AnalyzePage(page.Page):
         if request.args.get('account') is not None:
             self.filters['account'] = request.args.get('account')
 
-        # Get Category Filter
-        if request.args.get('category') is not None:
-            self.filters['category'] = request.args.get('category')
-
-        # Get & Reformat expense_income_filter
-        if request.args.get('income_expense') is not None:
-            self.filters['income_expense'] = request.args.get('income_expense').lower()
-
         print('Fetching /analyze with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /analyze with filters: {}'.format(dict(self.filters)))
 
@@ -63,23 +54,39 @@ class AnalyzePage(page.Page):
         # Get category summary data and render page
         try:
             result = self.category_summary()
+
+            category_summary_table = result[self.category_summary_columns].fillna(value='$0.00').to_dict('records')
+            expenses_pie_chart = result[['Category', 'expenses_percent']].fillna(value=0)
+            expenses_pie_chart = (expenses_pie_chart
+                                  .drop(expenses_pie_chart[expenses_pie_chart['expenses_percent'] == 0].index)
+                                  .sort_values('expenses_percent')
+                                  .to_dict('records'))
+
+            income_pie_chart = result[['Category', 'income_percent']].fillna(value=0)
+            income_pie_chart = (income_pie_chart
+                                .drop(income_pie_chart[income_pie_chart['income_percent'] < 0.25].index)
+                                .sort_values('income_percent')
+                                .to_dict('records'))
+
         except KeyError as e:
-            result = pd.DataFrame(columns=self.category_summary_columns)
+            category_summary_table = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
+            expenses_pie_chart = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
+            income_pie_chart = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
             LOGGER.exception(e)
             LOGGER.warning('No data met current filters: {}'.format(dict(self.filters)))
 
         return render_template(
             self.template,
-            data_columns=result.columns.to_list(),
-            data=result.to_dict('records'),
+            data_columns=self.category_summary_columns,
+            data=category_summary_table,
+            pie_expenses=expenses_pie_chart,
+            pie_income=income_pie_chart,
             date_filter=self.date_filters,
             accounts=['All'] + list(DATA.accounts['name']),
             account_values_today=self.todays_accounts,  # Account value dictionary for just today
             categories=self.categories,
             date_filter_default=self.filters['date'],
             account_filter_default=self.filters['account'],
-            category_filter_default=self.filters['category'],
-            income_expense_filter_default=self.filters['income_expense'],
         )
 
     def category_summary(self):
@@ -102,7 +109,7 @@ class AnalyzePage(page.Page):
             (root_transactions['credit_account_id'] == 300)
             ]
 
-        result = pd.DataFrame()
+        result = pd.DataFrame(columns=self.category_summary_columns)
         n = 0
         for t in [trans_exp, trans_inc]:
             if n == 0:
@@ -116,14 +123,18 @@ class AnalyzePage(page.Page):
 
             grouped_trans = t.groupby('category')
             for cat in grouped_trans:
-                cat_trans = cat[1]
+                cat_trans = cat[1]  # Dataframe of transactions in single category
                 category_sum = sum(cat_trans['amount'])
-                category_percent = 100 * category_sum/total
+
+                category_percent = 0
+                if total != 0:
+                    category_percent = 100 * category_sum/total
+
                 result.at[cat[0], column] = '${:.2f}'.format(category_sum)
+                result.at[cat[0], column.lower()+'_percent'] = round(category_percent, 2)
                 result.at[cat[0], column+" %"] = '{:.1f}%'.format(category_percent)
 
         # Post-processing
-        result = result.fillna(value='$0.00')
         result = result.sort_index()  # sort rows alphabetically
         new_index = result.index.to_list()
         new_index.remove('Total')
@@ -131,7 +142,8 @@ class AnalyzePage(page.Page):
         result = result.reindex(index=new_index)
 
         result['Category'] = result.index  # Duplicate Category index labels to column
-        result = result[self.category_summary_columns]  # Reorder columns
+
+        print(result.columns)
 
         return result
 

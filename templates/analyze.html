@@ -3,6 +3,9 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
 
+<script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
+
+
 <!-- Page Functions -->
 <script type="text/javascript" src="{{ url_for('static', filename='analyze.js') }}"></script>
 
@@ -14,6 +17,46 @@
 
         initListeners();
         console.log('listeners initialized');
+
+    // Category Summary Pie Chart
+    // CanasJS recommends constructing options first and then pass it as a parameter
+
+    var spending_options = {
+      theme: "dark2",
+      animationEnabled: true,
+      title:{
+        text: "Spending by Category"
+      },
+      data: [{
+          type: "pie",
+          showInLegend: "true",
+          legendText: "{label}",
+          yValueFormatString: "##0.00\"%\"",
+          dataPoints: [
+            {% for row in pie_expenses %} {y: {{ row["expenses_percent"] }}, label: "{{ row["Category"] }}" }, {% endfor %}
+          ]
+      }]
+    };
+
+    var income_options = {
+      theme: "dark2",
+      animationEnabled: true,
+      title:{
+        text: "Income by Category"
+      },
+      data: [{
+          type: "pie",
+          showInLegend: "true",
+          legendText: "{label}",
+          yValueFormatString: "##0.00\"%\"",
+          dataPoints: [
+            {% for row in pie_income %} {y: {{ row["income_percent"] }}, label: "{{ row["Category"] }}" }, {% endfor %}
+          ]
+      }]
+    };
+
+    $("#spending_pie_chart").CanvasJSChart(spending_options);
+    $("#income_pie_chart").CanvasJSChart(income_options);
     });
 </script>
 
@@ -90,27 +133,35 @@
       </div>
     </div>
 
-    <!--  Category Summary Table  -->
-    <div id="category_summary_table" class="w3-rest" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
-      <!-- Category Summary-->
-      <table id="analyze_category_summary">
-        <thead>
-          <tr>
-            {% for col in data_columns %}
-            <th class="w3-center">{{ col }}</th>
+    <!--  Category Summary Table & Pie Chart  -->
+    <div class="w3-rest w3-row" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
+      <!-- Table -->
+      <div id="category_summary_table" class="w3-half w3-padding">
+        <!-- Category Summary-->
+        <table id="analyze_category_summary">
+          <thead>
+            <tr>
+              {% for col in data_columns %}
+              <th class="w3-center">{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody style="font-size:12px">
+            {% for item in data %}
+            <tr>
+              {% for col in data_columns %}
+              <td class="w3-center">{{ item[col] }}</td>
+              {% endfor %}
+            </tr>
             {% endfor %}
-          </tr>
-        </thead>
-        <tbody style="font-size:12px">
-          {% for item in data %}
-          <tr>
-            {% for col in data_columns %}
-            <td class="w3-center">{{ item[col] }}</td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+      <div class="w3-half">
+        <div id="spending_pie_chart" class="w3-content w3-card" style="height: 400px; max-width:1200px;"></div><br>
+        <div id="income_pie_chart" class="w3-content w3-card" style="height: 400px; max-width:1200px;"></div><br>
+      </div>
+
     </div>
   </div>
 </div>
