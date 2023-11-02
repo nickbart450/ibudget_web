@@ -700,8 +700,6 @@ class BudgetData:
             credit_balance = float(accounts.at[account_id, 'starting_value'])
         elif account_id in accounts.index and payment_date in payment_dates:
             # If the requested date matches an existing date in payments list, find that transaction id and store it
-
-            # Determine previous payment id #
             previous_payment_index = payment_dates.index(payment_date) - 1
             previous_payment_date = pd.to_datetime(payment_dates[previous_payment_index])
             previous_payment_id = int(payments.at[previous_payment_index, 'transaction_id'])
@@ -824,7 +822,7 @@ class BudgetData:
                     payment_date = min(cc_payments['transaction_date'])
                     payment_id = cc_payments.loc[cc_payments['transaction_date'] == payment_date, 'transaction_id']
                 elif cc_payments.at[i, 'transaction_date'] <= post_date < cc_payments.iloc[i + 1]['transaction_date']:
-                    payment = cc_payments.iloc[i + 1]
+                    payment = cc_payments.iloc[i]
                     payment_date = payment['transaction_date']
                     payment_id = payment['transaction_id']
                 else:
@@ -992,6 +990,7 @@ class BudgetData:
         return account_values
 
     def category_summary(self, date_filter='all'):
+        from tabulate import tabulate
         transactions = self.get_transactions(date_filter=date_filter)
         cat_width = 30
         amount_width = 10
@@ -1008,12 +1007,20 @@ class BudgetData:
             (transactions['credit_account_id'] == 300)
         ]
 
-        print('            Category |  Inflow   |  Outflow  |')
-        for category in sorted(transactions.category.unique()):
-            str_1 = '{}{}'.format(' ' * (cat_width - len(category) - 9), category)
-            str_2 = '${:.2f}'.format(round(sum(in_transactions[transactions['category'] == category].amount), 2))
-            str_3 = '${:.2f}'.format(round(sum(out_transactions[transactions['category'] == category].amount), 2))
-            print(str_1, '_' * (amount_width - len(str_2)), str_2, '_' * (amount_width - len(str_3)), str_3)
+        categories = sorted(transactions.category.unique())
+        summary = pd.DataFrame()  # columns=categories
+
+        for category in categories:
+            if category in in_transactions['category'].unique():
+                summary.at[category, 'inflow'] = round(sum(in_transactions[in_transactions['category'] == category].amount), 2)  # row/column
+            if category in out_transactions['category'].unique():
+                summary.at[category, 'outflow'] = round(sum(out_transactions[out_transactions['category'] == category].amount), 2)  # row/column
+
+        summary = summary.fillna(0)
+        print(tabulate(summary))
+
+        summary['total'] = summary['inflow']-summary['outflow']
+        # print(sum(summary['total']))
 
         debit_sum = round(sum(out_transactions.amount), 2)
         credit_sum = round(sum(in_transactions.amount), 2)
@@ -1286,8 +1293,10 @@ if __name__ == "__main__":
 
     # -- UPDATE
     # DATA.update_transaction(896)
+
     # print(DATA.get_transactions(account_filter=9721))
-    # print(DATA.get_cc_payments(account=9721))
+    # print(DATA.get_cc_payments(account=4895))
+    # print(DATA.calculate_credit_card_payment(4895, '2023-11-02'))
 
     # -- TOOLS
     # COPY HERE: ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']['july', 'august', 'september', 'october', 'november', 'december']
