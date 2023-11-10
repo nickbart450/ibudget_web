@@ -25,6 +25,17 @@ QUERIES = {'show_transactions_dtypes': '''PRAGMA table_info(TRANSACTIONS);''',
                       name NOT LIKE 'sqlite_%';''',
            }
 
+TRANSACTION_TABLE_COLS = ['transaction_id',
+                          'transaction_date',
+                          'posted_date',
+                          'credit_account_id',
+                          'debit_account_id',
+                          'category',
+                          'description',
+                          'amount',
+                          'vendor',
+                          'is_posted']
+
 
 class BudgetData:
     """
@@ -1168,16 +1179,7 @@ class BudgetData:
         if logger is not None:
             logger.info('getting details for transaction {}'.format(transaction_id))
 
-        cols = ['transaction_id',
-                'transaction_date',
-                'posted_date',
-                'credit_account_id',
-                'debit_account_id',
-                'category',
-                'description',
-                'amount',
-                'vendor',
-                'is_posted']
+        cols = TRANSACTION_TABLE_COLS
 
         query = f"""SELECT * from TRANSACTIONS
                    WHERE transaction_id={transaction_id};
@@ -1237,7 +1239,7 @@ def fetch_filtered_transactions(filters):
 
     if result is None:
         print('Empty DataFrame after filters')
-        return None
+        return pd.DataFrame(columns=TRANSACTION_TABLE_COLS)
 
     else:
         result = result.copy()
