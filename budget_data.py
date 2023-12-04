@@ -689,6 +689,8 @@ class BudgetData:
         account_id = int(account_id)
         payment_date = pd.to_datetime(payment_date)
 
+        print('\n', payment_date)
+
         # Use cached transactions dataframe from predecessor function
         transactions = self.transactions.copy()
 
@@ -833,7 +835,7 @@ class BudgetData:
                     payment_date = min(cc_payments['transaction_date'])
                     payment_id = cc_payments.loc[cc_payments['transaction_date'] == payment_date, 'transaction_id']
                 elif cc_payments.at[i, 'transaction_date'] <= post_date < cc_payments.iloc[i + 1]['transaction_date']:
-                    payment = cc_payments.iloc[i]
+                    payment = cc_payments.iloc[i+1]  # should be i+1 (later payment)
                     payment_date = payment['transaction_date']
                     payment_id = payment['transaction_id']
                 else:
