@@ -689,8 +689,6 @@ class BudgetData:
         account_id = int(account_id)
         payment_date = pd.to_datetime(payment_date)
 
-        print('\n', payment_date)
-
         # Use cached transactions dataframe from predecessor function
         transactions = self.transactions.copy()
 
@@ -828,6 +826,7 @@ class BudgetData:
                                               description='CC Payment',
                                               vendor=accounts.loc[account_id]['name'])
         else:
+            # Find payment date and calculate payment amount
             payment_date = payment_id = None
             # print('cc_payments', cc_payments)
             for i in cc_payments.index:
