@@ -2,7 +2,9 @@
 {% block table %}
 
 <!--  Posted Transactions Table  -->
-<div id="transaction_table" class="w3-rest" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
+<div id="transaction_table" class="w3-rest"
+     style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px"
+     xmlns="http://www.w3.org/1999/html">
     <table id="budget_table_posted">
         <thead>
             <tr>
@@ -79,23 +81,9 @@
                             <div class="w3-dropdown-hover" style="width:100%">
                                 <input class="cat_input_modal w3-input w3-border" type="text" name="category" required="required"  value="{{ item['category'] }}" pattern="[^()/><\][\\\x22;|]+">
                                 <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Alcohol">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Automotive">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Dining">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Entertainment">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Gas">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Gifts">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Grocery">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Health Care">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Home">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Insurance">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Investment">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Merchandise">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Mortgage/Rent">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Other Goods">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Other Services">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Tax Refund/Payment">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Utilities">
+                                  {% for i in categories %}
+                                    <input type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
+                                  {% endfor %}
                                 </div>
                             </div>
                             <label>Category</label>
@@ -224,23 +212,9 @@
                             <div class="w3-dropdown-hover" style="width:100%">
                                 <input class="cat_input_modal w3-input w3-border" type="text" name="category" required="required"  value="{{ item['category'] }}" pattern="[^()/><\][\\\x22;|]+">
                                 <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Alcohol">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Automotive">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Dining">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Entertainment">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Gas">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Gifts">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Grocery">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Health Care">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Home">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Insurance">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Investment">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Merchandise">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Mortgage/Rent">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Other Goods">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Other Services">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Tax Refund/Payment">
-                                    <input type="button" class="cat_btn w3-bar-item w3-button" value="Utilities">
+                                  {% for i in categories %}
+                                    <input type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
+                                  {% endfor %}
                                 </div>
                             </div>
                             <label>Category</label>

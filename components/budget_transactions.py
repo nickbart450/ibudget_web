@@ -16,7 +16,8 @@ class TransactionsPage(page.Page):
         self.template = 'transactions_table.html'
         self.name = 'transact'
 
-        self.categories = self.config['ui_settings']['categories'].replace('\n', '').split(',')
+        # self.categories = self.config['ui_settings']['categories'].replace('\n', '').split(',')
+        self.categories = DATA.get_categories()['name'].to_list()
         self.filters = dict(self.config['ui_settings.default_filters'])
         self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 

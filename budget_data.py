@@ -63,6 +63,7 @@ class BudgetData:
         self.transactions = None
         self.accounts = None
         self.account_values = None
+        self.categories = None
 
     def __del__(self):
         self.close()
@@ -84,7 +85,8 @@ class BudgetData:
                 print('Successfully Connected')
                 self.logger.info('Successfully Connected')
             elif os.path.exists(os.path.abspath('./budget_example.db')):
-                self.logger.debug('Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
+                self.logger.debug(
+                    'Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
                 self.dbConnection = sql.connect('./budget_example.db', check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
                 test_cursor = self.dbConnection.cursor()
@@ -95,7 +97,9 @@ class BudgetData:
             else:
                 print('Database connection issues. Attempting creation of blank db...')
                 if self.connection_attempts <= 5:
-                    self.logger.warning('No database file found, attempting to create fresh, empty database at {}'.format(os.path.abspath('./iBudget_web.db')))
+                    self.logger.warning(
+                        'No database file found, attempting to create fresh, empty database at {}'.format(
+                            os.path.abspath('./iBudget_web.db')))
 
                     # Build new database file with appropriate tables to make app work
                     self.create_fresh_database(os.path.abspath('./iBudget_web.db'), create_tables=True)
@@ -154,6 +158,50 @@ class BudgetData:
         account_table = account_table.set_index('account_id', drop=False)
         self.accounts = account_table
         return account_table
+
+    def get_categories(self):
+        """Returns a pandas dataframe version of the database table. Index is cat_id."""
+        if not self.dbConnected:
+            raise RuntimeError('database not connected')
+
+        self.dbConnection.row_factory = sql.Row  # Sets the direction of returned data to work with pd.from_dict
+        categories = self.dbConnection.cursor().execute('''SELECT * FROM CATEGORIES''').fetchall()
+        category_table = pd.DataFrame([dict(row) for row in categories])
+
+        # category_table = category_table.set_index('cat_id', drop=False)
+        self.categories = category_table
+        return category_table
+
+    def add_category(self, name, description=''):
+        if description != '':
+            query = '''INSERT INTO CATEGORIES
+                    (name, description)
+                    VALUES ("{name}", "{description}");'''.format(
+                name=name,
+                description=description,
+            )
+        else:
+            query = '''INSERT INTO CATEGORIES (name)
+                    VALUES ("{name}");'''.format(name=name)
+
+        self.logger.debug('add_transaction query:\n{}'.format(query))
+
+        # Execute query and commit to db
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+        category_id = cursor.lastrowid
+
+        print('added category to db:')
+        print('\ttransaction_id: ', category_id)
+        print('\tname: ', name)
+        print('\tdescription: ', description)
+
+        # Refresh category table
+        self.get_categories()
+
+        return category_id
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
                          account_filter='All', expense_income_filter='both', category_filter='All',
@@ -357,7 +405,6 @@ class BudgetData:
         # print('\tvendor: ', vendor)
         # print('\tposted_flag: ', is_posted)
 
-
         # Refresh transaction table
         self.get_transactions()
 
@@ -517,7 +564,7 @@ class BudgetData:
                 if a in list(cc_accounts.index):
                     c = recalc_accounts.index(a)
                     tot = len(recalc_accounts)
-                    print('Recalculating Credit Card Payment from update_transaction {}/{}'.format(c+1, tot))
+                    print('Recalculating Credit Card Payment from update_transaction {}/{}'.format(c + 1, tot))
                     self.update_credit_card_payment(transaction_id, account=a)
         elif 'credit_card' in account_type_checks and transaction['category'] != 'Credit Card Payment':
             self.update_credit_card_payment(transaction_id)
@@ -541,18 +588,26 @@ class BudgetData:
         self.get_transactions()  # Refresh transaction table
         return None
 
-    def general_query(self, query, date_columns=None):
-        try:
-            result = pd.read_sql_query(query, self.dbConnection, parse_dates=date_columns)
-        except Exception as e:
-            print(e)
-            result = self.dbConnection.execute(query).fetchall()
-        self.dbConnection.commit()
+    def general_query(self, query, commit=True, date_columns=None):
+        # try:
+        #     result = pd.read_sql_query(query, self.dbConnection, parse_dates=date_columns)
+        # except Exception as e:
+        #     print(e)
+        result = self.dbConnection.execute(query).fetchall()
+
+        if commit:
+            self.dbConnection.commit()
 
         return result
 
-    def quick_query(self, query_code):
-        return self.general_query(QUERIES[query_code])
+    def quick_query(self, query_code, commit=True):
+        query = QUERIES[query_code]
+        try:
+            result = pd.read_sql_query(query, self.dbConnection)
+        except:
+            result = self.general_query(query, commit=commit)
+
+        return result
 
     def calculate_account_values(self, append_transaction_details=False):
         """
@@ -638,7 +693,7 @@ class BudgetData:
         # Find the latest posted transaction
         for a in account_values.iterrows():
             post_date = pd.to_datetime(a[1].posted_date)
-            date_check = pd.Timedelta(days=0) < (today-post_date)  # < pd.Timedelta(days=4)
+            date_check = pd.Timedelta(days=0) < (today - post_date)  # < pd.Timedelta(days=4)
             post_check = a[1].is_posted == 1
 
             # print(a[1].transaction_id, a[1].posted_date, a[1].is_posted, post_check, date_check)
@@ -718,7 +773,7 @@ class BudgetData:
             # Wind up here if calculating payment BETWEEN any existing payment transactions
             previous_payment_date = None
             for x in range(len(payment_dates)):
-                if payment_dates[x] < payment_date < payment_dates[x+1]:
+                if payment_dates[x] < payment_date < payment_dates[x + 1]:
                     previous_payment_date = payment_dates[x]
 
             previous_payment_index = payment_dates.index(previous_payment_date)
@@ -732,13 +787,13 @@ class BudgetData:
 
         truth_series_c = (transactions['posted_date'].between(
             previous_payment_date, payment_date - pd.Timedelta(days=1))) \
-            & (transactions['credit_account_id'] == int(account_id))
+                         & (transactions['credit_account_id'] == int(account_id))
 
         truth_series_d = (transactions['posted_date'].between(previous_payment_date,
                                                               payment_date - pd.Timedelta(days=1))) \
-                          & (transactions['debit_account_id'] == int(account_id)) \
-                          & (transactions.index != previous_payment_id) \
-                          & (transactions['category'] != 'Credit Card Payment')
+                         & (transactions['debit_account_id'] == int(account_id)) \
+                         & (transactions.index != previous_payment_id) \
+                         & (transactions['category'] != 'Credit Card Payment')
 
         # Expenses:
         credit_transactions = transactions.loc[truth_series_c, :]
@@ -758,9 +813,9 @@ class BudgetData:
                                                                                               previous_payment_date,
                                                                                               previous_payment_id))
         print('\nNew Payment:  {} -- id: n/a\nPrev payment: {} -- id: {}'.format(payment_date,
-                                                                                   # payment_id,
-                                                                                   previous_payment_date,
-                                                                                   previous_payment_id))
+                                                                                 # payment_id,
+                                                                                 previous_payment_date,
+                                                                                 previous_payment_id))
         # print('credits_sum: $', credits_sum, ':: debits_sum:  $', debits_sum)
         print('\tPayment:  $ {:.2f}\n'.format(payment_amount))
         return payment_amount
@@ -809,7 +864,8 @@ class BudgetData:
             t_date = pd.to_datetime(transaction['transaction_date'])
 
             payment_account = accounts.loc[accounts['transaction_type'] == 'income']
-            pay_dates = transactions.loc[transactions['credit_account_id'] == int(payment_account.index[0])]['transaction_date']
+            pay_dates = transactions.loc[transactions['credit_account_id'] == int(payment_account.index[0])][
+                'transaction_date']
             payment_date = None
             for d in pay_dates.index:
                 if pay_dates[d] > t_date:  # Find next paycheck after the transaction and set CC payment date
@@ -834,7 +890,7 @@ class BudgetData:
                     payment_date = min(cc_payments['transaction_date'])
                     payment_id = cc_payments.loc[cc_payments['transaction_date'] == payment_date, 'transaction_id']
                 elif cc_payments.at[i, 'transaction_date'] <= post_date < cc_payments.iloc[i + 1]['transaction_date']:
-                    payment = cc_payments.iloc[i+1]  # should be i+1 (later payment)
+                    payment = cc_payments.iloc[i + 1]  # should be i+1 (later payment)
                     payment_date = payment['transaction_date']
                     payment_id = payment['transaction_id']
                 else:
@@ -919,8 +975,10 @@ class BudgetData:
             values['is_posted'] = transactions.at[transaction_id, 'is_posted']
 
             # Calculate new account values
-            values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.at[transaction_id, 'amount']), 2)
-            values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.at[transaction_id, 'amount']), 2)
+            values[str(debit_account)] = round(float(debit_acct_0) + float(transactions.at[transaction_id, 'amount']),
+                                               2)
+            values[str(credit_account)] = round(float(credit_acct_0) - float(transactions.at[transaction_id, 'amount']),
+                                                2)
 
             # Calculate Combined Account Values Loop
             account_sum = 0
@@ -956,23 +1014,26 @@ class BudgetData:
 
                 if expense_sum > account_sum_no_invest and not no_invest_set:
                     # Result.value is in nanoseconds. Converting ns to months (assumed 30 days/month)
-                    burn_time_part = pd.Timedelta(e[1]['transaction_date'] - transaction_date).value/(30*24*3600*1000000000)
+                    burn_time_part = pd.Timedelta(e[1]['transaction_date'] - transaction_date).value / (
+                                30 * 24 * 3600 * 1000000000)
                     no_invest_set = True
 
                 if expense_sum > account_sum and not full_set:
                     # Result.value is in nanoseconds. Converting ns to months (assumed 30 days/month)
-                    burn_time_full = pd.Timedelta(e[1]['transaction_date'] - transaction_date).value/(30*24*3600*1000000000)
+                    burn_time_full = pd.Timedelta(e[1]['transaction_date'] - transaction_date).value / (
+                                30 * 24 * 3600 * 1000000000)
                     full_set = True
 
                 if e[1]['transaction_id'] == outstanding_expenses.iloc[-1]['transaction_id']:
                     # Result.value is in nanoseconds. Converting ns to months (assumed 30 days/month)
-                    burn_time = pd.Timedelta(last['transaction_date'] - transaction_date).value/(30*24*3600*1000000000)
+                    burn_time = pd.Timedelta(last['transaction_date'] - transaction_date).value / (
+                                30 * 24 * 3600 * 1000000000)
                     if not full_set:
-                        burn_time_full = burn_time + (account_sum - expense_sum)/monthly_expense
+                        burn_time_full = burn_time + (account_sum - expense_sum) / monthly_expense
                         full_set = True
 
                     if not no_invest_set:
-                        burn_time_part = burn_time + (account_sum_no_invest - expense_sum)/monthly_expense
+                        burn_time_part = burn_time + (account_sum_no_invest - expense_sum) / monthly_expense
                         no_invest_set = True
 
                 if full_set and no_invest_set:
@@ -1011,34 +1072,37 @@ class BudgetData:
             (transactions['category'] != 'Investment') &
             (transactions['category'] != 'Transfer') &
             (transactions['category'] != 'Transfer ')
-        ]
+            ]
 
         out_transactions = transactions.loc[transactions['debit_account_id'] == 0]
         in_transactions = transactions.loc[
             (transactions['credit_account_id'] == 0) |
             (transactions['credit_account_id'] == 300)
-        ]
+            ]
 
-        categories = sorted(transactions.category.unique())
+        # categories = sorted(transactions.category.unique())
+        categories = self.categories
         summary = pd.DataFrame()  # columns=categories
 
         for category in categories:
             if category in in_transactions['category'].unique():
-                summary.at[category, 'inflow'] = round(sum(in_transactions[in_transactions['category'] == category].amount), 2)  # row/column
+                summary.at[category, 'inflow'] = round(
+                    sum(in_transactions[in_transactions['category'] == category].amount), 2)  # row/column
             if category in out_transactions['category'].unique():
-                summary.at[category, 'outflow'] = round(sum(out_transactions[out_transactions['category'] == category].amount), 2)  # row/column
+                summary.at[category, 'outflow'] = round(
+                    sum(out_transactions[out_transactions['category'] == category].amount), 2)  # row/column
 
         summary = summary.fillna(0)
         print(tabulate(summary))
 
-        summary['total'] = summary['inflow']-summary['outflow']
+        summary['total'] = summary['inflow'] - summary['outflow']
         # print(sum(summary['total']))
 
         debit_sum = round(sum(out_transactions.amount), 2)
         credit_sum = round(sum(in_transactions.amount), 2)
         print('\nNet Debits (outflow): ${:.2f}'.format(debit_sum))
         print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
-        print('Net Delta   (in-out): ${:.2f}'.format(credit_sum-debit_sum))
+        print('Net Delta   (in-out): ${:.2f}'.format(credit_sum - debit_sum))
         return None
 
     def get_cc_payments(self, account):
@@ -1303,9 +1367,9 @@ if __name__ == "__main__":
 
     # -- TOOLS
     # COPY HERE: ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']['july', 'august', 'september', 'october', 'november', 'december']
-    for n in ['july', 'august', 'september', 'october', 'november', 'december', 'all']:
-        print('\n\t{}'.format(n.upper()))
-        DATA.category_summary(date_filter=n)
+    # for n in ['july', 'august', 'september', 'october', 'november', 'december', 'all']:
+    #     print('\n\t{}'.format(n.upper()))
+    #     DATA.category_summary(date_filter=n)
 
     # DATA.get_transactions().to_csv('./2023transacts.csv')
 
@@ -1318,5 +1382,9 @@ if __name__ == "__main__":
     # print(burn_table.columns)
     # print(burn_table[['transaction_date', 'account_sum', 'account_sum_no_invest', 'burntime_full', 'burntime_no_invest']])
 
+    # print(DATA.get_accounts())
+    print(DATA.get_transactions(category_filter='Transfer'))
+    # print(DATA.quick_query('list_tables'))
+    # print(DATA.get_categories())
 
     DATA.close()
