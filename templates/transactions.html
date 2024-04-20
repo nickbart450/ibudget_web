@@ -62,7 +62,7 @@
                 <div class="w3-row-padding w3-section">
                     <div class="w3-half">
                         <div class="w3-dropdown-hover" style="width:100%">
-                            <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" required="required" placeholder="Account-From" pattern="[^()/><\][\\\x22;|]+">
+                            <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" required="required" placeholder="Account-From" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
                             <div id="cred_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
                                 {% for i in accounts %}
                                     <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
@@ -73,7 +73,7 @@
                     </div>
                     <div class="w3-half">
                         <div class="w3-dropdown-hover" style="width:100%">
-                            <input id="deb_accnt_input" class="w3-input w3-border" type="text" name="account-debit" placeholder="Account-To" pattern="[^()/><\][\\\x22;|]+">
+                            <input id="deb_accnt_input" class="w3-input w3-border" type="text" name="account-debit" placeholder="Account-To" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
                             <div id="deb_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
                                 {% for i in accounts %}
                                     <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
@@ -92,7 +92,7 @@
                     </div>
                     <div class="w3-half">
                         <div class="w3-dropdown-hover" style="width:100%">
-                            <input id="cat_input" class="w3-input w3-border" type="text" name="category" required="required" placeholder="Category" pattern="[^()/><\][\\\x22;|]+">
+                            <input id="cat_input" class="w3-input w3-border" type="text" name="category" required="required" placeholder="Category" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
                             <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
                               {% for i in categories %}
                                 <input id="cat_{{ i }}" type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
@@ -107,7 +107,7 @@
                 <!-- Fourth Row -->
                 <div class="w3-row-padding w3-section">
                     <div class="w3-threequarter">
-                        <input class="w3-input w3-border" type="text" name="description" placeholder="Monday - Dinner" pattern="[^()/><\][\\\x22;|]+">
+                        <input class="w3-input w3-border" type="text" name="description" placeholder="Monday - Dinner" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
                         <label>Description</label>
                     </div>
                     <div class="w3-rest w3-center">
@@ -119,7 +119,7 @@
                 <!-- Fifth Row -->
                 <div class="w3-row-padding w3-section">
                     <div class="w3-threequarter">
-                        <input class="w3-input w3-border" type="text" name="vendor" placeholder="Amazon" pattern="[^()/><\][\\\x22;|]+">
+                        <input class="w3-input w3-border" type="text" name="vendor" placeholder="Amazon" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
                         <label>Vendor</label>
                     </div>
                     <div class="w3-quarter w3-center">
@@ -136,22 +136,23 @@
         <div class="w3-bar" style="background-color: #343E3C">
             <div class="w3-bar-item"><b>FILTERS -</b></div>
         </div>
-        <!-- Transaction Type Filter -->
+
+          <!-- Transaction Type Filter -->
         <div id="transact_type_filter" class="w3-bar-block w3-section">
-                    <span class="w3-bar-item w3-card-4">Expenses/Income</span>
-                    <div class="w3-margin-left">
-                        <input class="income_expense_btn w3-radio" id="both" type="radio" name="expense_income_selector" value="Both"/>
-                        <label for="both">Both</label>
-                    </div>
-                    <div class="w3-margin-left">
-                        <input class="income_expense_btn w3-radio" id="income" type="radio" name="expense_income_selector" value="Income"/>
-                        <label for="income">Income</label>
-                    </div>
-                    <div class="w3-margin-left">
-                        <input class="income_expense_btn w3-radio" id="expenses" type="radio" name="expense_income_selector" value="Expenses"/>
-                        <label for="expenses">Expenses</label>
-                    </div>
-                </div>
+          <span class="w3-bar-item w3-card-4">Expenses/Income</span>
+          <div class="w3-margin-left">
+            <input class="income_expense_btn w3-radio" id="both" type="radio" name="expense_income_selector" value="Both"/>
+            <label for="both">Both</label>
+          </div>
+          <div class="w3-margin-left">
+            <input class="income_expense_btn w3-radio" id="income" type="radio" name="expense_income_selector" value="Income"/>
+            <label for="income">Income</label>
+          </div>
+          <div class="w3-margin-left">
+            <input class="income_expense_btn w3-radio" id="expenses" type="radio" name="expense_income_selector" value="Expenses"/>
+            <label for="expenses">Expenses</label>
+          </div>
+        </div>
 
         <!-- Transaction Date Filter -->
         <div id="transact_date_filter" class="w3-bar-block w3-section">
@@ -170,18 +171,18 @@
 
         <!-- Account Filter -->
         <div id="account_filter_container" class="w3-bar-block w3-section">
-                    <span class="w3-bar-item w3-card-4">Account</span>
-                    <div class="w3-dropdown-hover" style="width:100%">
-                        <div class="w3-button w3-white w3-row">
-                            <span id="account_filter">{{ account_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
-                        </div>
-                        <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
-                            {% for i in accounts %}
-                            <input class="account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+          <span class="w3-bar-item w3-card-4">Account</span>
+          <div class="w3-dropdown-hover" style="width:100%">
+            <div class="w3-button w3-white w3-row">
+              <span id="account_filter">{{ account_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+            </div>
+            <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+              {% for i in accounts %}
+                <input class="account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+              {% endfor %}
+            </div>
+          </div>
+        </div>
 
         <!-- Category Filter -->
         <div id="category_filter_container" class="w3-bar-block w3-section">
@@ -204,29 +205,29 @@
       <div>
         <br>
         <div class="w3-card w3-round w3-border">
-                <div class="w3-bar w3-round" style="background-color: #343E3C">
-                    <div class="w3-bar-item"><b>TODAY'S ACCOUNT VALUES -</b></div>
-                </div>
-
-                <table class="w3-table w3-bordered">
-                    <thead>
-                      <tr>
-                        <th class="w3-right-align">Account</th>
-                        <th class="w3-center">Value (USD)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for account in account_values_today %}
-                        <tr>
-                          <!-- Data-->
-                          <td class="w3-right-align">{{ account }}</td>
-                          <td class="w3-left-align"><b>{{ account_values_today[account] }}</b></td>
-                        </tr>
-
-                      {% endfor %}
-                    </tbody>
-                </table>
+          <div class="w3-bar w3-round" style="background-color: #343E3C">
+            <div class="w3-bar-item"><b>TODAY'S ACCOUNT VALUES -</b></div>
           </div>
+
+          <table class="w3-table w3-bordered">
+            <thead>
+              <tr>
+                <th class="w3-right-align">Account</th>
+                <th class="w3-center">Value (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for account in account_values_today %}
+                <tr>
+                  <!-- Data-->
+                  <td class="w3-right-align">{{ account }}</td>
+                  <td class="w3-left-align"><b>{{ account_values_today[account] }}</b></td>
+                </tr>
+
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
