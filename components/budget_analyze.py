@@ -104,9 +104,10 @@ class AnalyzePage(page.Page):
         trans_exp = root_transactions[root_transactions['debit_account_id'] == 0]
 
         # Income Transactions
+        income_accts = DATA.accounts['account_id'][DATA.accounts['transaction_type'] == 'income'].to_list()
         trans_inc = root_transactions[
             (root_transactions['credit_account_id'] == 0) |
-            (root_transactions['credit_account_id'] == 300)
+            (root_transactions['credit_account_id'].isin(income_accts))
             ]
 
         result = pd.DataFrame(columns=self.category_summary_columns)
@@ -142,8 +143,6 @@ class AnalyzePage(page.Page):
         result = result.reindex(index=new_index)
 
         result['Category'] = result.index  # Duplicate Category index labels to column
-
-        print(result.columns)
 
         return result
 
