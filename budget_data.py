@@ -54,6 +54,7 @@ class BudgetData:
         self.date_filters = {}
         for k in self.config['ui_settings.date_filters']:
             self.date_filters[k] = self.config['ui_settings.date_filters'][k].split(',')
+        self.year = 2024
 
         self.dbConnection = None
         self.dbConnected = False
@@ -216,8 +217,15 @@ class BudgetData:
                 """
 
         # Query Database, Filtering by Date - other filters handled on the dataframe after
-        if date_filter == 'Date Filter':
+        if date_filter == 'Date Filter' or date_filter == 'All':
             date_filter = 'all'
+
+        if date_filter == 'all':
+            print('setting date_filter', self.year)
+            years = {2023: 'all_23',
+                     2024: 'all_24'}
+
+            date_filter = years[self.year]
 
         if date_filter is not None:
             date_filter = date_filter.lower()

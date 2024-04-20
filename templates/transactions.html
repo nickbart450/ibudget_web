@@ -9,6 +9,8 @@
 <!-- OnLoad jQuery Script-->
 <script type="text/javascript">
     $(function(){
+        SetYear( {{ active_year | safe }} );
+
         $('#'+'{{ income_expense_filter_default }}').prop('checked',true);
         console.log('radio button set on {{ income_expense_filter_default }}');
 
@@ -155,19 +157,27 @@
         </div>
 
         <!-- Transaction Date Filter -->
-        <div id="transact_date_filter" class="w3-bar-block w3-section">
-                    <span class="w3-bar-item w3-card-4">Date</span>
-                    <div class="w3-dropdown-hover" style="width:100%">
-                        <div class="w3-button w3-white w3-row">
-                            <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
-                        </div>
-                        <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
-                            {% for i in date_filter %}
-                            <input class="date_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+        <div id="transact_date_filter_container" class="w3-bar-block w3-section">
+          <!-- Year Selector -->
+          <span class="w3-bar-item w3-card-4" style="width:100%">Date
+            <div class="w3-cell" style="float: right; font-size:10px;">
+              <a href="/change-year-2024" id="year_select_2024" class="w3-cell" style="float: right; font-size:10px;">2024</a>
+              <div class="w3-cell" style="float: right; font-size:10px;">-</div>
+              <a href= "/change-year-2023" id="year_select_2023" class="w3-cell" style="float: right; font-size:10px;">2023</a>
+            </div>
+          </span>
+
+          <div class="w3-dropdown-hover" style="width:100%">
+            <div class="w3-button w3-white w3-row">
+              <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+            </div>
+            <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+              {% for i in date_filter %}
+                <input class="date_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+              {% endfor %}
+            </div>
+          </div>
+        </div>
 
         <!-- Account Filter -->
         <div id="account_filter_container" class="w3-bar-block w3-section">

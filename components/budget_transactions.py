@@ -88,7 +88,8 @@ class TransactionsPage(page.Page):
                 self.template,
                 posted_data=self.posted_transactions.to_dict('records'),
                 upcoming_data=self.upcoming_transactions.to_dict('records'),
-                date_filter=self.date_filters,
+                date_filter=self.date_filters[:-2],
+                active_year=DATA.year,
                 accounts=['All'] + list(DATA.accounts['name']),
                 account_values_today=self.todays_accounts,  # Account value dictionary for just today
                 categories=self.categories,
@@ -211,4 +212,16 @@ def update_transaction():
 @APP.route("/transact/delete_transaction", methods=['GET'])
 def delete_transaction():
     TRANSACTION_PAGE.delete()
+    return redirect(TRANSACTION_PAGE.current_filter_url())
+
+
+@APP.route("/change-year-2023", methods=['GET'])
+def change_year_2023():
+    DATA.year = 2023
+    return redirect(TRANSACTION_PAGE.current_filter_url())
+
+
+@APP.route("/change-year-2024", methods=['GET'])
+def change_year_2024():
+    DATA.year = 2024
     return redirect(TRANSACTION_PAGE.current_filter_url())

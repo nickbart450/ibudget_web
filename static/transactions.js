@@ -226,3 +226,12 @@ function setCategory(event){
         cat_modal_inputs[i].value = event.originalTarget.value;
     };
 };
+
+// Bold the active year filter
+function SetYear(raw_data){
+    console.log('Bolding Active Year: ', raw_data);
+    year_string = "year_select_".concat(raw_data);
+    document.getElementById(year_string).style.fontWeight = 'bold';
+    document.getElementById(year_string).style.fontSize = '13';
+
+};
