@@ -9,7 +9,11 @@
 <!-- OnLoad jQuery Script-->
 <script type="text/javascript">
     $(function(){
-        SetYear( {{ active_year | safe }} );
+        console.log('Formatting Active Year: ', {{ active_year | safe }});
+        year_string = "#year_select_".concat({{ active_year | safe }});
+        $(year_string).css("fontSize", "12px");
+        $(year_string).css("fontWeight", "bold");
+
 
         $('#'+'{{ income_expense_filter_default }}').prop('checked',true);
         console.log('radio button set on {{ income_expense_filter_default }}');
@@ -160,7 +164,7 @@
         <div id="transact_date_filter_container" class="w3-bar-block w3-section">
           <!-- Year Selector -->
           <span class="w3-bar-item w3-card-4" style="width:100%">Date
-            <div class="w3-cell" style="float: right; font-size:10px;">
+            <div class="w3-cell" style="float: right;">
               <a href="/change-year-2024" id="year_select_2024" class="w3-cell" style="float: right; font-size:10px;">2024</a>
               <div class="w3-cell" style="float: right; font-size:10px;">-</div>
               <a href= "/change-year-2023" id="year_select_2023" class="w3-cell" style="float: right; font-size:10px;">2023</a>
