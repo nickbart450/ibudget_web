@@ -89,7 +89,7 @@ function delete_transaction_from_modal(transaction_id){
 
 // Updates Date Filters in <div> and calls filter url
 function setExpenseIncomeFilter(event){
-    var income_expense_filter = event.originalTarget.value;
+    var income_expense_filter = event.target.value;
     // console.log('filter clicked: ',  income_expense_filter);
 
     var date_start = null;
@@ -110,7 +110,7 @@ function setExpenseIncomeFilter(event){
 // Updates Date Filters in <div> and calls filter url
 function setDateFilter(event){
     // Date Filter
-    var date_filter = event.originalTarget.value
+    var date_filter = event.target.value
     // console.log('Setting Date Filter to: ', date_filter)
     document.getElementById("date_filter").innerHTML = date_filter
 
@@ -141,7 +141,7 @@ function setDateFilter(event){
 // Updates Account Filters in <div> and calls filter url
 function setAccountFilter(event){
     // Account Filter
-    var account_filter = event.originalTarget.value
+    var account_filter = event.target.value
     // console.log('Setting Account Filter to: ', account_filter)
     document.getElementById("account_filter").innerHTML = account_filter;
 
@@ -170,7 +170,7 @@ function setAccountFilter(event){
 // Updates Category Filters in <div> and calls filter url
 function setCategoryFilter(event){
     // Category Filter
-    var category_filter = event.originalTarget.value
+    var category_filter = event.target.value
     // console.log('Setting Category Filter to: ', category_filter)
     document.getElementById("category_filter").innerHTML = category_filter;
 
@@ -198,31 +198,31 @@ function setCategoryFilter(event){
 
 // Add Transaction Form - Account Dropdowns <div> updates
 function setDebAccount(event){
-    console.log('Setting Deb Account Input to: ', event.originalTarget.value);
-    document.getElementById("deb_accnt_input").value = event.originalTarget.value;
+    console.log('Setting Deb Account Input to: ', event.target.value);
+    document.getElementById("deb_accnt_input").value = event.target.value;
 
     var deb_account_modal_inputs = document.getElementsByClassName("deb_accnt_input_modal")
     for (let i = 0; i<deb_account_modal_inputs.length; i++) {
-        deb_account_modal_inputs[i].value = event.originalTarget.value;
+        deb_account_modal_inputs[i].value = event.target.value;
     };
 };
 function setCredAccount(event){
-    console.log('Setting Cred Account Input to: ', event.originalTarget.value);
-    document.getElementById("cred_accnt_input").value = event.originalTarget.value;
+    console.log('Setting Cred Account Input to: ', event.target.value);
+    document.getElementById("cred_accnt_input").value = event.target.value;
 
     var cred_account_modal_inputs = document.getElementsByClassName("cred_accnt_input_modal")
     for (let i = 0; i<cred_account_modal_inputs.length; i++) {
-        cred_account_modal_inputs[i].value = event.originalTarget.value;
+        cred_account_modal_inputs[i].value = event.target.value;
     };
 };
 
 // Add Transaction Form - Category Dropdown  <div> update
 function setCategory(event){
-    console.log('Setting Category Input to: ', event.originalTarget.value)
-    document.getElementById("cat_input").value = event.originalTarget.value;
+    console.log('Setting Category Input to: ', event.target.value)
+    document.getElementById("cat_input").value = event.target.value;
 
     var cat_modal_inputs = document.getElementsByClassName("cat_input_modal")
     for (let i = 0; i<cat_modal_inputs.length; i++) {
-        cat_modal_inputs[i].value = event.originalTarget.value;
+        cat_modal_inputs[i].value = event.target.value;
     };
 };
