@@ -24,7 +24,7 @@ function initListeners(){
 // Updates Date Filters in <div> and calls filter url
 function setDateFilter(event){
     // Date Filter
-    var date_filter = event.originalTarget.value
+    var date_filter = event.target.value
     // console.log('Setting Date Filter to: ', date_filter)
     document.getElementById("date_filter").innerHTML = date_filter
 
@@ -44,7 +44,7 @@ function setDateFilter(event){
 // Updates Account Filters in <div> and calls filter url
 function setAccountFilter(event){
     // Account Filter
-    var account_filter = event.originalTarget.value
+    var account_filter = event.target.value
     // console.log('Setting Account Filter to: ', account_filter)
     document.getElementById("account_filter").innerHTML = account_filter;
 
