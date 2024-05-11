@@ -54,13 +54,13 @@ class BudgetData:
         self.date_filters = {}
         for k in self.config['ui_settings.date_filters']:
             self.date_filters[k] = self.config['ui_settings.date_filters'][k].split(',')
-        self.year = 2024
 
         self.dbConnection = None
         self.dbConnected = False
         self.db_version = None
         self.connection_attempts = 0
 
+        self.year = None
         self.transactions = None
         self.accounts = None
         self.account_values = None
@@ -220,8 +220,9 @@ class BudgetData:
         if date_filter == 'Date Filter' or date_filter == 'All':
             date_filter = 'all'
 
-        if date_filter == 'all':
-            print('setting date_filter', self.year)
+        if date_filter == 'all' and self.year is not None:
+            # If self.year is set to reduce transmitted data, alter input 'all' to selected year only
+            print('overriding date_filter to', self.year)
             years = {2023: 'all_23',
                      2024: 'all_24'}
 

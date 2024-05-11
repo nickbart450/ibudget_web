@@ -187,6 +187,7 @@ def data_transactions():
 
     :return: render_template
     """
+    if DATA.year is None: DATA.year = 2024
 
     return TRANSACTION_PAGE.get()
 

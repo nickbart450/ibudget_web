@@ -19,13 +19,22 @@ class AnalyzePage(page.Page):
         self.categories = DATA.get_categories()['name'].to_list()
         self.filters = dict(self.config['ui_settings.default_filters'])
         self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
-
+        self.income_accts = DATA.accounts['account_id'][DATA.accounts['transaction_type'] == 'income'].to_list()
         self.category_summary_columns = ['Category', 'Expenses', 'Expenses %', 'Income', 'Income %']
 
-    def current_filter_url(self):
+        self.todays_accounts = None
+        self.root_transactions = None
+        self.render_dict = {
+            "data_columns": self.category_summary_columns,
+            "date_filters": self.date_filters,
+            "accounts": ['All'] + list(DATA.accounts['name']),
+            "categories": self.categories,
+        }
 
-        url = url_for('analyze') + \
-              "?date={}&account={}&date_start=&date_end=".format(
+    def current_filter_url(self):
+        """Determines new url string based on currently selected page filters."""
+
+        url = url_for('analyze') + "?date={}&account={}&date_start=&date_end=".format(
                   self.filters['date'],
                   self.filters['account'],
                   self.filters['category'],
@@ -35,81 +44,62 @@ class AnalyzePage(page.Page):
         return url
 
     def get(self):
-        # Get Date Filter
+        # Get Filters from URL
         if request.args.get('date') is not None:
             self.filters['date'] = request.args.get('date')
 
-        # Get Account Filter
         if request.args.get('account') is not None:
             self.filters['account'] = request.args.get('account')
+
+        if request.args.get('category') is not None:
+            self.filters['category'] = request.args.get('category')
+
+        self.render_dict["date_filter_default"] = self.filters["date"]
+        self.render_dict["account_filter_default"] = self.filters["account"]
+        self.render_dict["category_filter_default"] = self.filters["category"]
+
+        # for k in self.render_dict.keys():
+        #     print(k, self.render_dict[k], type(self.render_dict[k]))
 
         print('Fetching /analyze with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /analyze with filters: {}'.format(dict(self.filters)))
 
-        # Calculate today's account values from database
+        # Calculate today's account values and format dict for page data
         self.todays_accounts = DATA.calculate_todays_account_values()
         for t in self.todays_accounts:
             self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
+        self.render_dict["account_values_today"] = self.todays_accounts
 
-        # Get category summary data and render page
-        try:
-            result = self.category_summary()
+        # Fetch transactions for analysis
+        DATA.year = None
+        self.root_transactions = fetch_filtered_transactions(self.filters).sort_values('posted_date')
 
-            category_summary_table = result[self.category_summary_columns].fillna(value='$0.00').to_dict('records')
-            expenses_pie_chart = result[['Category', 'expenses_percent']].fillna(value=0)
-            expenses_pie_chart = (expenses_pie_chart
-                                  .drop(expenses_pie_chart[expenses_pie_chart['expenses_percent'] == 0].index)
-                                  .sort_values('expenses_percent')
-                                  .to_dict('records'))
+        # Fetch page data for modules
+        self.category_summary()
+        self.category_sum_by_month()
 
-            income_pie_chart = result[['Category', 'income_percent']].fillna(value=0)
-            income_pie_chart = (income_pie_chart
-                                .drop(income_pie_chart[income_pie_chart['income_percent'] < 0.25].index)
-                                .sort_values('income_percent')
-                                .to_dict('records'))
-
-        except KeyError as e:
-            category_summary_table = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
-            expenses_pie_chart = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
-            income_pie_chart = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
-            LOGGER.exception(e)
-            LOGGER.warning('No data met current filters: {}'.format(dict(self.filters)))
-
-        return render_template(
-            self.template,
-            data_columns=self.category_summary_columns,
-            data=category_summary_table,
-            pie_expenses=expenses_pie_chart,
-            pie_income=income_pie_chart,
-            date_filter=self.date_filters,
-            accounts=['All'] + list(DATA.accounts['name']),
-            account_values_today=self.todays_accounts,  # Account value dictionary for just today
-            categories=self.categories,
-            date_filter_default=self.filters['date'],
-            account_filter_default=self.filters['account'],
-        )
+        return render_template(self.template, **self.render_dict)
 
     def category_summary(self):
-        # Summary by category
-        root_transactions = fetch_filtered_transactions(self.filters)
+        transactions = self.root_transactions.copy()
 
         # Remove investment, transfer, adjustment categories
-        root_transactions = root_transactions[
-            (root_transactions['category'] != 'Investment') &
-            (root_transactions['category'] != 'Transfer') &
-            (root_transactions['category'] != 'Adjustment')
+        transactions = transactions[
+            (transactions['category'] != 'Investment') &
+            (transactions['category'] != 'Transfer') &
+            (transactions['category'] != 'Adjustment')
             ]
 
         # Expense Transactions
-        trans_exp = root_transactions[root_transactions['debit_account_id'] == 0]
+        trans_exp = transactions[transactions['debit_account_id'] == 0]
 
         # Income Transactions
-        income_accts = DATA.accounts['account_id'][DATA.accounts['transaction_type'] == 'income'].to_list()
-        trans_inc = root_transactions[
-            (root_transactions['credit_account_id'] == 0) |
-            (root_transactions['credit_account_id'].isin(income_accts))
+        trans_inc = transactions[
+            (transactions['credit_account_id'] == 0) |
+            (transactions['credit_account_id'].isin(self.income_accts))
             ]
 
+        # Build resulting table and format text
         result = pd.DataFrame(columns=self.category_summary_columns)
         n = 0
         for t in [trans_exp, trans_inc]:
@@ -144,78 +134,108 @@ class AnalyzePage(page.Page):
 
         result['Category'] = result.index  # Duplicate Category index labels to column
 
-        return result
+        try:
+            category_summary_table = result[self.category_summary_columns].fillna(value='$0.00').to_dict('records')
+            expenses_pie_chart = result[['Category', 'expenses_percent']].fillna(value=0)
+            expenses_pie_chart = (expenses_pie_chart
+                                  .drop(expenses_pie_chart[expenses_pie_chart['expenses_percent'] == 0].index)
+                                  .sort_values('expenses_percent')
+                                  .to_dict('records'))
 
-    def update(self):
-        print('POSTing transaction update')
-        transaction_id = request.args.get('transaction_id')
+            income_pie_chart = result[['Category', 'income_percent']].fillna(value=0)
+            income_pie_chart = (income_pie_chart
+                                .drop(income_pie_chart[income_pie_chart['income_percent'] < 0.25].index)
+                                .sort_values('income_percent')
+                                .to_dict('records'))
 
-        transaction_date = request.form['date']
-        posted_date = request.form['post_date']
-        credit_account = request.form['account-credit']
-        debit_account = request.form['account-debit']
-        amount = request.form['amount']
-        category = request.form['category']
-        description = request.form['description']
-        vendor = request.form['vendor']
-        posted_flag = request.form.get('is_posted_selector')
-        if posted_flag == 'on':
-            posted_flag = True
-        else:
-            posted_flag = False
+        except KeyError as e:
+            category_summary_table = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
+            expenses_pie_chart = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
+            income_pie_chart = pd.DataFrame(columns=self.category_summary_columns).to_dict('records')
+            LOGGER.exception(e)
+            LOGGER.warning('No data met current filters: {}'.format(dict(self.filters)))
 
-        DATA.update_transaction(transaction_id,
-                                transaction_date=transaction_date,
-                                posted_date=posted_date,
-                                category=category,
-                                amount=amount,
-                                credit_account=credit_account,
-                                debit_account=debit_account,
-                                description=description,
-                                vendor=vendor,
-                                is_posted=posted_flag)
+        self.render_dict["data"] = category_summary_table
+        self.render_dict["pie_expenses"] = expenses_pie_chart
+        self.render_dict["pie_income"] = income_pie_chart
 
-        return redirect(self.current_filter_url())
+    def category_sum_by_month(self):
+        months = {
+            '01': 0,
+            '02': 1,
+            '03': 2,
+            '04': 3,
+            '05': 4,
+            '06': 5,
+            '07': 6,
+            '08': 7,
+            '09': 8,
+            '10': 9,
+            '11': 10,
+            '12': 11,
+                  }
 
-    def submit(self):
-        print('POSTing transaction')
-        transaction_date = request.form['date']
-        posted_date = request.form['post_date']
-        credit_account = request.form['account-credit']
-        debit_account = request.form['account-debit']
-        amount = request.form['amount']
-        category = request.form['category']
-        description = request.form['description']
-        vendor = request.form['vendor']
-        posted_flag = request.form.get('is_posted_selector')
+        transactions = self.root_transactions.copy()
 
-        if posted_flag == 'on':
-            posted_flag = True
-        else:
-            posted_flag = False
+        # Remove investment, transfer, adjustment categories
+        transactions = transactions[
+            (transactions['category'] != 'Investment') &
+            (transactions['category'] != 'Transfer') &
+            (transactions['category'] != 'Adjustment')
+            ]
 
-        credit_account = int(DATA.accounts[DATA.accounts['name'] == credit_account]['account_id'])
+        # Filter transactions by category
+        c = self.filters['category']
+        if c.lower() != 'all':
+            transactions = transactions[transactions['category'] == c]
 
-        if debit_account == '':
-            debit_account = None
-        else:
-            debit_account = int(DATA.accounts[DATA.accounts['name'] == debit_account]['account_id'])
+        # Add YYYY-MM date code column to transactions datatable
+        transactions['year_month'] = transactions['posted_date'].apply(lambda row: row[0:7])
+        transactions_grouped = transactions.groupby('year_month')
 
-        DATA.add_transaction(
-            transaction_date=transaction_date,
-            category=category,
-            amount=amount,
-            posted_date=posted_date,
-            credit_account=credit_account,
-            debit_account=debit_account,
-            description=description,
-            vendor=vendor,
-            is_posted=posted_flag)
+        # Build output table
+        result = pd.DataFrame(columns=['date_code', 'income_sum', 'expense_sum'])
+        first_month = int(list(transactions_grouped.groups)[0][-2:])
+        last_month = int(list(transactions_grouped.groups)[-1][-2:])
+        first_year = list(transactions_grouped.groups)[0][:4]
+        last_year = list(transactions_grouped.groups)[-1][:4]
+        m_list = [list(transactions_grouped.groups)[0]]
+        m, y = first_month, int(first_year)
+        for i in range(1, 100):
+            m += 1
 
-    def delete(self):
-        print('Deleting transaction')
-        transaction_id = request.args.get('transaction_id')
-        DATA.delete_transaction(transaction_id)
+            m_list .append("{0}-{1:0=2d}".format(y, m))
+
+            if m == 12:
+                y += 1
+                m = 0
+
+        for m in m_list:
+            if m > "{0}-{1:0=2d}".format(last_year, last_month):
+                break
+
+            try:
+                month_trans = transactions_grouped.get_group(m)
+
+                # Expense Transactions
+                trans_exp = month_trans[month_trans['debit_account_id'] == 0]
+
+                # Income Transactions
+                trans_inc = month_trans[
+                    (month_trans['credit_account_id'] == 0) |
+                    (month_trans['credit_account_id'].isin(self.income_accts))
+                    ]
+
+                result.at[m, 'date_code'] = "{}-{}".format(m[0:4], months[m[-2:]])
+                result.at[m, 'income_sum'] = round(sum(trans_inc['amount']), 2)
+                result.at[m, 'expense_sum'] = round(sum(trans_exp['amount']), 2)
+
+            except KeyError:
+                result.at[m, 'date_code'] = "{}-{}".format(m[0:4], months[m[-2:]])
+                result.at[m, 'income_sum'] = 0
+                result.at[m, 'expense_sum'] = 0
+
+        self.render_dict["area_category"] = result.to_dict("records")
 
 
 ANALYZE_PAGE = AnalyzePage()

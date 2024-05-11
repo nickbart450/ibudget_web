@@ -55,17 +55,62 @@
       }]
     };
 
+
+    var category_canvas_options = {
+      theme: "dark2",
+      animationEnabled: true,
+      title:{
+        text: "{{ category_filter_default }} by Month"
+      },
+      axisX: {
+        title: "Month",
+		valueFormatString: "YYYY-MM",
+	  },
+      axisY: {
+          title: "Amount ($)",
+          valueFormatString: "$#,##0"
+      },
+      legend: {
+		verticalAlign: "top",
+		horizontalAlign: "right",
+		dockInsidePlotArea: true
+	  },
+	  toolTip: {
+		shared: true,
+	  },
+      data: [
+        {
+          name: "Expenses",
+          type: "area",
+          showInLegend: "true",
+          xValueFormatString: "YYYY-MMM",
+          yValueFormatString: "$0.00",
+          dataPoints: [{% for row in area_category %} {x: new Date("{{ row["date_code"] }}".substr(0,4), "{{ row["date_code"] }}".substr(5,6), 10), y: {{ row["expense_sum"] }} },
+           {% endfor %}]
+        },
+        {
+          name: "Income",
+          type: "area",
+          showInLegend: "true",
+          yValueFormatString: "$0.00",
+          dataPoints: [{% for row in area_category %} {x: new Date("{{ row["date_code"] }}".substr(0,4), "{{ row["date_code"] }}".substr(5,6), 10), y: {{ row["income_sum"] }} },
+           {% endfor %}]
+        },
+      ]
+    };
+
     $("#spending_pie_chart").CanvasJSChart(spending_options);
     $("#income_pie_chart").CanvasJSChart(income_options);
+    $("#category_chart").CanvasJSChart(category_canvas_options);
     });
 </script>
 
-<div id="transactions" class="w3-margin">
-  <!--  Top Row (Sidebar + Main Transaction Table) -->
-  <div class="w3-section w3-row">
-    <!--  Filter/Account Values Sidebar  -->
-    <div id="date_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
+<div id="analysis" class="w3-margin">
 
+  <!--  Category Summary Table & Pie Charts -->
+  <div class="w3-section w3-row">
+
+    <div id="date_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
       <!-- Table Filters -->
       <div>
         <div class="w3-bar" style="background-color: #343E3C">
@@ -80,7 +125,7 @@
               <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
             </div>
             <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 100%; overflow-x: hidden; overflow-y: auto;">
-              {% for i in date_filter %}
+              {% for i in date_filters %}
               <input class="date_btn w3-bar-item w3-button" type="button" value="{{ i }}">
               {% endfor %}
             </div>
@@ -133,7 +178,7 @@
       </div>
     </div>
 
-    <!--  Category Summary Table & Pie Chart  -->
+    <!-- Table & Pie Charts  -->
     <div class="w3-rest w3-row" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
       <!-- Table -->
       <div id="category_summary_table" class="w3-half w3-padding">
@@ -164,6 +209,40 @@
 
     </div>
   </div>
+
+  <hr class="rounded">
+
+  <!--  Category Trends Charts -->
+  <div class="w3-section w3-row">
+    <!--  Filters & Account Values Sidebar  -->
+    <div id="category_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
+        <div class="w3-bar" style="background-color: #343E3C">
+            <div class="w3-bar-item"><b>CATEGORY TREND -</b></div>
+        </div>
+
+        <!-- Category Filter -->
+        <div id="category_filter_container" class="w3-bar-block w3-section">
+          <div class="w3-dropdown-hover" style="width:100%">
+            <div class="w3-button w3-white w3-row">
+              <span id="category_filter">{{ category_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>
+            </div>
+            <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 350px; width: 100%; overflow-x: hidden; overflow-y: auto;">
+              {% for i in categories %}
+              <input class="category_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <!--  Category Chart vs Time  -->
+    <div class="w3-rest w3-row" style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
+      <!-- Table -->
+      <div id= "category_chart" class="w3-content w3-card" style="height: 500px; max-width:1200px;"></div>
+
+    </div>
+  </div>
+
 </div>
 
 {% endblock %}
