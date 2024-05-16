@@ -160,6 +160,60 @@ class BudgetData:
         self.accounts = account_table
         return account_table
 
+    def add_account(self, name, account_type, transaction_type, account_id='', starting_value=0):
+        """
+        account_type examples: asset, liability, revenue, other
+        transaction_type examples: external, bank, cash, income,  investment, credit_line, credit_card
+        """
+
+        print('adding account')
+        if account_id != '':
+            print('account_id check:', self.account_id_unique_check(account_id))
+
+        # if name == '' or account_type == '' or transaction_type == '':
+
+        subquery_1 = "name, account_type, transaction_type"
+        subquery_2 = "'{name}', '{account_type}', '{transaction_type}'"
+        values_dict = {
+            'name': str(name),
+            'account_type': str(account_type),
+            'transaction_type': str(transaction_type)
+        }
+
+        if account_id != '':
+            subquery_1 += ", account_id"
+            subquery_2 += ", {account_id}"
+            values_dict['account_id'] = int(account_id)
+
+        query = """INSERT INTO accounts ({})
+             VALUES ({});""".format(subquery_1, subquery_2.format(**values_dict))
+
+        print(query)
+        self.logger.debug('add_category query:\n{}'.format(query))
+
+        # Execute query and commit to db
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+        account_id = cursor.lastrowid
+
+        print('added account to db:')
+        print('\taccount_id: ', account_id)
+        print('\tname: ', name)
+        print('\ttransaction_type: ', transaction_type)
+        print('\taccount_type: ', account_type)
+        print('\tstarting_value: ', starting_value)
+
+        # Refresh category table
+        self.get_accounts()
+
+        return account_id
+
+    def account_id_unique_check(self, account_id):
+        current_ids = self.get_accounts()['account_id'].to_list()
+        return account_id in current_ids
+
     def get_categories(self):
         """Returns a pandas dataframe version of the database table. Index is cat_id."""
         if not self.dbConnected:
@@ -173,19 +227,34 @@ class BudgetData:
         self.categories = category_table
         return category_table
 
-    def add_category(self, name, description=''):
-        if description != '':
-            query = '''INSERT INTO CATEGORIES
-                    (name, description)
-                    VALUES ("{name}", "{description}");'''.format(
-                name=name,
-                description=description,
-            )
-        else:
-            query = '''INSERT INTO CATEGORIES (name)
-                    VALUES ("{name}");'''.format(name=name)
+    def add_category(self, name, cat_id='', description=''):
+        subquery_1 = "(name)"
+        subquery_2 = "('{name}')"
+        values_dict = {'name': str(name)}
 
-        self.logger.debug('add_transaction query:\n{}'.format(query))
+        if cat_id != '' and description != '':
+            subquery_1 = "(cat_id, name, description)"
+            subquery_2 = "('{cat_id}', '{name}', '{description}')"
+
+            values_dict['cat_id'] = int(cat_id)
+            values_dict['description'] = str(description)
+
+        elif cat_id != '' and description == '':
+            subquery_1 = "(cat_id, name)"
+            subquery_2 = "('{cat_id}', '{name}')"
+
+            values_dict['cat_id'] = int(cat_id)
+
+        elif cat_id == '' and description != '':
+            subquery_1 = "(name, description)"
+            subquery_2 = "('{name}', '{description}')"
+
+            values_dict['description'] = str(description)
+
+        query = '''INSERT INTO CATEGORIES {}
+                VALUES {};'''.format(subquery_1, subquery_2.format(**values_dict))
+
+        self.logger.debug('add_category query:\n{}'.format(query))
 
         # Execute query and commit to db
         cursor = self.dbConnection.cursor()
@@ -195,7 +264,7 @@ class BudgetData:
         category_id = cursor.lastrowid
 
         print('added category to db:')
-        print('\ttransaction_id: ', category_id)
+        print('\tcategory_id: ', category_id)
         print('\tname: ', name)
         print('\tdescription: ', description)
 
@@ -203,6 +272,20 @@ class BudgetData:
         self.get_categories()
 
         return category_id
+
+    def delete_category(self, category_id):
+        category_id = int(category_id)
+
+        # Commit deletion to database
+        self.logger.info('Deleting Category: {}'.format(category_id))
+        query = '''DELETE FROM CATEGORIES
+                WHERE cat_id={};'''.format(category_id)
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+        self.get_categories()  # Refresh categories table
+        return None
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
                          account_filter='All', expense_income_filter='both', category_filter='All',
