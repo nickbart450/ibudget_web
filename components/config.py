@@ -17,6 +17,13 @@ def write_out_environ():
     f.close()
 
 
+def reload():
+    global CONFIG
+    CONFIG = configparser.ConfigParser()
+    CONFIG.read(config_files)
+    return CONFIG
+
+
 for i in range(len(config_files)):
     file = os.path.abspath(config_files[i])
     config_files[i] = file
@@ -27,14 +34,6 @@ for i in range(len(config_files)):
             write_out_environ()
         else:
             raise FileNotFoundError(file)
-
-
-def reload():
-    global CONFIG
-    CONFIG = configparser.ConfigParser()
-    CONFIG.read(config_files)
-    return CONFIG
-
 
 # Load Config File(s)
 CONFIG = configparser.ConfigParser()
