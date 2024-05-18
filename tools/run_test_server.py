@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # Fetch database file location from the config. Defaults to live version
     ENVIRON = CONFIG['env']['environ']
     LOGGER.debug('Config environment: {}'.format(ENVIRON))
-    db_file = CONFIG['database.{}'.format(ENVIRON)]['file']
+    db_file = CONFIG['database'][ENVIRON]
 
     # argparse setup -- Available Arguments:
     #   --db_file   specify new .db file to open
