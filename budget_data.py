@@ -1425,7 +1425,7 @@ def fetch_filtered_transactions(filters):
 CONFIG = config.CONFIG
 
 environ = CONFIG['env']['environ']
-DB_FILE = CONFIG['database.{}'.format(environ)]['file']
+DB_FILE = CONFIG['database'][environ]
 
 DATA = BudgetData()
 DATA.connect(DB_FILE)
