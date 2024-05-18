@@ -18,6 +18,7 @@ class SetupPage(page.Page):
 
         self.setup_dict = {
             'App': {'type': 'individual', 'data': None},
+            'Database': {'type': 'individual', 'data': None},
             'Category': {'type': 'table', 'data': None},
             'Account': {'type': 'table', 'data': None},
             # 'other': None,
@@ -34,6 +35,7 @@ class SetupPage(page.Page):
         """Fetch appropriate data and render page from template"""
         mapping_dict = {
             'App': 'personal',
+            'Database': 'database',
             'Category': 'db.Category',
             'Account': 'db.Account',
             # 'other': 'other'
@@ -42,25 +44,28 @@ class SetupPage(page.Page):
         for i in self.top_level_items:
 
             if mapping_dict[i].startswith('db'):
-                print('Database Fetch')
+                # print('Database Fetch')
                 func_map = {
-                    'Category': DATA.get_categories().to_dict('records'),
-                    'Account': DATA.accounts.to_dict('records'),
+                    'Category': DATA.get_categories().fillna("").to_dict('records'),
+                    'Account': DATA.get_accounts().fillna("").to_dict('records'),
+                }
+
+                key_map = {
+                    'Category': 'cat_id',
+                    'Account': 'account_id',
                 }
 
                 db_table = mapping_dict[i].split('.')[1]
 
                 self.setup_dict[db_table]['data'] = func_map[db_table]
+                self.setup_dict[db_table]['id_key'] = key_map[db_table]
 
             else:
-                print('ConfigParser Fetch')
+                # print('ConfigParser Fetch')
                 if len(mapping_dict[i].split('.')) > 1:
-                    #
                     options = mapping_dict[i].split('.')
-                    print('options', options)
+                    # print('options', options)
 
-                    # key = config.CONFIG.get(options[0], options[1]).replace('\n', '').split(',')
-                    # value =
                     self.setup_dict[i]['data'] = config.CONFIG.get(options[0], options[1]).replace('\n', '').split(',')
 
                 else:
@@ -85,76 +90,56 @@ class SetupPage(page.Page):
         """
         TODO: Add db_propogate option to update all matching entries in transaction db to new value
         """
-        def category_update(c, new):
-            print('NOT IMPLEMENTED')
-
-            c = c.replace('_', ' ')
-            print('updating category', c, 'to', new)
-
-        def account_update(a, new):
-            print('NOT IMPLEMENTED')
-
-            print('updating account', a, 'to', new)
 
         func_map = {
-            'Category': category_update,
-            'Account': account_update,
+            'Category': DATA.update_category,
+            'Account': DATA.update_account,
+            'personal': config.update_setting,
         }
 
-        print(request.form.to_dict())
+        update_form = request.form
+        # print("update_form", request.form)
 
-        if len(request.form.to_dict()) > 1:
-            # Updating multiple values from table row
-            update_form = request.form.to_dict()  # selector code
-            keys = list(request.form.to_dict().keys())  # selector code
-            print("update_form", update_form)
-            # print("keys", keys)
+        keys = list(update_form.keys())
 
-            update_type = keys[0].split('.')[0]  # which section are we updating
-            print("update_type", update_type)
+        for k in keys:
+            # print(k, request.form.get(k))
+            if request.form.get(k) == 'Update':
+                update_type = k.split('.')[0]
+                update_id = k.split('.')[1]
 
-            for i in keys:
-                if len(i.split('.')) < 3:
-                    # print('i too short')
-                    continue
+        # print("update_type", update_type)
+        # print("update_id", update_id)
 
-                update_id = i.split('.')[1]  # which value within that section are we updating
-                # print("\tupdate_id", update_id)
+        update_dict = update_form.to_dict()
+        print('update_dict', update_dict)
 
-                update_param = i.split('.')[2]  # which value within that section are we updating
-                # print("\tupdate_param", update_param)
+        if len(list(update_dict.keys())[0].split('.')) == 2:
+            # If dictionary keys are x.y addresses - need to parse form table data
+            new_vals = {}
+            for i in list(update_dict.keys()):
+                if i.split('.')[0] == update_id:
+                    update_param = i.split('.')[1]  # which value within that section are we updating
+                    new_vals[update_param] = update_dict[i]
 
-                new_val = update_form[i]  # new value\
-                # print("\tnew_val", new_val)
-
-                func_map[update_type](update_id, new_val)  # call appropriate handling function
-
+        elif len(list(update_dict.keys())[0].split('.')) == 1:
+            new_vals = {'config_section': 'personal',
+                        'new_value': update_dict[update_id]}
         else:
-            # Updating single value from list
-            update_form = list(request.form.keys())[0]  # selector code
+            print('whoopsies')
+            return
 
-            update_type = update_form.split('.')[0]  # which section are we updating
-            print("\tupdate_type", update_type)
+        print('new_vals', new_vals)
 
-            update_item = update_form.split('.')[1]  # which value within that section are we updating
-            print("\tupdate_item", update_item)
+        func_map[update_type](update_id, **new_vals)  # call appropriate handling function
 
-            new_val = request.form.get(update_form)  # new value
-            print("\tnew_val", new_val)
-
-            func_map[update_type](update_item, new_val)     # call appropriate handling function
 
     def delete(self):
         """
         """
-        def account_delete(a):
-            print('NOT IMPLEMENTED')
-
-            print('deleting account', a)
-
         func_map = {
             'cat_id': DATA.delete_category,
-            # 'account_id': DATA.delete_account,
+            'account_id': DATA.delete_account,
         }
 
         print(request.args.to_dict())
@@ -200,13 +185,14 @@ def app_setup():
 
 
 @APP.route("/setup/update/", methods=['POST'])
-def update():
+def update_setting():
     """
 
     :return: redirect
     """
     SETUP_PAGE.update()
     return redirect(url_for('app_setup'))
+
 
 @APP.route("/setup/delete/", methods=['GET'])
 def delete():
@@ -217,6 +203,7 @@ def delete():
     SETUP_PAGE.delete()
     return redirect(url_for('app_setup'))
 
+
 @APP.route("/setup/new/", methods=['POST'])
 def new_setting():
     """
@@ -225,14 +212,3 @@ def new_setting():
     """
     SETUP_PAGE.new()
     return redirect(url_for('app_setup'))
-
-# @APP.route("/transact/update_transaction", methods=['POST'])
-# def update_transaction():
-#     TRANSACTION_PAGE.update()
-#     return redirect(TRANSACTION_PAGE.current_filter_url())
-#
-#
-# @APP.route("/transact/delete_transaction", methods=['GET'])
-# def delete_transaction():
-#     TRANSACTION_PAGE.delete()
-#     return redirect(TRANSACTION_PAGE.current_filter_url())

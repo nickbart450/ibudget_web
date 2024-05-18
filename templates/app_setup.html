@@ -27,17 +27,24 @@
   }
 
   // Called when the Delete button is clicked
-  function delete_setting_entry(id){
-    console.log(id);
-    var table = "CATEGORIES";
+  function delete_setting_entry(item){
+    console.log("Source item:", item);
 
-    if (confirm('Confirm DELETE?')){
-        console.log("/setup/delete?cat_id="+id);
-        location.href = "/setup/delete?cat_id="+id;
+    var table_map = new Object();
+    table_map["cat_id"] = "CATEGORIES";
+    table_map["account_id"]  = "ACCOUNTS";
+
+    var key = Object.keys(item)[0];
+
+    var table = table_map[key];
+
+    if (confirm('Confirm DELETE from '+table_map[key]+'?')){
+        location.href = "/setup/delete?"+key+"="+item[key];
     } else {
         console.log("Delete Cancelled")
-    }
+    };
   };
+
 </script>
 
 <style>
@@ -72,18 +79,18 @@
 
           {% if "list" == setup_dict[i]["type"] %}
             <div>
-              <p>LIST</p>
               <input onclick="document.getElementById('setup_new_modal_{{ i }}').style.display='block'" class="w3-button" type="button" value="Add Item">
 
-              <table class="w3-table">
-                <tr>
-                  <th>Value</th>
-                  <th>Controls</th>
-                </tr>
+              <form class="w3-row-padding w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
 
-                {% for k in setup_dict[i]["data"] %}
+                <table class="w3-table">
                   <tr>
-                    <form class="w3-row-padding w3-margin-top" action="{{ url_for('update') }}?{{ k }}" method="post">
+                    <th>Value</th>
+                    <th>Controls</th>
+                  </tr>
+
+                  {% for k in setup_dict[i]["data"] %}
+                    <tr>
                       <td>
                           <input class="w3-cell" type="text" value="{{ k }}" name="{{ i }}.{{ k.replace(' ', '_') }}" style="width:100%">
                       </td>
@@ -94,60 +101,62 @@
                           <input class="w3-button w3-cell" type="submit" value="Update" name="{{ i }}.{{ k.replace(' ', '_') }}">
                         </div>
                       </td>
-                    </form>
-                  </tr>
-                {% endfor %}
+                    </tr>
+                  {% endfor %}
 
-              </table>
+                </table>
+              </form>
             </div>
 
           {% elif "table" == setup_dict[i]["type"] %}
             <div>
-              <p>TABLE</p>
               <input onclick="document.getElementById('setup_new_modal_{{ i }}').style.display='block'" class="w3-button" type="button" value="Add Item">
 
-              <table class="w3-table">
-                <tr>
-                  {% for k in setup_dict[i]["data"][0].keys() %}
-                    <th>{{ k }}</th>
-                  {% endfor %}
-                  <th>Controls</th>
-                </tr>
+              <form class="w3-row-padding w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
 
-                {% for row in setup_dict[i]["data"] %}
+                <table class="w3-table">
                   <tr>
-                    <form class="w3-row-padding w3-margin-top" action="{{ url_for('update') }}?{{ row['cat_id'] }}" method="post">
-                      {% for k in setup_dict[i]["data"][0].keys() %}
-                        <td><input type="text" value="{{ row[k] }}" name="{{ i }}.{{ row['account_id'] }}.{{ k }}"></td>
-                      {% endfor %}
-
-                      <td>
-                        <div>
-                          <i onClick="delete_setting_entry({{ row['cat_id'] }})" class="fa fa-minus-circle w3-button"></i>
-                          <input class="w3-button w3-cell" type="submit" value="Update" name="{{ i }}.{{ row['cat_id'] }}">
-                        </div>
-                      </td>
-                    </form>
+                    {% for k in setup_dict[i]["data"][0].keys() %}
+                      <th>{{ k }}</th>
+                    {% endfor %}
+                    <th>Controls</th>
                   </tr>
-                {% endfor %}
 
-              </table>
+                  {% for row in setup_dict[i]["data"] %}
+                  <tr>
+                    {% for k in setup_dict[i]["data"][0].keys() %}
+                      <td><input type="text" value="{{ row[k] }}" name="{{ row[setup_dict[i]['id_key']] }}.{{ k }}"></td>
+                    {% endfor %}
+
+                    <td>
+                      <div>
+                        <i onClick="delete_setting_entry({{ row }})" class="fa fa-minus-circle w3-button"></i>
+                        <input class="w3-button" type="submit" value="Update" name="{{ i }}.{{ row[setup_dict[i]['id_key']] }}">
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </table>
+              </form>
             </div>
 
           {% elif "individual" == setup_dict[i]["type"] %}
             <div>
-              <p>INDIVIDUAL</p>
-              {% for k in setup_dict[i]["data"].keys() %}
+              <form class="w3-row-padding w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
+                {% for k in setup_dict[i]["data"].keys() %}
                 <div class="w3-cell-row w3-padding">
-                  <div style="width: 80%">
-                    <input class="w3-container w3-input w3-cell" type="text" value="{{ setup_dict[i]['data'][k] }}" id="personal.{{ k }}">
-                    <label for="personal.{{ k }}">{{ k }}</label>
+                  <div class="w3-container w3-cell" style="width: 90%">
+                    <input class="w3-container w3-input" type="text" value="{{ setup_dict[i]['data'][k] }}" name="{{ k }}" id="{{ k }}"/>
+                    <label for="{{ k }}">{{ k }}</label>
                   </div>
 
-                  <input class="w3-container w3-cell w3-button" type="button" value="Submit" >
-
+                  <div class="w3-container w3-cell">
+                    <input class="w3-button" type="submit" value="Update" name="personal.{{ k }}"/>
+                  </div>
                 </div>
-              {% endfor %}
+                {% endfor %}
+              </form>
+
             </div>
           {% else %}
             <p>OTHER</p>
