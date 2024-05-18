@@ -17,7 +17,7 @@ class SetupPage(page.Page):
         self.name = 'setup'
 
         self.setup_dict = {
-            'App': {'type': 'individual', 'data': None},
+            'Personal': {'type': 'individual', 'data': None},
             'Database': {'type': 'individual', 'data': None},
             'Category': {'type': 'table', 'data': None},
             'Account': {'type': 'table', 'data': None},
@@ -34,7 +34,7 @@ class SetupPage(page.Page):
     def get(self):
         """Fetch appropriate data and render page from template"""
         mapping_dict = {
-            'App': 'personal',
+            'Personal': 'personal',
             'Database': 'database',
             'Category': 'db.Category',
             'Account': 'db.Account',
@@ -66,20 +66,20 @@ class SetupPage(page.Page):
                     options = mapping_dict[i].split('.')
                     # print('options', options)
 
-                    self.setup_dict[i]['data'] = config.CONFIG.get(options[0], options[1]).replace('\n', '').split(',')
+                    self.setup_dict[i]['data'] = self.config.get(options[0], options[1]).replace('\n', '').split(',')
 
                 else:
                     self.setup_dict[i]['data'] = {}
 
-                    indiv_settings = config.CONFIG.options(mapping_dict[i])
+                    indiv_settings = self.config.options(mapping_dict[i])
 
                     # print('indiv_settings', indiv_settings)
                     # print('mapping_dict[i]', mapping_dict[i])
                     for t in indiv_settings:
                         # print('\tt', t)
-                        # print(config.CONFIG.get(mapping_dict[i], t))
+                        # print(self.config.get(mapping_dict[i], t))
 
-                        self.setup_dict[i]['data'][t] = config.CONFIG.get(mapping_dict[i], t)
+                        self.setup_dict[i]['data'][t] = self.config.get(mapping_dict[i], t)
 
         print('setup_dict', self.setup_dict)
         self.render_dict['setup_dict'] = self.setup_dict
@@ -94,7 +94,8 @@ class SetupPage(page.Page):
         func_map = {
             'Category': DATA.update_category,
             'Account': DATA.update_account,
-            'personal': config.update_setting,
+            'Personal': config.update_setting,
+            'Database': config.update_setting,
         }
 
         update_form = request.form
@@ -112,7 +113,7 @@ class SetupPage(page.Page):
         # print("update_id", update_id)
 
         update_dict = update_form.to_dict()
-        print('update_dict', update_dict)
+        # print('update_dict', update_dict)
 
         if len(list(update_dict.keys())[0].split('.')) == 2:
             # If dictionary keys are x.y addresses - need to parse form table data
@@ -120,19 +121,19 @@ class SetupPage(page.Page):
             for i in list(update_dict.keys()):
                 if i.split('.')[0] == update_id:
                     update_param = i.split('.')[1]  # which value within that section are we updating
+                    # print("update_param", update_param)
                     new_vals[update_param] = update_dict[i]
 
         elif len(list(update_dict.keys())[0].split('.')) == 1:
-            new_vals = {'config_section': 'personal',
+            new_vals = {'config_section': update_type.lower(),
                         'new_value': update_dict[update_id]}
         else:
             print('whoopsies')
             return
 
-        print('new_vals', new_vals)
+        # print('new_vals', new_vals)
 
         func_map[update_type](update_id, **new_vals)  # call appropriate handling function
-
 
     def delete(self):
         """
