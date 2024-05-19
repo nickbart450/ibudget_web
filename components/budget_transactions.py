@@ -1,9 +1,8 @@
-import pandas as pd
-
 from components import page
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
 from flask import request, render_template, redirect, url_for
+import pandas as pd
 
 
 class TransactionsPage(page.Page):
@@ -16,13 +15,10 @@ class TransactionsPage(page.Page):
         self.template = 'transactions_table.html'
         self.name = 'transact'
 
-        # self.categories = self.config['ui_settings']['categories'].replace('\n', '').split(',')
-        self.categories = DATA.get_categories()['name'].to_list()
         self.filters = dict(self.config['ui_settings.default_filters'])
         self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
 
     def current_filter_url(self):
-
         url = url_for('data_transactions') + \
               "?income_expense={}&date={}&account={}&category={}&date_start=&date_end=".format(
                   self.filters['income_expense'],
@@ -54,11 +50,6 @@ class TransactionsPage(page.Page):
         print('Fetching /transact with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /transact with filters: {}'.format(dict(self.filters)))
 
-        # Calculate today's account values from database
-        self.todays_accounts = DATA.calculate_todays_account_values()
-        for t in self.todays_accounts:
-            self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
-
         # Get transaction data from database table with current filters
         result = fetch_filtered_transactions(self.filters)
         result.fillna(value='')
@@ -83,16 +74,26 @@ class TransactionsPage(page.Page):
             LOGGER.warning('Current Filters: {}'.format(dict(self.filters)))
             self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
             return redirect(url_for('data_transactions'))
+
         elif len(self.posted_transactions) > 0 or len(self.upcoming_transactions) > 0:
+            # Calculate today's account values from database
+            todays_accounts = DATA.calculate_todays_account_values()
+            for t in todays_accounts:
+                todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
+
+            # Fetch latest categories
+            categories = DATA.categories['name'].to_list()
+            categories.sort()
+
             return render_template(
                 self.template,
                 posted_data=self.posted_transactions.to_dict('records'),
                 upcoming_data=self.upcoming_transactions.to_dict('records'),
                 date_filter=self.date_filters[:-2],
                 active_year=DATA.year,
-                accounts=['All'] + list(DATA.accounts['name']),
-                account_values_today=self.todays_accounts,  # Account value dictionary for just today
-                categories=self.categories,
+                accounts=['All'] + DATA.accounts['name'].to_list(),
+                account_values_today=todays_accounts,  # Account value dictionary for just today
+                categories=['All'] + categories,
                 date_filter_default=self.filters['date'],
                 account_filter_default=self.filters['account'],
                 category_filter_default=self.filters['category'],

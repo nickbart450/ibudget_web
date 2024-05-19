@@ -7,7 +7,14 @@ from flask import request, render_template, redirect, url_for
 class SetupPage(page.Page):
     def __init__(self):
         """
-        /analyze/<arguments>
+        /setup/<arguments>
+
+        Note: No arguments supported at this time
+
+        TODO: update db ACCOUNTS table to add starred toggle for hiding/showing accounts in sidebar
+            - rest would need to be visible in a new location. Standalone //ACCOUNTS page??
+        TODO: add list of acceptable account inputs to config.ini, use these lists for dropdowns in new_setting modal
+        TODO: add detection for input types: numeric, boolean, text to style setup more cleanly
         """
 
         super().__init__()
@@ -43,8 +50,8 @@ class SetupPage(page.Page):
             if mapping_dict[i].startswith('db'):
                 # print('Database Fetch')
                 func_map = {
-                    'Category': DATA.get_categories().fillna("").to_dict('records'),
-                    'Account': DATA.get_accounts().fillna("").to_dict('records'),
+                    'Category': DATA.categories.fillna("").to_dict('records'),
+                    'Account': DATA.accounts.fillna("").to_dict('records'),
                 }
 
                 key_map = {
