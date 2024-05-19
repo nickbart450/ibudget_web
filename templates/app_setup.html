@@ -112,32 +112,32 @@
             <div>
               <input onclick="document.getElementById('setup_new_modal_{{ i }}').style.display='block'" class="w3-button" type="button" value="Add Item">
 
-              <form class="w3-row-padding w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
-
-                <table class="w3-table">
-                  <tr>
-                    {% for k in setup_dict[i]["data"][0].keys() %}
-                      <th>{{ k }}</th>
-                    {% endfor %}
-                    <th>Controls</th>
-                  </tr>
-
-                  {% for row in setup_dict[i]["data"] %}
-                  <tr>
-                    {% for k in setup_dict[i]["data"][0].keys() %}
-                      <td><input type="text" value="{{ row[k] }}" name="{{ row[setup_dict[i]['id_key']] }}.{{ k }}"></td>
-                    {% endfor %}
-
-                    <td>
-                      <div>
-                        <i onClick="delete_setting_entry({{ row }})" class="fa fa-minus-circle w3-button"></i>
-                        <input class="w3-button" type="submit" value="Update" name="{{ i }}.{{ row[setup_dict[i]['id_key']] }}">
-                      </div>
-                    </td>
-                  </tr>
+              <ul class="w3-ul">
+                <li class="w3-cell-row">
+                  {% for k in setup_dict[i]["data"][0].keys() %}
+                  <div class="w3-container w3-cell" style="width:15%">{{ k }}</div>
                   {% endfor %}
-                </table>
-              </form>
+                  <div class="w3-container w3-cell">Controls</div>
+                </li>
+
+                {% for row in setup_dict[i]["data"] %}
+                <li class="w3-cell-row">
+                  <form class="w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
+                    {% for k in setup_dict[i]["data"][0].keys() %}
+                    <div class="w3-container w3-cell" style="width:15%">
+                      <input type="text" value="{{ row[k] }}" name="{{ k }}"  style="width:90%">
+                    </div>
+                    {% endfor %}
+
+                    <div class="w3-container w3-cell">
+                      <i onClick="delete_setting_entry({{ row }})" class="fa fa-minus-circle w3-button"></i>
+                      <input class="w3-button" type="submit" value="Update" name="{{ i }}.{{ row[setup_dict[i]['id_key']] }}">
+                    </div>
+                  </form>
+                </li>
+                {% endfor %}
+
+              </ul>
             </div>
 
           {% elif "individual" == setup_dict[i]["type"] %}
