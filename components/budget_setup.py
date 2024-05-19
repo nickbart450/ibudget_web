@@ -1,5 +1,3 @@
-import pandas as pd
-
 from components import page, config
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
@@ -81,6 +79,9 @@ class SetupPage(page.Page):
                         self.setup_dict[i]['data'][t] = self.config.get(mapping_dict[i], t)
 
         print('setup_dict', self.setup_dict)
+        LOGGER.debug('setup_dict')
+        LOGGER.debug(self.setup_dict)
+
         self.render_dict['setup_dict'] = self.setup_dict
 
         return render_template(self.template, **self.render_dict)
@@ -118,6 +119,8 @@ def update_setting():
 
     update_form = request.form
     # print("update_form", request.form)
+    LOGGER.debug("update_form")
+    LOGGER.debug(request.form)
 
     keys = list(update_form.keys())
 
@@ -144,12 +147,19 @@ def update_setting():
     # print("update_id", update_id)
     # print("update_type", update_type)
 
+    LOGGER.debug("update_id")
+    LOGGER.debug(update_id)
+    LOGGER.debug("update_type")
+    LOGGER.debug(update_type)
+
     if update_type in config_types:
         # Needed a way to get section and setting name from form. This is a bit inelegant but functional
         update_dict = {'config_section': update_type.lower(),
                        'new_value': update_dict[update_id]}
 
     # print('update_dict - FINAL', update_dict)
+    LOGGER.debug('update_dict-FINAL')
+    LOGGER.debug(update_dict)
 
     confirm = func_map[update_type](update_id, **update_dict)  # call appropriate handling function
 
@@ -172,6 +182,8 @@ def delete():
     }
 
     # print(request.args.to_dict())
+    LOGGER.debug('/delete request.args.to_dict()')
+    LOGGER.debug(request.args.to_dict())
 
     delete_type = list(request.args.to_dict().keys())[0]  # which section are we updating
     delete_id = list(request.args.to_dict().values())[0]  # which value within that section are we updating
@@ -183,10 +195,12 @@ def delete():
 @APP.route("/setup/new/", methods=['POST'])
 def new_setting():
     """
+    TODO: Make required inputs required in the HTML form
 
     :return: redirect
     """
-    print(request.form.to_dict())
+    LOGGER.debug('/new request.args.to_dict()')
+    LOGGER.debug(request.args.to_dict())
 
     func_map = {
         'cat_id': DATA.add_category,
