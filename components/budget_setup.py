@@ -38,7 +38,6 @@ class SetupPage(page.Page):
             'Database': 'database',
             'Category': 'db.Category',
             'Account': 'db.Account',
-            # 'other': 'other'
         }
 
         for i in self.top_level_items:
@@ -86,95 +85,6 @@ class SetupPage(page.Page):
 
         return render_template(self.template, **self.render_dict)
 
-    def update(self):
-        """
-        TODO: Add db_propogate option to update all matching entries in transaction db to new value
-        """
-        update_id = None
-        update_type = None
-
-        func_map = {
-            'Category': DATA.update_category,
-            'Account': DATA.update_account,
-            'Personal': config.update_setting,
-            'Database': config.update_setting,
-        }
-        config_types = ['Personal', 'Database']
-
-        update_form = request.form
-        # print("update_form", request.form)
-
-        keys = list(update_form.keys())
-
-        update_dict = update_form.to_dict()
-        # print('update_dict', update_dict)
-
-        for k in keys:
-            # print(k, request.form.get(k))
-            if request.form.get(k) == 'Update':
-                update_type = k.split('.')[0]
-                update_id = k.split('.')[1]
-                update_dict.pop(k)
-                break
-
-        if update_id is None:
-            print('Could not identify row id')
-            return None
-
-        if update_type is None:
-            print('Could not identify update type (Category, Account, etc.)')
-            return None
-
-        # print('update_dict - popped key', update_dict)
-        # print("update_id", update_id)
-        # print("update_type", update_type)
-
-        if update_type in config_types:
-            # Needed a way to get section and setting name from form. This is a bit inelegant but functional
-            update_dict = {'config_section': update_type.lower(),
-                           'new_value': update_dict[update_id]}
-
-        # print('update_dict - FINAL', update_dict)
-
-        func_map[update_type](update_id, **update_dict)  # call appropriate handling function
-
-    def delete(self):
-        """
-        """
-        func_map = {
-            'cat_id': DATA.delete_category,
-            'account_id': DATA.delete_account,
-        }
-
-        print(request.args.to_dict())
-
-        delete_type = list(request.args.to_dict().keys())[0]  # which section are we updating
-        delete_id = list(request.args.to_dict().values())[0]  # which value within that section are we updating
-        func_map[delete_type](delete_id)     # call appropriate handling function
-
-    def new(self):
-        print(request.form.to_dict())
-
-        func_map = {
-            'cat_id': DATA.add_category,
-            'account_id': DATA.add_account,
-        }
-
-        required_inputs = {
-            'cat_id': ['name'],
-            'account_id': ['name', 'account_type', 'transaction_type'],
-        }
-
-        key = list(request.form.keys())[0]
-
-        for i in required_inputs[key]:
-            if request.form.to_dict()[i] == '':
-                # TODO: Fix behavior to prompt/warn user. JS?
-                print('MISSING REQUIRED VALUES - RETURNING')
-                return
-
-        func_map[key](**request.form.to_dict())  # should only use the first entry for list entries
-
 
 SETUP_PAGE = SetupPage()
 
@@ -191,10 +101,58 @@ def app_setup():
 @APP.route("/setup/update/", methods=['POST'])
 def update_setting():
     """
+    TODO: Add db_propogate option to update all matching entries in transaction db to new value
 
     :return: redirect
     """
-    SETUP_PAGE.update()
+    update_id = None
+    update_type = None
+
+    func_map = {
+        'Category': DATA.update_category,
+        'Account': DATA.update_account,
+        'Personal': config.update_setting,
+        'Database': config.update_setting,
+    }
+    config_types = ['Personal', 'Database']
+
+    update_form = request.form
+    # print("update_form", request.form)
+
+    keys = list(update_form.keys())
+
+    update_dict = update_form.to_dict()
+    # print('update_dict', update_dict)
+
+    for k in keys:
+        # print(k, request.form.get(k))
+        if request.form.get(k) == 'Update':
+            update_type = k.split('.')[0]
+            update_id = k.split('.')[1]
+            update_dict.pop(k)
+            break
+
+    if update_id is None:
+        print('Could not identify row id')
+        return None
+
+    if update_type is None:
+        print('Could not identify update type (Category, Account, etc.)')
+        return None
+
+    # print('update_dict - popped key', update_dict)
+    # print("update_id", update_id)
+    # print("update_type", update_type)
+
+    if update_type in config_types:
+        # Needed a way to get section and setting name from form. This is a bit inelegant but functional
+        update_dict = {'config_section': update_type.lower(),
+                       'new_value': update_dict[update_id]}
+
+    # print('update_dict - FINAL', update_dict)
+
+    func_map[update_type](update_id, **update_dict)  # call appropriate handling function
+
     return redirect(url_for('app_setup'))
 
 
@@ -204,7 +162,17 @@ def delete():
 
     :return: redirect
     """
-    SETUP_PAGE.delete()
+    func_map = {
+        'cat_id': DATA.delete_category,
+        'account_id': DATA.delete_account,
+    }
+
+    # print(request.args.to_dict())
+
+    delete_type = list(request.args.to_dict().keys())[0]  # which section are we updating
+    delete_id = list(request.args.to_dict().values())[0]  # which value within that section are we updating
+    func_map[delete_type](delete_id)  # call appropriate handling function
+
     return redirect(url_for('app_setup'))
 
 
@@ -214,5 +182,26 @@ def new_setting():
 
     :return: redirect
     """
-    SETUP_PAGE.new()
+    print(request.form.to_dict())
+
+    func_map = {
+        'cat_id': DATA.add_category,
+        'account_id': DATA.add_account,
+    }
+
+    required_inputs = {
+        'cat_id': ['name'],
+        'account_id': ['name', 'account_type', 'transaction_type'],
+    }
+
+    key = list(request.form.keys())[0]
+
+    for i in required_inputs[key]:
+        if request.form.to_dict()[i] == '':
+            # TODO: Fix behavior to prompt/warn user. JS?
+            print('MISSING REQUIRED VALUES - RETURNING')
+            return
+
+    func_map[key](**request.form.to_dict())  # should only use the first entry for list entries
+
     return redirect(url_for('app_setup'))
