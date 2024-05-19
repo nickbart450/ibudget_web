@@ -133,12 +133,12 @@ def update_setting():
             break
 
     if update_id is None:
-        print('Could not identify row id')
-        return None
+        e_text = 'Could not identify Row ID for update'
+        return render_template('warning.html', error_text=e_text, return_address='/setup')
 
     if update_type is None:
-        print('Could not identify update type (Category, Account, etc.)')
-        return None
+        e_text = 'Could not identify update type (Category, Account, etc.)'
+        return render_template('warning.html', error_text=e_text, return_address='/setup')
 
     # print('update_dict - popped key', update_dict)
     # print("update_id", update_id)
@@ -151,7 +151,11 @@ def update_setting():
 
     # print('update_dict - FINAL', update_dict)
 
-    func_map[update_type](update_id, **update_dict)  # call appropriate handling function
+    confirm = func_map[update_type](update_id, **update_dict)  # call appropriate handling function
+
+    if 'err' in confirm.lower():
+        e_text = 'UPDATE FAILED - {}'.format(confirm)
+        return render_template('warning.html', error_text=e_text, return_address='/setup')
 
     return redirect(url_for('app_setup'))
 
@@ -196,12 +200,15 @@ def new_setting():
 
     key = list(request.form.keys())[0]
 
+    missing_vals = []
     for i in required_inputs[key]:
         if request.form.to_dict()[i] == '':
-            # TODO: Fix behavior to prompt/warn user. JS?
-            print('MISSING REQUIRED VALUES - RETURNING')
-            return
+            missing_vals.append(i)
 
-    func_map[key](**request.form.to_dict())  # should only use the first entry for list entries
+    if len(missing_vals) == 0:
+        func_map[key](**request.form.to_dict())  # should only use the first entry for list entries
+        return redirect(url_for('app_setup'))
+    else:
+        e_text = 'MISSING REQUIRED VALUES - {}'.format(missing_vals)
+        return render_template('warning.html', error_text=e_text, return_address='/setup')
 
-    return redirect(url_for('app_setup'))

@@ -223,7 +223,7 @@ class BudgetData:
             account['account_id'] = int(account_id)
         else:
             self.logger.exception('Account ID cannot be None. Please specify account_id before proceeding.')
-            return None
+            return 'ERROR - Account ID cannot be None. Please specify account_id before proceeding.'
 
         params = ()
         columns = []
@@ -268,7 +268,7 @@ class BudgetData:
         # Refresh account table
         self.get_accounts()
 
-        return None
+        return 'Success'
 
     def delete_account(self, account_id):
         account_id = int(account_id)
@@ -358,7 +358,7 @@ class BudgetData:
             category['cat_id'] = int(cat_id)
         else:
             self.logger.exception('Category ID cannot be None. Please specify cat_id before proceeding.')
-            return None
+            return "ERROR - Category ID cannot be None. Please specify cat_id before proceeding."
 
         if name is not None and name != 'None':
             if name == '':
@@ -401,7 +401,7 @@ class BudgetData:
         # Refresh category table
         self.get_categories()
 
-        return None
+        return 'Success'
 
     def delete_category(self, category_id):
         category_id = int(category_id)
