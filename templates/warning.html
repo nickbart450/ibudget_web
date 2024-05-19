@@ -1,0 +1,14 @@
+{% extends 'index.html' %}
+{% block body %}
+
+
+<div id="warning" style="width:100vw; height:100vh;">
+
+  <div class="w3-center w3-padding"><b>WARNING:</b> {{ error_text }}</div>
+  <div class="w3-center w3-padding">
+      <button class="w3-button w3-indigo" onclick="location.href = '{{ return_address }}';">Return</button>
+  </div>
+
+</div>
+
+{% endblock %}
