@@ -90,6 +90,8 @@ class SetupPage(page.Page):
         """
         TODO: Add db_propogate option to update all matching entries in transaction db to new value
         """
+        update_id = None
+        update_type = None
 
         func_map = {
             'Category': DATA.update_category,
@@ -97,43 +99,44 @@ class SetupPage(page.Page):
             'Personal': config.update_setting,
             'Database': config.update_setting,
         }
+        config_types = ['Personal', 'Database']
 
         update_form = request.form
         # print("update_form", request.form)
 
         keys = list(update_form.keys())
 
+        update_dict = update_form.to_dict()
+        # print('update_dict', update_dict)
+
         for k in keys:
             # print(k, request.form.get(k))
             if request.form.get(k) == 'Update':
                 update_type = k.split('.')[0]
                 update_id = k.split('.')[1]
+                update_dict.pop(k)
+                break
 
-        # print("update_type", update_type)
+        if update_id is None:
+            print('Could not identify row id')
+            return None
+
+        if update_type is None:
+            print('Could not identify update type (Category, Account, etc.)')
+            return None
+
+        # print('update_dict - popped key', update_dict)
         # print("update_id", update_id)
+        # print("update_type", update_type)
 
-        update_dict = update_form.to_dict()
-        # print('update_dict', update_dict)
+        if update_type in config_types:
+            # Needed a way to get section and setting name from form. This is a bit inelegant but functional
+            update_dict = {'config_section': update_type.lower(),
+                           'new_value': update_dict[update_id]}
 
-        if len(list(update_dict.keys())[0].split('.')) == 2:
-            # If dictionary keys are x.y addresses - need to parse form table data
-            new_vals = {}
-            for i in list(update_dict.keys()):
-                if i.split('.')[0] == update_id:
-                    update_param = i.split('.')[1]  # which value within that section are we updating
-                    # print("update_param", update_param)
-                    new_vals[update_param] = update_dict[i]
+        # print('update_dict - FINAL', update_dict)
 
-        elif len(list(update_dict.keys())[0].split('.')) == 1:
-            new_vals = {'config_section': update_type.lower(),
-                        'new_value': update_dict[update_id]}
-        else:
-            print('whoopsies')
-            return
-
-        # print('new_vals', new_vals)
-
-        func_map[update_type](update_id, **new_vals)  # call appropriate handling function
+        func_map[update_type](update_id, **update_dict)  # call appropriate handling function
 
     def delete(self):
         """
