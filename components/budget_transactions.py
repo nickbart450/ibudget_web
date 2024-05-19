@@ -187,7 +187,9 @@ def data_transactions():
 
     :return: render_template
     """
-    if DATA.year is None: DATA.year = 2024
+    if DATA.year is None:
+        print('loading /transact with default year filter')
+        DATA.set_year(DATA.default_year)
 
     return TRANSACTION_PAGE.get()
 
@@ -218,11 +220,13 @@ def delete_transaction():
 
 @APP.route("/change-year-2023", methods=['GET'])
 def change_year_2023():
-    DATA.year = 2023
+    DATA.set_year(2023)
+
     return redirect(TRANSACTION_PAGE.current_filter_url())
 
 
 @APP.route("/change-year-2024", methods=['GET'])
 def change_year_2024():
-    DATA.year = 2024
+    DATA.set_year(2024)
+
     return redirect(TRANSACTION_PAGE.current_filter_url())

@@ -39,7 +39,7 @@ TRANSACTION_TABLE_COLS = ['transaction_id',
 
 class BudgetData:
     """
-    Default date filters are 2023
+    Default date filters are 2024
     """
 
     def __init__(self):
@@ -51,16 +51,16 @@ class BudgetData:
         self.config = config.CONFIG
 
         # Parse date filters from config
-        self.date_filters = {}
-        for k in self.config['ui_settings.date_filters']:
-            self.date_filters[k] = self.config['ui_settings.date_filters'][k].split(',')
+        self.year = None
+        self.default_year = 2024
+        self.date_filters = self.parse_date_filters()
 
+        # Initialize empty vars
         self.dbConnection = None
         self.dbConnected = False
         self.db_version = None
         self.connection_attempts = 0
 
-        self.year = None
         self.transactions = None
         self.accounts = None
         self.account_values = None
@@ -222,17 +222,19 @@ class BudgetData:
 
         if date_filter == 'all' and self.year is not None:
             # If self.year is set to reduce transmitted data, alter input 'all' to selected year only
-            print('overriding date_filter to', self.year)
+            # print('get_transactions - overriding date_filter to', self.year)
             years = {2023: 'all_23',
                      2024: 'all_24'}
-
             date_filter = years[self.year]
+
+        # else:
+        #     print('get_transactions no year override')
 
         if date_filter is not None:
             date_filter = date_filter.lower()
             d1 = self.date_filters[date_filter][0]
             d2 = self.date_filters[date_filter][1]
-            query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
+            query = query.format(fill="""WHERE {0} BETWEEN '{1} 00:00:00' AND '{2} 00:00:00'""")
             query = query.format(date_type, d1, d2)
         elif start_date is not None or end_date is not None:
             if start_date is None:
@@ -244,7 +246,7 @@ class BudgetData:
             else:
                 d1 = start_date
                 d2 = end_date
-            query = query.format(fill="""WHERE {0} BETWEEN '{1}' AND '{2}'""")
+            query = query.format(fill="""WHERE {0} BETWEEN '{1} 00:00:00' AND '{2} 00:00:00'""")
             query = query.format(date_type, d1, d2)
         else:
             query = query.format(fill='')
@@ -1123,6 +1125,30 @@ class BudgetData:
         payments = transactions[
             (transactions['debit_account_id'] == account) & (transactions['category'] == 'Credit Card Payment')]
         return payments
+
+    def set_year(self, year: int):
+        print('setting active year to', year)
+        self.year = year
+        self.parse_date_filters()
+
+    def parse_date_filters(self):
+        # print('parsing date filters')
+
+        year = self.year
+        if year is None:
+            # print('year is None, using default year')
+            year = self.default_year
+
+        # print('active year', year)
+
+        date_filters = {}
+        for k in self.config['ui_settings.date_filters']:
+            date_filters[k] = self.config['ui_settings.date_filters'][k].replace('yyyy', '{}'.format(year)).split(',')
+
+        # print('date_filters', date_filters)
+        self.date_filters = date_filters
+
+        return date_filters
 
     @staticmethod
     def create_fresh_database(filepath, create_tables=False):
