@@ -160,6 +160,134 @@ class BudgetData:
         self.accounts = account_table
         return account_table
 
+    def add_account(self, name, account_type, transaction_type, account_id='', starting_value=0):
+        """
+        account_type examples: asset, liability, revenue, other
+        transaction_type examples: external, bank, cash, income,  investment, credit_line, credit_card
+        """
+
+        print('adding account')
+        if account_id != '':
+            print('account_id check:', self.account_id_unique_check(account_id))
+
+        # if name == '' or account_type == '' or transaction_type == '':
+
+        subquery_1 = "name, account_type, transaction_type"
+        subquery_2 = "'{name}', '{account_type}', '{transaction_type}'"
+        values_dict = {
+            'name': str(name),
+            'account_type': str(account_type),
+            'transaction_type': str(transaction_type)
+        }
+
+        if account_id != '':
+            subquery_1 += ", account_id"
+            subquery_2 += ", {account_id}"
+            values_dict['account_id'] = int(account_id)
+
+        query = """INSERT INTO accounts ({})
+             VALUES ({});""".format(subquery_1, subquery_2.format(**values_dict))
+
+        print(query)
+        self.logger.debug('add_category query:\n{}'.format(query))
+
+        # Execute query and commit to db
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+        account_id = cursor.lastrowid
+
+        print('added account to db:')
+        print('\taccount_id: ', account_id)
+        print('\tname: ', name)
+        print('\ttransaction_type: ', transaction_type)
+        print('\taccount_type: ', account_type)
+        print('\tstarting_value: ', starting_value)
+
+        # Refresh category table
+        self.get_accounts()
+
+        return account_id
+
+    def update_account(self, old_id, account_id=None, name=None, account_type=None, transaction_type=None, starting_value=None):
+        loc = locals().copy()
+
+        old_id = int(old_id)
+
+        accounts = self.get_accounts()
+        account = accounts[accounts['account_id'] == old_id].T.squeeze().to_dict()
+        # print('account update data:', accounts)
+
+        if account_id is not None and account_id != '':
+            account['account_id'] = int(account_id)
+        else:
+            self.logger.exception('Account ID cannot be None. Please specify account_id before proceeding.')
+            return 'ERROR - Account ID cannot be None. Please specify account_id before proceeding.'
+
+        params = ()
+        columns = []
+        for key in loc:
+            if key == 'self' or key == 'old_id':
+                continue
+
+            # print(key, loc[key])
+
+            if key is not None and key != 'None':
+                if key == '':
+                    account[key] = None
+                else:
+                    account[key] = loc[key]
+
+                columns.append(key)
+                params = params + (account[key],)
+
+        q_update = """
+            UPDATE ACCOUNTS
+            SET {}=?
+            WHERE account_id = {};""".format('=?, '.join(columns), old_id)
+
+        # print(q_update)
+        # print(params)
+
+        self.logger.debug('update_transaction query:\n{}'.format(q_update))
+        self.logger.debug('update_transaction params:\n{}'.format(params))
+
+        cursor = self.dbConnection.cursor()
+        cursor.execute(q_update, params)
+        self.dbConnection.commit()
+
+        print('Updated account in db:')
+        print('\taccount_id - OLD: ', old_id)
+        print('\taccount_id - NEW: ', account['account_id'])
+        print('\tname: ', account['name'])
+        print('\taccount_type: ', account['account_type'])
+        print('\ttransaction_type: ', account['transaction_type'])
+        print('\tstarting_value: ', account['starting_value'])
+
+        # Refresh account table
+        self.get_accounts()
+
+        return 'Success'
+
+    def delete_account(self, account_id):
+        account_id = int(account_id)
+
+        # Commit deletion to database
+        self.logger.info('Deleting Account: {}'.format(account_id))
+        query = '''DELETE FROM ACCOUNTS
+                WHERE account_id={};'''.format(account_id)
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+        self.get_accounts()  # Refresh accounts table
+        return None
+
+    def account_id_unique_check(self, account_id):
+        current_ids = self.get_accounts()['account_id'].to_list()
+        return account_id in current_ids
+
     def get_categories(self):
         """Returns a pandas dataframe version of the database table. Index is cat_id."""
         if not self.dbConnected:
@@ -173,19 +301,34 @@ class BudgetData:
         self.categories = category_table
         return category_table
 
-    def add_category(self, name, description=''):
-        if description != '':
-            query = '''INSERT INTO CATEGORIES
-                    (name, description)
-                    VALUES ("{name}", "{description}");'''.format(
-                name=name,
-                description=description,
-            )
-        else:
-            query = '''INSERT INTO CATEGORIES (name)
-                    VALUES ("{name}");'''.format(name=name)
+    def add_category(self, name, cat_id='', description=''):
+        subquery_1 = "(name)"
+        subquery_2 = "('{name}')"
+        values_dict = {'name': str(name)}
 
-        self.logger.debug('add_transaction query:\n{}'.format(query))
+        if cat_id != '' and description != '':
+            subquery_1 = "(cat_id, name, description)"
+            subquery_2 = "('{cat_id}', '{name}', '{description}')"
+
+            values_dict['cat_id'] = int(cat_id)
+            values_dict['description'] = str(description)
+
+        elif cat_id != '' and description == '':
+            subquery_1 = "(cat_id, name)"
+            subquery_2 = "('{cat_id}', '{name}')"
+
+            values_dict['cat_id'] = int(cat_id)
+
+        elif cat_id == '' and description != '':
+            subquery_1 = "(name, description)"
+            subquery_2 = "('{name}', '{description}')"
+
+            values_dict['description'] = str(description)
+
+        query = '''INSERT INTO CATEGORIES {}
+                VALUES {};'''.format(subquery_1, subquery_2.format(**values_dict))
+
+        self.logger.debug('add_category query:\n{}'.format(query))
 
         # Execute query and commit to db
         cursor = self.dbConnection.cursor()
@@ -195,7 +338,7 @@ class BudgetData:
         category_id = cursor.lastrowid
 
         print('added category to db:')
-        print('\ttransaction_id: ', category_id)
+        print('\tcategory_id: ', category_id)
         print('\tname: ', name)
         print('\tdescription: ', description)
 
@@ -203,6 +346,76 @@ class BudgetData:
         self.get_categories()
 
         return category_id
+
+    def update_category(self, old_id, cat_id=None, name=None, description=None):
+        old_id = int(old_id)
+
+        categories = self.get_categories()
+        category = categories[categories['cat_id'] == old_id].T.squeeze().to_dict()
+        # print('category update data:', category)
+
+        if cat_id is not None and cat_id != '':
+            category['cat_id'] = int(cat_id)
+        else:
+            self.logger.exception('Category ID cannot be None. Please specify cat_id before proceeding.')
+            return "ERROR - Category ID cannot be None. Please specify cat_id before proceeding."
+
+        if name is not None and name != 'None':
+            if name == '':
+                category['name'] = None
+            else:
+                category['name'] = str(name)
+
+        if description is not None and description != 'None':
+            if description == '':
+                category['description'] = None
+            else:
+                category['description'] = str(description)
+
+        q_update = """
+            UPDATE CATEGORIES
+            SET name=?, description=?
+            WHERE cat_id = {};""".format(old_id)
+        params = (category['name'], category['description'])
+
+        if cat_id != old_id:
+            q_update = """
+                UPDATE CATEGORIES
+                SET cat_id = ?, name = ?, description = ?
+                WHERE cat_id = {};""".format(old_id)
+            params = (category['cat_id'], category['name'], category['description'])
+
+        self.logger.debug('update_transaction query:\n{}'.format(q_update))
+        self.logger.debug('update_transaction params:\n{}'.format(params))
+
+        cursor = self.dbConnection.cursor()
+        cursor.execute(q_update, params)
+        self.dbConnection.commit()
+
+        print('Updated category in db:')
+        print('\tcategory_id - OLD: ', old_id)
+        print('\tcategory_id - NEW: ', category['cat_id'])
+        print('\tname: ', category['name'])
+        print('\tdescription: ', category['description'])
+
+        # Refresh category table
+        self.get_categories()
+
+        return 'Success'
+
+    def delete_category(self, category_id):
+        category_id = int(category_id)
+
+        # Commit deletion to database
+        self.logger.info('Deleting Category: {}'.format(category_id))
+        query = '''DELETE FROM CATEGORIES
+                WHERE cat_id={};'''.format(category_id)
+        cursor = self.dbConnection.cursor()
+        cursor.execute(query)
+        self.dbConnection.commit()
+
+        self.get_categories()  # Refresh categories table
+        return None
 
     def get_transactions(self, date_filter=None, start_date=None, end_date=None, date_type='transaction_date',
                          account_filter='All', expense_income_filter='both', category_filter='All',
@@ -664,6 +877,11 @@ class BudgetData:
             posted_date = transactions.at[i, 'posted_date']
             debit_account = int(transactions.at[i, 'debit_account_id'])
             credit_account = int(transactions.at[i, 'credit_account_id'])
+
+            if debit_account not in accounts.index.to_list() or credit_account not in accounts.index.to_list():
+                # Catch when encounter missing/deleted accounts
+                print('no account for this id, skipping')
+                continue
 
             # Find before value of accounts
             debit_acct_0 = values[str(debit_account)]
@@ -1368,7 +1586,7 @@ def fetch_filtered_transactions(filters):
 CONFIG = config.CONFIG
 
 environ = CONFIG['env']['environ']
-DB_FILE = CONFIG['database.{}'.format(environ)]['file']
+DB_FILE = CONFIG['database'][environ]
 
 DATA = BudgetData()
 DATA.connect(DB_FILE)
