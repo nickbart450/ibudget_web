@@ -42,6 +42,7 @@ def update_setting(config_item, config_section, new_value):
 
     write_out_config(CONFIG)
     print('Write Successful')
+    return 'Success'
 
 
 for i in range(len(config_files)):
