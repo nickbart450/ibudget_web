@@ -91,7 +91,7 @@ class AnalyzePage(page.Page):
 
         # Remove investment, transfer, adjustment categories
         transactions = transactions[
-            (transactions['category'] != 'Investment') &
+            # (transactions['category'] != 'Investment') &
             (transactions['category'] != 'Transfer') &
             (transactions['category'] != 'Adjustment')
             ]
@@ -185,7 +185,7 @@ class AnalyzePage(page.Page):
 
         # Remove investment, transfer, adjustment categories
         transactions = transactions[
-            (transactions['category'] != 'Investment') &
+            # (transactions['category'] != 'Investment') &
             (transactions['category'] != 'Transfer') &
             (transactions['category'] != 'Adjustment')
             ]
