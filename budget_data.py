@@ -933,8 +933,10 @@ class BudgetData:
         todays_values = {}
         total_assets = 0
         total_liabilities = 0
+        total_retirement = 0
         if posted_today is not None:
             accounts = self.accounts.set_index('account_id', drop=False)
+            accounts = accounts.sort_values('account_type')
             for account in accounts['account_id']:
                 if accounts.at[account, 'account_type'] == 'asset':
                     v = posted_today[str(account)]
@@ -943,6 +945,14 @@ class BudgetData:
 
                     asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
                     total_assets = sum(posted_today[list(asset_accounts.index.astype(str))])
+
+                elif accounts.at[account, 'account_type'] == 'retirement':
+                    v = posted_today[str(account)]
+                    account_name = accounts.at[account, 'name']
+                    todays_values[account_name] = float(v)
+
+                    retirement_accounts = accounts.loc[accounts['account_type'] == 'retirement']
+                    total_retirement = sum(posted_today[list(retirement_accounts.index.astype(str))])
 
                 elif accounts.at[account, 'account_type'] == 'liability':
                     v = posted_today[str(account)]
@@ -954,6 +964,7 @@ class BudgetData:
 
             todays_values['Total Liabilities'] = total_liabilities
             todays_values['Total Assets'] = total_assets
+            todays_values['Total Retirement'] = total_retirement
         else:
             todays_values['error'] = 0
 
