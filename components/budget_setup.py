@@ -227,6 +227,7 @@ def new_setting():
             missing_vals.append(i)
 
     if len(missing_vals) == 0:
+        # TODO: add warning page catch here
         func_map[key](**request.form.to_dict())  # should only use the first entry for list entries
         return redirect(url_for('app_setup'))
     else:
