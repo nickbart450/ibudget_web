@@ -42,13 +42,13 @@ class BudgetData:
     Default date filters are 2024
     """
 
-    def __init__(self):
+    def __init__(self, app_config):
         self.logger = logging.getLogger(__name__)
         self.logger.debug('budget_data -- DEBUG LOGGING MODE')
         self.logger.info('budget_data -- INFO LOGGING MODE')
 
         # Load config settings
-        self.config = config.CONFIG
+        self.config = app_config
 
         # Parse date filters from config
         self.year = None
@@ -111,8 +111,9 @@ class BudgetData:
                     self.config['database.{}'.format(env)]['file'] = os.path.abspath('./iBudget_web.db')
                     self.config.remove_section('env')
 
-                    with open(config.main_config_file, 'w') as f:
-                        self.config.write(f)
+                    # with open(config.main_config_file, 'w') as f:
+                    #     self.config.write(f)
+                    self.config.write_out_config()
 
                     self.config.add_section('env')
                     self.config.set('env', 'environ', env)
@@ -1594,12 +1595,11 @@ def fetch_filtered_transactions(filters):
         return result
 
 
-CONFIG = config.CONFIG
+CONFIG = config.AppConfig()  # THIS IS THE MAIN CONFIG OBJECT FOR THE PROJECT
+DATA = BudgetData(CONFIG)
 
 environ = CONFIG['env']['environ']
 DB_FILE = CONFIG['database'][environ]
-
-DATA = BudgetData()
 DATA.connect(DB_FILE)
 
 if __name__ == "__main__":

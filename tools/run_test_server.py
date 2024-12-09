@@ -11,7 +11,7 @@ from components import config
 
 if __name__ == '__main__':
     # Load Config File
-    CONFIG = config.CONFIG
+    CONFIG = DATA.config
 
     # Fetch database file location from the config. Defaults to live version
     ENVIRON = CONFIG['env']['environ']

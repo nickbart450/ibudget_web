@@ -22,6 +22,7 @@ class SetupPage(page.Page):
         self.name = 'setup'
 
         self.setup_dict = {
+            'Home': {'type': 'individual', 'data': None},
             'Personal': {'type': 'individual', 'data': None},
             'Database': {'type': 'individual', 'data': None},
             'Category': {'type': 'table', 'data': None},
@@ -38,7 +39,10 @@ class SetupPage(page.Page):
 
     def get(self):
         """Fetch appropriate data and render page from template"""
+        print('Fetching {}'.format(self.name))
+
         mapping_dict = {
+            'Home': 'home',
             'Personal': 'personal',
             'Database': 'database',
             'Category': 'db.Category',
@@ -119,10 +123,11 @@ def update_setting():
     func_map = {
         'Category': DATA.update_category,
         'Account': DATA.update_account,
-        'Personal': config.update_setting,
-        'Database': config.update_setting,
+        'Home': SETUP_PAGE.config.update_setting,
+        'Personal': SETUP_PAGE.config.update_setting,
+        'Database': SETUP_PAGE.config.update_setting,
     }
-    config_types = ['Personal', 'Database']
+    config_types = ['Home', 'Personal', 'Database']
 
     update_form = request.form
     # print("update_form", request.form)
