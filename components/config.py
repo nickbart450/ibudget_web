@@ -17,32 +17,40 @@ def write_out_environ():
     f.close()
 
 
-def write_out_config(new_config):
-    with open('config.ini', 'w') as configfile:
-        new_config.write(configfile)
+class AppConfig(configparser.ConfigParser):
+    """
+    To access setup parameters in Python code:
+        From within DATA context, it is recommended to use self.config, the custom ConfigParser object containing values from config file
+        For other external references, use budget_data.CONFIG object
 
+        config['section']['setting_name'] will return the value from the config.ini file
+    """
+    def __init__(self):
+        super().__init__()
+        self.reload()
 
-def reload():
-    global CONFIG
-    CONFIG = configparser.ConfigParser()
-    CONFIG.read(config_files)
-    return CONFIG
+    def reload(self):
+        self.read(config_files)
+        # print('Config Reloaded')
 
+    def update_setting(self, config_item, config_section, new_value):
+        # print('address', config_section, '.', config_item)
+        # print('current_val', self[config_section][config_item])
+        # print('new_value', new_value)
+        self[config_section][config_item] = new_value
 
-def update_setting(config_item, config_section, new_value):
-    global CONFIG
-    # print('address', config_section, '.', config_item)
-    # print('new_value', new_value)
-    # print('current_val', CONFIG[config_section][config_item])
-    CONFIG[config_section][config_item] = new_value
+        # print('new_val-confirm', self[config_section][config_item])
 
-    # print('new_val', CONFIG[config_section][config_item])
+        self.remove_section('env')
+        self.write_out_config()
+        self.reload()
 
-    CONFIG.remove_section('env')
+        return 'Success'
 
-    write_out_config(CONFIG)
-    print('Write Successful')
-    return 'Success'
+    def write_out_config(self):
+        with open('config.ini', 'w') as configfile:
+            self.write(configfile)
+            # print('Write Successful')
 
 
 for i in range(len(config_files)):
@@ -56,6 +64,9 @@ for i in range(len(config_files)):
         else:
             raise FileNotFoundError(file)
 
-# Load Config File(s)
-CONFIG = configparser.ConfigParser()
-CONFIG.read(config_files)
+
+if __name__ == '__main__':
+    # Load Config File(s)
+    # CONFIG = configparser.ConfigParser()
+    CONFIG = AppConfig()
+    CONFIG.read(config_files)

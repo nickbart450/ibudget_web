@@ -5,15 +5,15 @@ from flask import render_template
 
 
 # Internal Imports
-from components import config
+from budget_data import CONFIG
 
 
 class Page:
     def __init__(self):
-        self.config = config.reload()
+        self.config = CONFIG
 
     def render(self, template, **kwargs):
-        self.config = config.reload()
+        self.config.reload()
 
         return render_template(
             template,

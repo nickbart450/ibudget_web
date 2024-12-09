@@ -2,6 +2,8 @@ from components import page
 from budget_app import APP, LOGGER
 from budget_data import DATA
 
+from pandas import Timestamp
+
 
 class Home(page.Page):
     def __init__(self):
@@ -28,13 +30,25 @@ class Home(page.Page):
 
         self.account_vals = None
 
+        self.stacked_chart_settings = {
+            'min_date': self.config['home']['account_values_stacked_chart_start_date'],
+            'max_date': self.config['home']['account_values_stacked_chart_end_date'],
+            'max_val': int(self.config['home']['account_values_stacked_chart_max'])}
+
     def get(self):
         print('Fetching {}'.format(self.name))
 
+        # Fetch updated account list and filter
         self.accounts = DATA.get_accounts().set_index('account_id', drop=False)
         self.accounts.index = self.accounts.index.astype(str)
         self.asset_accounts = self.accounts.loc[self.accounts['account_type'] == 'asset']
         self.asset_accounts_no_invest = self.asset_accounts.loc[self.asset_accounts['transaction_type'] != 'investment']
+
+        # Fetch updated settings from config
+        self.stacked_chart_settings = {
+            'min_date': self.config['home']['account_values_stacked_chart_start_date'],
+            'max_date': self.config['home']['account_values_stacked_chart_end_date'],
+            'max_val': int(self.config['home']['account_values_stacked_chart_max'])}
 
         # Fetch today's account values from data object
         self.todays_accounts = DATA.calculate_todays_account_values()
@@ -44,7 +58,22 @@ class Home(page.Page):
         self.include_retire = str(self.config['ui_settings']['include_retirement_in_burn']).lower() == "true"
 
         # Loop through the account values dataframe to calculate and construct CanvasJS dictionaries
+        # Also calculates burn time during the iterations
+        #
+        # self.asset_account_values = final dictionary of account values for stacked CanvasJS chart
+        #
+        # self.account_vals = dataframe of account values calculated with transactions index
+        #   row index = transaction ids
+        #   columns = transaction_id, transaction_date, posted_date, account ids, is_posted
+        #   sorted by transaction_date
+        #   filtered according to start_date/end_date configuration
+
         prev_date = 19700101
+        start_date = self.stacked_chart_settings['min_date'].split('-')
+        start_date = Timestamp(year=int(start_date[0]), month=int(start_date[1]), day=int(start_date[2]))
+        end_date = self.stacked_chart_settings['max_date'].split('-')
+        end_date = Timestamp(year=int(end_date[0]), month=int(end_date[1]), day=int(end_date[2]))
+
         self.asset_account_values = {}
         for a in list(self.asset_accounts.index):
             self.asset_account_values[str(a)] = []
@@ -52,8 +81,12 @@ class Home(page.Page):
         self.burn_time_no_invest = []
 
         self.account_vals = DATA.calculate_account_values()
+        self.account_vals = self.account_vals.loc[(self.account_vals['transaction_date'] >= start_date) &
+                                                  (self.account_vals['transaction_date'] <= end_date)]
+        self.account_vals = self.account_vals.sort_values('transaction_date')
+
         for i in self.account_vals.index:
-            date = int(self.account_vals.iloc[i]['transaction_date'].strftime('%Y%m%d'))
+            date = int(self.account_vals.at[i, 'transaction_date'].strftime('%Y%m%d'))
 
             if date == prev_date:
                 # Skip repeated dates. Only capture 1st of each day
@@ -75,7 +108,8 @@ class Home(page.Page):
                     label = self.account_vals.at[i, 'transaction_date'].strftime('%Y-%m-%d')
                     self.asset_account_values[str(acc)].append(
                         {"y": y,
-                         "label": label}
+                         "label": label,
+                         }
                     )
                     account_sum += y
 
@@ -143,6 +177,7 @@ class Home(page.Page):
             burn_time_by_day_no_invest=self.burn_time_no_invest,  # List of dictionaries describing burn time
             burn_time_retirement=include_retire_str,
             account_view_order=self.asset_accounts_no_invest,  # List of account ids, ordered by total value largest to smallest
+            stacked_chart_settings=self.stacked_chart_settings,
         )
 
 
