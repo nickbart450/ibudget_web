@@ -35,4 +35,5 @@ from components import budget_home          #  Home Page
 from components import budget_transactions  #  Transaction table display
 from components import budget_analyze       #  Budget Analysis page
 from components import budget_setup         #  Budget Setup page
+from components import budget_utils         #  Misc utilities
 from components import update               #  Update website from when github webhook posts

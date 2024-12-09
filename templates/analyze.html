@@ -12,6 +12,10 @@
 <!-- OnLoad jQuery Script-->
 <script type="text/javascript">
     $(function(){
+        year_string = "#year_select_".concat({{ active_year | safe }});
+        $(year_string).css("fontSize", "12px");
+        $(year_string).css("fontWeight", "bold");
+
         initTable( {{ posted_data | safe }} );
         console.log('datatable initialized');
 
@@ -19,7 +23,7 @@
         console.log('listeners initialized');
 
     // Category Summary Pie Chart
-    // CanasJS recommends constructing options first and then pass it as a parameter
+    // CanvasJS recommends constructing options first and then pass it as a parameter
 
     var spending_options = {
       theme: "dark2",
@@ -119,7 +123,19 @@
 
         <!-- Transaction Date Filter -->
         <div id="transact_date_filter" class="w3-bar-block w3-section">
-          <span class="w3-bar-item w3-card-4">Date</span>
+          <!-- Year Selector -->
+          <span class="w3-bar-item w3-card-4" style="width:100%">Date
+            <div class="w3-cell" style="float: right;">
+              <a href="/change-year-0&redirect=analyze" id="year_select_0" class="w3-cell" style="float: right; font-size:10px;">ALL</a>
+              <div class="w3-cell" style="float: right; font-size:10px;">-</div>
+              <a href="/change-year-2025&redirect=analyze" id="year_select_2025" class="w3-cell" style="float: right; font-size:10px;">2025</a>
+              <div class="w3-cell" style="float: right; font-size:10px;">-</div>
+              <a href="/change-year-2024&redirect=analyze" id="year_select_2024" class="w3-cell" style="float: right; font-size:10px;">2024</a>
+              <div class="w3-cell" style="float: right; font-size:10px;">-</div>
+              <a href= "/change-year-2023&redirect=analyze" id="year_select_2023" class="w3-cell" style="float: right; font-size:10px;">2023</a>
+            </div>
+          </span>
+
           <div class="w3-dropdown-hover" style="width:100%">
             <div class="w3-button w3-white w3-row">
               <span id="date_filter">{{ date_filter_default }}</span><span style="float:right"><i class="fa fa-bars"></i></span>

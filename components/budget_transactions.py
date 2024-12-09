@@ -85,12 +85,16 @@ class TransactionsPage(page.Page):
             categories = DATA.categories['name'].to_list()
             categories.sort()
 
+            active_year = DATA.year
+            if DATA.year is None:
+                active_year = 0
+
             return render_template(
                 self.template,
                 posted_data=self.posted_transactions.to_dict('records'),
                 upcoming_data=self.upcoming_transactions.to_dict('records'),
                 date_filter=self.date_filters[:-2],
-                active_year=DATA.year,
+                active_year=active_year,
                 accounts=['All'] + DATA.accounts['name'].to_list(),
                 account_values_today=todays_accounts,  # Account value dictionary for just today
                 categories=['All'] + categories,
@@ -188,7 +192,11 @@ def data_transactions():
 
     :return: render_template
     """
-    if DATA.year is None:
+
+    if DATA.year == 0:
+        DATA.year = None
+
+    elif DATA.year is None:
         print('loading /transact with default year filter')
         DATA.set_year(DATA.default_year)
 
@@ -216,18 +224,4 @@ def update_transaction():
 @APP.route("/transact/delete_transaction", methods=['GET'])
 def delete_transaction():
     TRANSACTION_PAGE.delete()
-    return redirect(TRANSACTION_PAGE.current_filter_url())
-
-
-@APP.route("/change-year-2023", methods=['GET'])
-def change_year_2023():
-    DATA.set_year(2023)
-
-    return redirect(TRANSACTION_PAGE.current_filter_url())
-
-
-@APP.route("/change-year-2024", methods=['GET'])
-def change_year_2024():
-    DATA.set_year(2024)
-
     return redirect(TRANSACTION_PAGE.current_filter_url())

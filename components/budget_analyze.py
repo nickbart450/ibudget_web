@@ -71,14 +71,19 @@ class AnalyzePage(page.Page):
         self.render_dict["account_values_today"] = self.todays_accounts
 
         # Fetch transactions for analysis
-        DATA.year = None
         self.root_transactions = fetch_filtered_transactions(self.filters).sort_values('posted_date')
 
         # Fetch page data for modules
         self.category_summary()
         self.category_sum_by_month()
 
-        return render_template(self.template, **self.render_dict)
+        active_year = DATA.year
+        if DATA.year is None:
+            active_year = 0
+
+        return render_template(self.template,
+                               active_year=active_year,
+                               **self.render_dict)
 
     def category_summary(self):
         transactions = self.root_transactions.copy()

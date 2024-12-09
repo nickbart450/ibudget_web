@@ -52,7 +52,7 @@ class BudgetData:
 
         # Parse date filters from config
         self.year = None
-        self.default_year = 2024
+        self.default_year = datetime.datetime.today().date().year
         self.date_filters = self.parse_date_filters()
 
         # Initialize empty vars
@@ -437,9 +437,9 @@ class BudgetData:
         if date_filter == 'all' and self.year is not None:
             # If self.year is set to reduce transmitted data, alter input 'all' to selected year only
             # print('get_transactions - overriding date_filter to', self.year)
-            years = {2023: 'all_23',
-                     2024: 'all_24'}
-            date_filter = years[self.year]
+            start_date = '{y}-01-01'.format(y=self.year)
+            end_date = '{y}-12-31'.format(y=self.year)
+            date_filter = None
 
         # else:
         #     print('get_transactions no year override')
