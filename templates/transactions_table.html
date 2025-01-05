@@ -4,13 +4,111 @@
 <div id="transaction_table" class="w3-rest"
   style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
 
-  <div id="table_controls">
+  <div id="table_controls" style="display: none">
     <span>Functions:</span>
     <button id="duplicate" class="function_btn w3-button w3-black">DUPLICATE</button>
     <button id="delete" class="function_btn w3-button w3-black">DELETE</button>
     <button id="posted" class="function_btn w3-button w3-black">MARK POSTED</button>
     <!-- <button id="split" class="function_btn w3-button w3-black">SPLIT</button> -->
 
+  </div>
+
+  <!-- Details/Transaction Modify Modal-->
+  <div id="details_modal" class="w3-modal">
+    <div class="w3-modal-content w3-border w3-dark-grey w3-round">
+      <!-- Transaction Modify/Delete Modal Close Button-->
+      <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('details_modal').style.display='none'">&times;</span>
+      <!-- Transaction Modify/Delete Modal Title Bar-->
+      <div class="w3-bar w3-2018-meerkat w3-round">
+        <div id="details_modal_id" class="w3-bar-item">TRANSACTION EDIT -</div>
+      </div>
+
+      <!-- Transaction Modify/Delete Modal Form-->
+      <form id="details_modal_form" class="transaction_mod_form w3-row-padding w3-margin-top" name="{{ url_for('update_transaction') }}" method="post">
+        <!-- Top Row-->
+        <div class="w3-row-padding w3-section">
+          <div class="w3-half">
+            <input id="details_modal_trans_date" class="w3-input w3-border" type="date" name="date" required="required" value="">
+            <label>Transaction Date</label>
+          </div>
+          <div class="w3-half">
+            <input id="details_modal_post_date" class="w3-input w3-border" type="date" name="post_date" value="">
+            <label>Posted Date</label>
+          </div>
+        </div>
+
+        <!-- Second Row-->
+        <div class="w3-row-padding w3-section">
+          <div class="w3-half">
+            <div class="w3-dropdown-hover" style="width:100%">
+              <input id="details_modal_credit_account" class="cred_accnt_input_modal w3-input w3-border" type="text" name="account-credit" required="required" value="0" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+              <div class="w3-dropdown-content w3-bar-block w3-card-4">
+                {% for i in accounts %}
+                  <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                {% endfor %}
+              </div>
+            </div>
+            <label>Credit Account</label>
+          </div>
+          <div class="w3-half">
+            <div class="w3-dropdown-hover" style="width:100%">
+              <input id="details_modal_debit_account" class="deb_accnt_input_modal w3-input w3-border" type="text" name="account-debit" value="0" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+              <div class="w3-dropdown-content w3-bar-block w3-card-4">
+                {% for i in accounts %}
+                  <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
+                {% endfor %}
+              </div>
+            </div>
+            <label>Debit Account</label>
+          </div>
+        </div>
+
+        <!-- Third Row-->
+        <div class="w3-row-padding w3-section">
+          <div class="w3-half">
+            <input id="details_modal_amount" class="w3-input w3-border" type="number" name="amount" required="required" step="0.01" value="0">
+            <label>Amount</label>
+          </div>
+          <div class="w3-half">
+            <div class="w3-dropdown-hover" style="width:100%">
+              <input id="details_modal_category" class="cat_input_modal w3-input w3-border" type="text" name="category" required="required"  value="" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+              <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
+                {% for i in categories %}
+                <input type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
+                {% endfor %}
+              </div>
+            </div>
+            <label>Category</label>
+          </div>
+        </div>
+
+        <!-- Fourth Row-->
+        <div class="w3-row-padding w3-section">
+          <div class="w3-threequarter">
+            <input id="details_modal_description" class="w3-input w3-border" type="text" name="description" value="" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+            <label>Description</label>
+          </div>
+          <div class="w3-rest w3-center">
+            <input id="details_modal_posted" class="w3-check" type="checkbox" name="is_posted_selector">
+            <label class="w3-large">Posted</label>
+          </div>
+        </div>
+
+        <!-- Bottom Row-->
+        <div class="w3-row-padding w3-section">
+          <div class="w3-half">
+            <input id="details_modal_vendor" class="w3-input w3-border" type="text" name="vendor" value="0" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+            <label>Vendor</label>
+          </div>
+          <div class="w3-quarter w3-center">
+            <input type="submit" value="Submit" class="w3-button w3-black w3-large">
+          </div>
+          <div class="w3-quarter w3-center">
+            <button id="details_modal_delete" type="button" onclick="" class="w3-button w3-red w3-large">DELETE</button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!--  Posted Transactions Table  -->
@@ -26,124 +124,7 @@
         <th>Vendor</th>
       </tr>
     </thead>
-    <tbody style="font-size:12px">
-
-    {% for item in posted_data %}
-      <!-- Details/Transaction Modify Modal-->
-      <div id="details_posted_{{ item['transaction_id'] }}" class="w3-modal">
-        <div class="w3-modal-content w3-border w3-dark-grey w3-round">
-          <!-- Transaction Modify/Delete Modal Close Button-->
-          <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('details_posted_{{ item['transaction_id'] }}').style.display='none'">&times;</span>
-          <!-- Transaction Modify/Delete Modal Title Bar-->
-          <div class="w3-bar w3-2018-meerkat w3-round">
-            <div class="w3-bar-item">TRANSACTION EDIT - {{ item['transaction_id'] }}</div>
-          </div>
-
-          <!-- Transaction Modify/Delete Modal Form-->
-          <form class="transaction_mod_form w3-row-padding w3-margin-top" action="{{ url_for('update_transaction') }}?transaction_id={{ item['transaction_id'] }}" method="post">
-            <!-- Top Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="date" name="date" required="required" value="{{ item['transaction_date'] }}">
-                <label>Transaction Date</label>
-              </div>
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="date" name="post_date" value="{{ item['posted_date'] }}">
-                <label>Posted Date</label>
-              </div>
-            </div>
-
-            <!-- Second Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <div class="w3-dropdown-hover" style="width:100%">
-                  <input class="cred_accnt_input_modal w3-input w3-border" type="text" name="account-credit" required="required" value="{{ item['credit_account_name'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                  <div class="w3-dropdown-content w3-bar-block w3-card-4">
-                    {% for i in accounts %}
-                      <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                    {% endfor %}
-                  </div>
-                </div>
-                <label>Credit Account</label>
-              </div>
-              <div class="w3-half">
-                <div class="w3-dropdown-hover" style="width:100%">
-                  <input class="deb_accnt_input_modal w3-input w3-border" type="text" name="account-debit" value="{{ item['debit_account_name'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                  <div class="w3-dropdown-content w3-bar-block w3-card-4">
-                    {% for i in accounts %}
-                      <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                    {% endfor %}
-                  </div>
-                </div>
-                <label>Debit Account</label>
-              </div>
-            </div>
-
-            <!-- Third Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="number" name="amount" required="required" step="0.01" value="{{ item['amount'] }}">
-                <label>Amount</label>
-              </div>
-              <div class="w3-half">
-                <div class="w3-dropdown-hover" style="width:100%">
-                  <input class="cat_input_modal w3-input w3-border" type="text" name="category" required="required"  value="{{ item['category'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                  <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
-                    {% for i in categories %}
-                    <input type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
-                    {% endfor %}
-                  </div>
-                </div>
-                <label>Category</label>
-              </div>
-            </div>
-
-            <!-- Fourth Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-threequarter">
-                <input class="w3-input w3-border" type="text" name="description" value="{{ item['description'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                <label>Description</label>
-              </div>
-              <div class="w3-rest w3-center">
-                <input class="w3-check" type="checkbox" name="is_posted_selector" {{ item["is_posted"] }}>
-                <label class="w3-large">Posted</label>
-              </div>
-            </div>
-
-            <!-- Bottom Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="text" name="vendor" value="{{ item['vendor'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                <label>Vendor</label>
-              </div>
-              <div class="w3-quarter w3-center">
-                <input type="submit" value="Submit" class="w3-button w3-black w3-large">
-              </div>
-              <div class="w3-quarter w3-center">
-                <button type="button" onclick="delete_transaction_from_modal({{ item['transaction_id'] }})" class="w3-button w3-red w3-large">DELETE</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <tr>
-        <!-- Details Button-->
-        <td class="w3-center">
-          <input id="select_{{ item['transaction_id'] }}" name="{{ item['transaction_id'] }}" class="select_checkbox w3-check w3-margin-right" type="checkbox">
-          <button onclick="document.getElementById('details_posted_{{ item['transaction_id'] }}').style.display='block'" class="w3-button w3-black"><i class="fa fa-bars"></i></button>
-        </td>
-
-        <!-- Data-->
-        <td class="w3-center">{{ item['transaction_date'] }}</td>
-        <td class="w3-center">{{ item['credit_account_name'] }}</td>
-        <td class="w3-center">{{ item['debit_account_name'] }}</td>
-        <td class="w3-center">{{ item['category'] }}</td>
-        <td class="w3-center">{{ item['amount_string'] }}</td>
-        <td>{{ item['vendor'] }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
+    <tbody style="font-size:12px"></tbody>
   </table>
 
   <!-- Upcoming Transactions-->
@@ -159,125 +140,7 @@
         <th>Vendor</th>
       </tr>
     </thead>
-    <tbody style="font-size:12px">
-
-    {% for item in upcoming_data %}
-
-      <!-- Details/Transaction Modify Modal-->
-      <div id="details_upcoming_{{ item['transaction_id'] }}" class="w3-modal">
-        <div class="w3-modal-content w3-border w3-dark-grey w3-round">
-          <!-- Transaction Modify/Delete Modal Close Button-->
-          <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('details_upcoming_{{ item['transaction_id'] }}').style.display='none'">&times;</span>
-          <!-- Transaction Modify/Delete Modal Title Bar-->
-          <div class="w3-bar w3-2018-meerkat w3-round">
-            <div class="w3-bar-item">TRANSACTION EDIT - {{ item['transaction_id'] }}</div>
-          </div>
-
-          <!-- Transaction Modify/Delete Modal Form-->
-          <form class="transaction_mod_form w3-row-padding w3-margin-top" action="{{ url_for('update_transaction') }}?transaction_id={{ item['transaction_id'] }}" method="post">
-            <!-- Top Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="date" name="date" required="required" value="{{ item['transaction_date'] }}">
-                <label>Transaction Date</label>
-              </div>
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="date" name="post_date" value="{{ item['posted_date'] }}">
-                <label>Posted Date</label>
-              </div>
-            </div>
-
-            <!-- Second Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <div class="w3-dropdown-hover" style="width:100%">
-                  <input class="cred_accnt_input_modal w3-input w3-border" type="text" name="account-credit" required="required" value="{{ item['credit_account_name'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                  <div class="w3-dropdown-content w3-bar-block w3-card-4">
-                    {% for i in accounts %}
-                      <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                    {% endfor %}
-                  </div>
-                </div>
-                <label>Credit Account</label>
-              </div>
-              <div class="w3-half">
-                <div class="w3-dropdown-hover" style="width:100%">
-                  <input class="deb_accnt_input_modal w3-input w3-border" type="text" name="account-debit" value="{{ item['debit_account_name'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                  <div class="w3-dropdown-content w3-bar-block w3-card-4">
-                    {% for i in accounts %}
-                      <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
-                    {% endfor %}
-                  </div>
-                </div>
-                <label>Debit Account</label>
-              </div>
-            </div>
-
-            <!-- Third Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="number" name="amount" required="required" step="0.01" value="{{ item['amount'] }}">
-                <label>Amount</label>
-              </div>
-              <div class="w3-half">
-                <div class="w3-dropdown-hover" style="width:100%">
-                  <input class="cat_input_modal w3-input w3-border" type="text" name="category" required="required"  value="{{ item['category'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                  <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
-                    {% for i in categories %}
-                    <input type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
-                    {% endfor %}
-                  </div>
-                </div>
-                <label>Category</label>
-              </div>
-            </div>
-
-            <!-- Fourth Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-threequarter">
-                <input class="w3-input w3-border" type="text" name="description" value="{{ item['description'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                <label>Description</label>
-              </div>
-              <div class="w3-rest w3-center">
-                <input class="w3-check" type="checkbox" name="is_posted_selector" {{ item["is_posted"] }}>
-                <label class="w3-large">Posted</label>
-              </div>
-            </div>
-
-            <!-- Bottom Row-->
-            <div class="w3-row-padding w3-section">
-              <div class="w3-half">
-                <input class="w3-input w3-border" type="text" name="vendor" value="{{ item['vendor'] }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                <label>Vendor</label>
-              </div>
-              <div class="w3-quarter w3-center">
-                <input type="submit" value="Submit" class="w3-button w3-black w3-large">
-              </div>
-              <div class="w3-quarter w3-center">
-                <button type="button" onclick="delete_transaction_from_modal({{ item['transaction_id'] }})" class="w3-button w3-red w3-large">DELETE</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <tr>
-        <!-- Details Button-->
-        <td class="w3-center">
-          <input id="select_{{ item['transaction_id'] }}" name="{{ item['transaction_id'] }}" class="select_checkbox w3-check w3-margin-right" type="checkbox">
-          <button onclick="document.getElementById('details_upcoming_{{ item['transaction_id'] }}').style.display='block'" class="w3-button w3-black"><i class="fa fa-bars"></i></button>
-        </td>
-
-        <!-- Data-->
-        <td class="w3-center">{{ item['transaction_date'] }}</td>
-        <td class="w3-center">{{ item['credit_account_name'] }}</td>
-        <td class="w3-center">{{ item['debit_account_name'] }}</td>
-        <td class="w3-center">{{ item['category'] }}</td>
-        <td class="w3-center">{{ item['amount_string'] }}</td>
-        <td>{{ item['vendor'] }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
+    <tbody style="font-size:12px"></tbody>
   </table>
 </div>
 

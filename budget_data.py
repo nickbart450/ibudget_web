@@ -813,6 +813,31 @@ class BudgetData:
         self.get_transactions()  # Refresh transaction table
         return None
 
+    def duplicate_transaction(self, transaction_id):
+        transaction = self.get_transaction(self.dbConnection, int(transaction_id))
+
+        date = transaction['transaction_date']
+        posted_date = transaction['posted_date']
+        category = transaction['category']
+        amount = transaction['amount']
+        credit_account = transaction['credit_account_id']
+        debit_account = transaction['debit_account_id']
+        description = transaction['description']
+        vendor = transaction['vendor']
+        is_posted = transaction['is_posted']
+
+        self.add_transaction(
+            date,
+            category,
+            amount,
+            posted_date=posted_date,
+            credit_account=credit_account,
+            debit_account=debit_account,
+            description=description,
+            vendor=vendor,
+            is_posted=is_posted,
+        )
+
     def general_query(self, query, commit=True, date_columns=None):
         # try:
         #     result = pd.read_sql_query(query, self.dbConnection, parse_dates=date_columns)
