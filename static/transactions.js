@@ -1,4 +1,6 @@
-// Set objects
+// JavaScript file associated with transactions page of web app
+//
+
 var income_expense_btns = document.getElementsByClassName("income_expense_btn");
 var date_btns = document.getElementsByClassName("date_btn"); // Dropdown buttons for preset date filters (Q1, February, ...)
 var account_btns = document.getElementsByClassName("account_btn"); // Dropdown buttons for Account Filter (Left Sidebar)
@@ -6,20 +8,37 @@ var category_filter_btns = document.getElementsByClassName("category_btn"); // D
 var cred_account_btns = document.getElementsByClassName("cred_account_btn"); // Dropdown buttons for Credit Account Input (Transaction Add Form)
 var deb_account_btns = document.getElementsByClassName("deb_account_btn"); // Dropdown buttons for Debit Account Input (Transaction Add Form)
 var category_btns = document.getElementsByClassName("cat_btn"); // Dropdown buttons for Category Input (Transaction Add Form)
+var function_btns = document.getElementsByClassName("function_btn");
 
 const today = new Date();
 
 // Setup Function for DataTables
 function initPostedTable(raw_data){
-    $('#budget_table_posted').DataTable({
+    var table = $('#budget_table_posted').DataTable({
+        ajax: '/transact/_posted_table_data',
+        columns: [
+            { "defaultContent": "<input type='checkbox' class='select_checkbox_posted w3-check w3-margin-right'></input><button class='w3-btn w3-black'><i class='fa fa-bars'></i></button>",
+            },
+            { data: 'transaction_date',
+              className: 'w3-center' },
+            { data: 'credit_account_name',
+              className: 'w3-center' },
+            { data: 'debit_account_name',
+              className: 'w3-center' },
+            { data: 'category',
+              className: 'w3-center' },
+            { data: 'amount_string',
+              className: 'w3-center' },
+            { data: 'vendor',
+              className: 'w3-center' }
+        ],
         paging: false,
         scrollY: 0.205*($( window ).height())+'px',
         scrollCollapse: true,
         order: [[1, 'desc']],
         rowCallback: function(row, data, index) {
-            var date_table = new Date(raw_data[index]['transaction_date']+ "T00:00:00");
-            // console.log(date_table, today)
-            if (raw_data[index]['is_posted'] == 'checked') {}
+            var date_table = new Date(data['transaction_date']+ "T00:00:00");
+            if (data['is_posted'] == 'checked') {}
             else {
                 $(row).css('background-color', '#2E4A62');
             };
@@ -29,18 +48,44 @@ function initPostedTable(raw_data){
             } else { };
         }
     });
+
+    $('#budget_table_posted').on('click', 'button', function (e) {
+        var row = $(this).parents('tr')[0];
+        var data = table.row(row).data();
+        // console.log(data);
+        UpdateModal(data);
+    });
+
+    $('#budget_table_posted').on('click', '.select_checkbox_posted', CountSelected);
+
 };
 
 function initUpcomingTable(raw_data){
-    $('#budget_table_upcoming').DataTable({
+    var table = $('#budget_table_upcoming').DataTable({
+        ajax: '/transact/_upcoming_table_data',
+        columns: [
+            { "defaultContent": "<input type='checkbox' class='select_checkbox_upcoming w3-check w3-margin-right'></input><button class='w3-btn w3-black'><i class='fa fa-bars'></i></button>",
+            },
+            { data: 'transaction_date',
+              className: 'w3-center' },
+            { data: 'credit_account_name',
+              className: 'w3-center' },
+            { data: 'debit_account_name',
+              className: 'w3-center' },
+            { data: 'category',
+              className: 'w3-center' },
+            { data: 'amount_string',
+              className: 'w3-center' },
+            { data: 'vendor',
+              className: 'w3-center' }
+        ],
         paging: false,
         scrollY: 0.55*($( window ).height())+'px',
         scrollCollapse: true,
         order: [[1, 'asc']],
         rowCallback: function(row, data, index) {
-            var date_table = new Date(raw_data[index]['transaction_date']+ "T00:00:00");
-            // console.log(date_table, today)
-            if (raw_data[index]['is_posted'] == 'checked') {}
+            var date_table = new Date(data['transaction_date']+ "T00:00:00");
+            if (data['is_posted'] == 'checked') { }
             else {
                 $(row).css('background-color', '#2E4A62');
             };
@@ -50,8 +95,70 @@ function initUpcomingTable(raw_data){
             } else { };
         }
     });
+
+    $('#budget_table_upcoming').on('click', 'button', function (e) {
+        var row = $(this).parents('tr')[0];
+        var data = table.row(row).data();
+        // console.log(data);
+        UpdateModal(data);
+    });
+
+    $('#budget_table_upcoming').on('click', '.select_checkbox_upcoming', CountSelected);
 };
 
+function CountSelected() {
+        var selected = [];
+
+        // iterate over class and add checked boxes to array
+        $(".select_checkbox_posted").each( function (index){
+            if ($(this)[0].checked) {
+                selected.push(null);
+            };
+        });
+        $(".select_checkbox_upcoming").each( function (index){
+            if ($(this)[0].checked) {
+                selected.push(null);
+            };
+        });
+
+        // console.log(selected.length);
+        if (selected.length > 0){
+            document.getElementById('table_controls').style.display='inline';
+        } else {
+            document.getElementById('table_controls').style.display='none';
+        };
+};
+
+// Update transaction modal to fill in data based on which details button is clicked
+function UpdateModal(data) {
+    // Fill data into modal
+    document.getElementById('details_modal_id').innerHTML = "TRANSACTION EDIT - "+data['transaction_id'];
+
+    var update_action = document.getElementById('details_modal_form').name + "?transaction_id=";
+    document.getElementById('details_modal_form').action = update_action+data['transaction_id'];
+    document.getElementById('details_modal_delete').onclick = function() {delete_transactions(data['transaction_id'])};
+
+    document.getElementById('details_modal_trans_date').value = data['transaction_date'];
+    document.getElementById('details_modal_post_date').value = data['posted_date'];
+    document.getElementById('details_modal_credit_account').value = data['credit_account_name'];
+    document.getElementById('details_modal_debit_account').value = data['debit_account_name'];
+    document.getElementById('details_modal_amount').value = data['amount'];
+    document.getElementById('details_modal_category').value = data['category'];
+    document.getElementById('details_modal_description').value = data['description'];
+
+    if (data["is_posted"] === "checked") {
+        document.getElementById('details_modal_posted').checked = true;
+    } else {
+        document.getElementById('details_modal_posted').checked = false;
+    };
+
+    document.getElementById('details_modal_vendor').value = data['vendor'];
+
+    // Show modal
+    document.getElementById('details_modal').style.display = 'block';
+};
+
+// LISTENERS
 // Setup event listeners for the various button onclick actions through the page
 function initListeners(){
     for (let i = 0; i<income_expense_btns.length; i++) {
@@ -75,16 +182,9 @@ function initListeners(){
     for (let i = 0; i<category_btns.length; i++) {
         category_btns[i].addEventListener("click", setCategory);
         };
-};
-
-// Called when the Delete button is clicked on "Details" modal
-function delete_transaction_from_modal(transaction_id){
-    if (confirm('Confirm DELETE?')){
-        console.log("/transact/delete_transaction?transaction_id="+transaction_id)
-        location.href = "/transact/delete_transaction?transaction_id="+transaction_id;
-    } else {
-        console.log("Delete Cancelled")
-    }
+    for (let i = 0; i<function_btns.length; i++) {
+        function_btns[i].addEventListener("click", onClickFunction);
+        };
 };
 
 // Updates Date Filters in <div> and calls filter url
@@ -225,4 +325,77 @@ function setCategory(event){
     for (let i = 0; i<cat_modal_inputs.length; i++) {
         cat_modal_inputs[i].value = event.target.value;
     };
+};
+
+// Transaction edit functions
+function delete_transactions(id_array){
+    if (confirm('Confirm DELETE transaction(s): '+id_array+'?')){
+        console.log("/transact/delete_transaction?transaction_id="+id_array)
+        location.href = "/transact/delete_transaction?transaction_id="+id_array;
+    } else {
+        console.log("Delete Cancelled")
+    }
+};
+
+function duplicate_transactions(id_array){
+    if (confirm('Confirm duplicate transaction(s): '+id_array+'?')){
+        console.log("/transact/duplicate_transaction?transaction_id="+id_array)
+        location.href = "/transact/duplicate_transaction?transaction_id="+id_array;
+    } else {
+        console.log("Duplicate Cancelled")
+    }
+};
+
+function post_transactions(id_array){
+    if (confirm('Confirm mark transaction(s): '+id_array+' posted?')){
+        console.log("/transact/post_transaction?transaction_id="+id_array)
+        location.href = "/transact/post_transaction?transaction_id="+id_array;
+    } else {
+        console.log("Duplicate Cancelled")
+    }
+};
+
+// Multi-Select Function Buttons
+function onClickFunction(event){
+    console.log('Function Clicked: ', event.target.id)
+
+    var posted_table = $('#budget_table_posted').DataTable();
+    var upcoming_table = $('#budget_table_upcoming').DataTable();
+    var selected = [];
+
+    $(".select_checkbox_posted").each( function (index){
+        if ($(this)[0].checked) {
+            // console.log($(this));
+
+            var row = $(this).parents('tr')[0];
+            var data = posted_table.row(row).data();
+            // console.log(data['transaction_id']);
+            selected.push(data['transaction_id']);
+
+        };
+    });
+
+    $(".select_checkbox_upcoming").each( function (index){
+        if ($(this)[0].checked) {
+            // console.log($(this));
+
+            var row = $(this).parents('tr')[0];
+            var data = upcoming_table.row(row).data();
+            // console.log(data['transaction_id']);
+            selected.push(data['transaction_id']);
+
+        };
+    });
+
+    // console.log(selected);
+    if (event.target.id === 'delete'){
+        delete_transactions(selected);
+
+    } else if (event.target.id === 'duplicate') {
+        duplicate_transactions(selected);
+
+    } else if (event.target.id === 'posted') {
+        post_transactions(selected);
+
+    }
 };

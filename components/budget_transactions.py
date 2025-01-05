@@ -1,7 +1,7 @@
 from components import page
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
-from flask import request, render_template, redirect, url_for
+from flask import request, render_template, redirect, url_for, jsonify
 import pandas as pd
 
 
@@ -30,6 +30,12 @@ class TransactionsPage(page.Page):
               )
         return url
 
+    def fetch_transactions(self):
+        # Get transaction data from database table with current filters
+        result = fetch_filtered_transactions(self.filters)
+        result.fillna(value='')
+        return result
+
     def get(self):
         # Get Date Filter
         if request.args.get('date') is not None:
@@ -50,65 +56,31 @@ class TransactionsPage(page.Page):
         print('Fetching /transact with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /transact with filters: {}'.format(dict(self.filters)))
 
-        # Get transaction data from database table with current filters
-        result = fetch_filtered_transactions(self.filters)
-        result.fillna(value='')
+        # Calculate today's account values from database
+        todays_accounts = DATA.calculate_todays_account_values()
+        for t in todays_accounts:
+            todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
 
-        # Split Transactions by posted status
-        self.transactions = result.groupby('is_posted')
-        try:
-            self.posted_transactions = self.transactions.get_group('checked')
-        except KeyError as e:
-            self.posted_transactions = pd.DataFrame(columns=result.columns)
-            LOGGER.exception(e)
+        # Fetch latest categories
+        categories = DATA.categories['name'].to_list()
+        categories.sort()
 
-        try:
-            self.upcoming_transactions = self.transactions.get_group('')
-        except KeyError as e:
-            self.upcoming_transactions = pd.DataFrame(columns=result.columns)
-            LOGGER.exception(e)
+        active_year = DATA.year
+        if DATA.year is None:
+            active_year = 0
 
-        if self.transactions is None or len(self.transactions) == 0:
-            print('WARNING! No transactions meet current filters. Redirecting back to /transact')
-            LOGGER.warning('No transactions meet current filters. Redirecting back to /transact')
-            LOGGER.warning('Current Filters: {}'.format(dict(self.filters)))
-            self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
-            return redirect(url_for('data_transactions'))
-
-        elif len(self.posted_transactions) > 0 or len(self.upcoming_transactions) > 0:
-            # Calculate today's account values from database
-            todays_accounts = DATA.calculate_todays_account_values()
-            for t in todays_accounts:
-                todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
-
-            # Fetch latest categories
-            categories = DATA.categories['name'].to_list()
-            categories.sort()
-
-            active_year = DATA.year
-            if DATA.year is None:
-                active_year = 0
-
-            return render_template(
-                self.template,
-                posted_data=self.posted_transactions.to_dict('records'),
-                upcoming_data=self.upcoming_transactions.to_dict('records'),
-                date_filter=self.date_filters[:-2],
-                active_year=active_year,
-                accounts=['All'] + DATA.accounts['name'].to_list(),
-                account_values_today=todays_accounts,  # Account value dictionary for just today
-                categories=['All'] + categories,
-                date_filter_default=self.filters['date'],
-                account_filter_default=self.filters['account'],
-                category_filter_default=self.filters['category'],
-                income_expense_filter_default=self.filters['income_expense'],
-            )
-
-        else:
-            # Really unlikely to wind up here, but want to recover safely nonetheless
-            LOGGER.error('No transactions meet current filters. Redirecting back to /transact')
-            self.filters = dict(self.config['ui_settings.default_filters'])  # reset filters to default and reset page
-            return redirect(url_for('data_transactions'))
+        return render_template(
+            self.template,
+            date_filter=self.date_filters[:-2],
+            active_year=active_year,
+            accounts=['All'] + DATA.accounts['name'].to_list(),
+            account_values_today=todays_accounts,  # Account value dictionary for just today
+            categories=['All'] + categories,
+            date_filter_default=self.filters['date'],
+            account_filter_default=self.filters['account'],
+            category_filter_default=self.filters['category'],
+            income_expense_filter_default=self.filters['income_expense'],
+        )
 
     def update(self):
         print('POSTing transaction update')
@@ -177,9 +149,35 @@ class TransactionsPage(page.Page):
             is_posted=posted_flag)
 
     def delete(self):
-        print('Deleting transaction')
+        print('Deleting transaction(s)')
         transaction_id = request.args.get('transaction_id')
-        DATA.delete_transaction(transaction_id)
+        transaction_list = transaction_id.split(',')
+
+        for i in transaction_list:
+            DATA.delete_transaction(i)
+            print('Transaction {id} deleted'.format(id=i))
+
+    def duplicate(self):
+        print('duplicating transaction(s)')
+        transaction_id = request.args.get('transaction_id')
+        transaction_list = transaction_id.split(',')
+
+        for i in transaction_list:
+            DATA.duplicate_transaction(i)
+            print('Transaction {id} duplicated'.format(id=i))
+
+    def mark_posted(self):
+        print('Flipping transaction(s) posted flag')
+        transaction_id = request.args.get('transaction_id')
+        transaction_list = transaction_id.split(',')
+
+        for i in transaction_list:
+            if DATA.get_transaction(DATA.dbConnection, i)['is_posted']:
+                DATA.update_transaction(i, is_posted=False)
+                print('Transaction {id} unmarked as posted'.format(id=i))
+            else:
+                DATA.update_transaction(i, is_posted=True)
+                print('Transaction {id} marked as posted'.format(id=i))
 
 
 TRANSACTION_PAGE = TransactionsPage()
@@ -203,6 +201,42 @@ def data_transactions():
     return TRANSACTION_PAGE.get()
 
 
+@APP.route("/transact/_posted_table_data/", methods=['GET'])
+def _posted_table_data():
+    print('fetching posted table data')
+
+    result = TRANSACTION_PAGE.fetch_transactions()
+
+    # Split Transactions by posted status
+    grouped_result = result.groupby('is_posted')
+
+    try:
+        posted_transactions = grouped_result.get_group('checked')
+    except KeyError as e:
+        posted_transactions = pd.DataFrame(columns=result.columns)
+        LOGGER.exception(e)
+
+    return jsonify({'data': posted_transactions.to_dict('records')})
+
+
+@APP.route("/transact/_upcoming_table_data/", methods=['GET'])
+def _upcoming_table_data():
+    print('fetching upcoming table data')
+
+    result = TRANSACTION_PAGE.fetch_transactions()
+
+    # Split Transactions by posted status
+    grouped_result = result.groupby('is_posted')
+
+    try:
+        upcoming_transactions = grouped_result.get_group('')
+    except KeyError as e:
+        upcoming_transactions = pd.DataFrame(columns=result.columns)
+        LOGGER.exception(e)
+
+    return jsonify({'data': upcoming_transactions.to_dict('records')})
+
+
 @APP.route("/transact/submit_transaction", methods=['POST'])
 def submit_transaction():
     """
@@ -224,4 +258,16 @@ def update_transaction():
 @APP.route("/transact/delete_transaction", methods=['GET'])
 def delete_transaction():
     TRANSACTION_PAGE.delete()
+    return redirect(TRANSACTION_PAGE.current_filter_url())
+
+
+@APP.route("/transact/duplicate_transaction", methods=['GET'])
+def duplicate_transaction():
+    TRANSACTION_PAGE.duplicate()
+    return redirect(TRANSACTION_PAGE.current_filter_url())
+
+
+@APP.route("/transact/post_transaction", methods=['GET'])
+def post_transaction():
+    TRANSACTION_PAGE.mark_posted()
     return redirect(TRANSACTION_PAGE.current_filter_url())
