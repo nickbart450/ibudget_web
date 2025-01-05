@@ -19,9 +19,14 @@ def write_out_environ():
 
 class AppConfig(configparser.ConfigParser):
     """
+    A custom ConfigParser object containing values from config file
+
     To access setup parameters in Python code:
-        From within DATA context, it is recommended to use self.config, the custom ConfigParser object containing values from config file
+        From within DATA context, it is recommended to use self.config
+        From within page objects, it is recommended to use self.config
         For other external references, use budget_data.CONFIG object
+
+        Ultimately, everything points to single CONFIG object
 
         config['section']['setting_name'] will return the value from the config.ini file
     """

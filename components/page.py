@@ -1,6 +1,6 @@
 # page.py -- Base webpage class and associated functions for iBudget-web
-# External Imports
 
+# External Imports
 from flask import render_template
 
 
