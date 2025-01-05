@@ -5,9 +5,11 @@
   style="padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
 
   <div id="table_controls">
-    <button>DUPLICATE</button>
-    <button>DELETE</button>
-    <button>SPLIT</button>
+    <span>Functions:</span>
+    <button id="duplicate" class="function_btn w3-button w3-black">DUPLICATE</button>
+    <button id="delete" class="function_btn w3-button w3-black">DELETE</button>
+    <button id="posted" class="function_btn w3-button w3-black">MARK POSTED</button>
+    <!-- <button id="split" class="function_btn w3-button w3-black">SPLIT</button> -->
 
   </div>
 
@@ -15,8 +17,7 @@
   <table id="budget_table_posted">
     <thead>
       <tr>
-
-        <th class="w3-center">Details</th>
+        <th class="w3-center">Select/Details</th>
         <th class="w3-center">Date</th>
         <th class="w3-center">Account-From</th>
         <th class="w3-center">Account-To</th>
@@ -129,7 +130,7 @@
       <tr>
         <!-- Details Button-->
         <td class="w3-center">
-          <input type="checkbox">
+          <input id="select_{{ item['transaction_id'] }}" name="{{ item['transaction_id'] }}" class="select_checkbox w3-check w3-margin-right" type="checkbox">
           <button onclick="document.getElementById('details_posted_{{ item['transaction_id'] }}').style.display='block'" class="w3-button w3-black"><i class="fa fa-bars"></i></button>
         </td>
 
@@ -149,7 +150,7 @@
   <table id="budget_table_upcoming">
     <thead>
       <tr>
-        <th class="w3-center">Details</th>
+        <th class="w3-center">Select/Details</th>
         <th class="w3-center">Date</th>
         <th class="w3-center">Account-From</th>
         <th class="w3-center">Account-To</th>
@@ -263,7 +264,7 @@
       <tr>
         <!-- Details Button-->
         <td class="w3-center">
-          <input type="checkbox">
+          <input id="select_{{ item['transaction_id'] }}" name="{{ item['transaction_id'] }}" class="select_checkbox w3-check w3-margin-right" type="checkbox">
           <button onclick="document.getElementById('details_upcoming_{{ item['transaction_id'] }}').style.display='block'" class="w3-button w3-black"><i class="fa fa-bars"></i></button>
         </td>
 

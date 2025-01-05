@@ -9,19 +9,22 @@
 <!-- OnLoad jQuery Script-->
 <script type="text/javascript">
     $(function(){
+        // Format active year selection
         console.log('Formatting Active Year: ', {{ active_year | safe }});
         year_string = "#year_select_".concat({{ active_year | safe }});
         $(year_string).css("fontSize", "12px");
         $(year_string).css("fontWeight", "bold");
 
-
+        // Set income/expense radio button checked
         $('#'+'{{ income_expense_filter_default }}').prop('checked',true);
         console.log('radio button set on {{ income_expense_filter_default }}');
 
+        // Initialize DataTables
         initPostedTable( {{ posted_data | safe }} );
         initUpcomingTable( {{ upcoming_data | safe }} );
         console.log('datatable initialized');
 
+        // Initialize button/dropdpown event listeners
         initListeners();
         console.log('listeners initialized');
     });

@@ -1,4 +1,6 @@
-// Set objects
+// JavaScript file associated with transactions page of web app
+//
+
 var income_expense_btns = document.getElementsByClassName("income_expense_btn");
 var date_btns = document.getElementsByClassName("date_btn"); // Dropdown buttons for preset date filters (Q1, February, ...)
 var account_btns = document.getElementsByClassName("account_btn"); // Dropdown buttons for Account Filter (Left Sidebar)
@@ -6,6 +8,7 @@ var category_filter_btns = document.getElementsByClassName("category_btn"); // D
 var cred_account_btns = document.getElementsByClassName("cred_account_btn"); // Dropdown buttons for Credit Account Input (Transaction Add Form)
 var deb_account_btns = document.getElementsByClassName("deb_account_btn"); // Dropdown buttons for Debit Account Input (Transaction Add Form)
 var category_btns = document.getElementsByClassName("cat_btn"); // Dropdown buttons for Category Input (Transaction Add Form)
+var function_btns = document.getElementsByClassName("function_btn");
 
 const today = new Date();
 
@@ -52,6 +55,7 @@ function initUpcomingTable(raw_data){
     });
 };
 
+// LISTENERS
 // Setup event listeners for the various button onclick actions through the page
 function initListeners(){
     for (let i = 0; i<income_expense_btns.length; i++) {
@@ -74,6 +78,9 @@ function initListeners(){
         };
     for (let i = 0; i<category_btns.length; i++) {
         category_btns[i].addEventListener("click", setCategory);
+        };
+    for (let i = 0; i<function_btns.length; i++) {
+        function_btns[i].addEventListener("click", onClickFunction);
         };
 };
 
@@ -224,5 +231,18 @@ function setCategory(event){
     var cat_modal_inputs = document.getElementsByClassName("cat_input_modal")
     for (let i = 0; i<cat_modal_inputs.length; i++) {
         cat_modal_inputs[i].value = event.target.value;
+    };
+};
+
+// Multi-Select Function Buttons
+function onClickFunction(event){
+    console.log('Function Clicked!!!')
+    console.log('event.target.id', event.target.id)
+
+    var selected = document.getElementsByClassName("select_checkbox");
+    for (let i = 0; i<selected.length; i++) {
+        if (selected[i].checked) {
+            console.log(selected[i].name);
+        };
     };
 };
