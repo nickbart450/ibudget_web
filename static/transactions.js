@@ -13,7 +13,7 @@ var function_btns = document.getElementsByClassName("function_btn");
 const today = new Date();
 
 // Setup Function for DataTables
-function initPostedTable(raw_data){
+function initPostedTable(){
     var table = $('#budget_table_posted').DataTable({
         ajax: '/transact/_posted_table_data',
         columns: [
@@ -60,7 +60,7 @@ function initPostedTable(raw_data){
 
 };
 
-function initUpcomingTable(raw_data){
+function initUpcomingTable(){
     var table = $('#budget_table_upcoming').DataTable({
         ajax: '/transact/_upcoming_table_data',
         columns: [

@@ -20,8 +20,8 @@
         console.log('radio button set on {{ income_expense_filter_default }}');
 
         // Initialize DataTables
-        initPostedTable( {{ posted_data | safe }} );
-        initUpcomingTable( {{ upcoming_data | safe }} );
+        initPostedTable();
+        initUpcomingTable();
         console.log('datatable initialized');
 
         // Initialize button/dropdpown event listeners
