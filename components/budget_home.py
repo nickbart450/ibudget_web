@@ -30,10 +30,7 @@ class Home(page.Page):
 
         self.account_vals = None
 
-        self.stacked_chart_settings = {
-            'min_date': self.config['home']['account_values_stacked_chart_start_date'],
-            'max_date': self.config['home']['account_values_stacked_chart_end_date'],
-            'max_val': int(self.config['home']['account_values_stacked_chart_max'])}
+        self.home_settings = {}
 
     def get(self):
         print('Fetching {}'.format(self.name))
@@ -45,10 +42,13 @@ class Home(page.Page):
         self.asset_accounts_no_invest = self.asset_accounts.loc[self.asset_accounts['transaction_type'] != 'investment']
 
         # Fetch updated settings from config
-        self.stacked_chart_settings = {
+        self.home_settings = {
             'min_date': self.config['home']['account_values_stacked_chart_start_date'],
             'max_date': self.config['home']['account_values_stacked_chart_end_date'],
-            'max_val': int(self.config['home']['account_values_stacked_chart_max'])}
+            'max_val_TotalChart': int(self.config['home']['account_values_stacked_chart_max']),
+            'max_val_BurnChart': int(self.config['home']['burn_time_chart_max']),
+            'interval_BurnChart': int(self.config['home']['burn_time_chart_interval']),
+        }
 
         # Fetch today's account values from data object
         self.todays_accounts = DATA.calculate_todays_account_values()
@@ -69,9 +69,9 @@ class Home(page.Page):
         #   filtered according to start_date/end_date configuration
 
         prev_date = 19700101
-        start_date = self.stacked_chart_settings['min_date'].split('-')
+        start_date = self.home_settings['min_date'].split('-')
         start_date = Timestamp(year=int(start_date[0]), month=int(start_date[1]), day=int(start_date[2]))
-        end_date = self.stacked_chart_settings['max_date'].split('-')
+        end_date = self.home_settings['max_date'].split('-')
         end_date = Timestamp(year=int(end_date[0]), month=int(end_date[1]), day=int(end_date[2]))
 
         self.asset_account_values = {}
@@ -177,7 +177,7 @@ class Home(page.Page):
             burn_time_by_day_no_invest=self.burn_time_no_invest,  # List of dictionaries describing burn time
             burn_time_retirement=include_retire_str,
             account_view_order=self.asset_accounts_no_invest,  # List of account ids, ordered by total value largest to smallest
-            stacked_chart_settings=self.stacked_chart_settings,
+            home_settings=self.home_settings,
         )
 
 

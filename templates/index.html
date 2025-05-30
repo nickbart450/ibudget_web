@@ -54,97 +54,98 @@
 
   <!-- on page load script -->
   <script>
-  $(function(){
-    initDataTables();
-    console.log('datatable initialized');
+    $(function(){
+      initDataTables();
+      console.log('datatable initialized');
 
-    // Account Values Stacked Column Chart
-    // Better to construct options first and then pass it as a parameter
-    var stacked_options = {
-      theme: "dark2",
-      animationEnabled: true,
-      title:{
-        text: "Account Values"
-      },
-      axisX:{
-        interval: 30,
-        intervalType: "day",
-      },
-      axisY:{
-        title:"Value ($)",
-        minimum: 0,
-        maximum: {{ stacked_chart_settings['max_val'] }},
-      },
-      toolTip: {
-        shared: true,
-        reversed: true
-      },
-      data: [
-        {% for account in account_view_order %}
-          {
-            type: "stackedColumn",
-            name: "{{ accounts[account]["name"] }}",
-            showInLegend: "true",
-            yValueFormatString: "$ #.##",
-            dataPoints: {{ account_values_by_day[account] | safe }},
-          },
-        {% endfor %}
-      ]
-    };
+      // Account Values Stacked Column Chart
+      // Better to construct options first and then pass it as a parameter
+      var stacked_options = {
+        theme: "dark2",
+        animationEnabled: true,
+        title:{
+          text: "Account Values"
+        },
+        axisX:{
+          interval: 30,
+          intervalType: "day",
+        },
+        axisY:{
+          title:"Value ($)",
+          minimum: 0,
+          maximum: {{ home_settings['max_val_TotalChart'] }},
+        },
+        toolTip: {
+          shared: true,
+          reversed: true
+        },
+        data: [
+          {% for account in account_view_order %}
+            {
+              type: "stackedColumn",
+              name: "{{ accounts[account]["name"] }}",
+              showInLegend: "true",
+              yValueFormatString: "$ #.##",
+              dataPoints: {{ account_values_by_day[account] | safe }},
+            },
+          {% endfor %}
+        ]
+      };
 
-    var burn_time_options = {
-      theme: "dark2",
-      animationEnabled: true,
-      title:{
-        text: "Burn Time"
-      },
-      axisX:{
-        interval: 30,
-        intervalType: "day",
-        crosshair: {
-          enabled: true,
-          snapToDataPoint: true
-        }
-      },
-      axisY: {
-        title: "Months to 0",
-        valueFormatString: "0.00",
-        minimum: 0,
-        maximum: 16,
-        crosshair: {
-          enabled: true,
-          snapToDataPoint: true,
-          labelFormatter: function(e) {
-            return CanvasJS.formatNumber(e.value, "0.00");
+      var burn_time_options = {
+        theme: "dark2",
+        animationEnabled: true,
+        title:{
+          text: "Burn Time"
+        },
+        axisX:{
+          interval: 30,
+          intervalType: "day",
+          crosshair: {
+            enabled: true,
+            snapToDataPoint: true
           }
-        }
-      },
-      data: [
-      {
-        name: "Maximum Burn {{ burn_time_retirement }}",
-        showInLegend: true,
-        legendMarkerType: "square",
-        type: "area",
-        color: "rgba(41,0,66,0.8)",
-        markerSize: 0,
-        yValueFormatString: "0.00",
-        dataPoints: {{ burn_time_by_day | safe }},
-      },
-      {
-        name: "Cash-Only Burn",
-        showInLegend: true,
-        legendMarkerType: "square",
-        type: "area",
-        color: "rgba(131,60,60,0.7)",
-        markerSize: 0,
-        yValueFormatString: "0.00",
-        dataPoints: {{ burn_time_by_day_no_invest | safe }},
-      }]
-    };
+        },
+        axisY: {
+          title: "Months to 0",
+          valueFormatString: "0.00",
+          minimum: 0,
+          maximum: {{ home_settings['max_val_BurnChart'] }},
+          interval: {{ home_settings['interval_BurnChart'] }},
+          crosshair: {
+            enabled: true,
+            snapToDataPoint: true,
+            labelFormatter: function(e) {
+              return CanvasJS.formatNumber(e.value, "0.00");
+            }
+          }
+        },
+        data: [
+        {
+          name: "Maximum Burn {{ burn_time_retirement }}",
+          showInLegend: true,
+          legendMarkerType: "square",
+          type: "area",
+          color: "rgba(41,0,66,0.8)",
+          markerSize: 0,
+          yValueFormatString: "0.00",
+          dataPoints: {{ burn_time_by_day | safe }},
+        },
+        {
+          name: "Cash-Only Burn",
+          showInLegend: true,
+          legendMarkerType: "square",
+          type: "area",
+          color: "rgba(131,60,60,0.7)",
+          markerSize: 0,
+          yValueFormatString: "0.00",
+          dataPoints: {{ burn_time_by_day_no_invest | safe }},
+        }]
+      };
 
-    $("#account_value_chart").CanvasJSChart(stacked_options);
-    $("#burn_time_chart").CanvasJSChart(burn_time_options);
-  });
+      $("#account_value_chart").CanvasJSChart(stacked_options);
+      $("#burn_time_chart").CanvasJSChart(burn_time_options);
+    });
   </script>
 
 
