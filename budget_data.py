@@ -76,7 +76,9 @@ class BudgetData:
 
         self.connection_attempts += 1
         try:
+            # Try to see if the path to the database file is accessible
             if os.path.exists(os.path.abspath(db_file)):
+                # If yes, open_file and connect
                 self.logger.info('Attempting to open {}'.format(os.path.abspath(db_file)))
                 self.dbConnection = sql.connect(db_file, check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
@@ -86,6 +88,8 @@ class BudgetData:
                 print('Successfully Connected')
                 self.logger.info('Successfully Connected')
             elif os.path.exists(os.path.abspath('./budget_example.db')):
+                # 'Primary connection failed, attempting to open budget_example.db
+
                 self.logger.debug(
                     'Primary connection failed, attempting to open {}'.format(os.path.abspath('./budget_example.db')))
                 self.dbConnection = sql.connect('./budget_example.db', check_same_thread=False)
@@ -96,6 +100,7 @@ class BudgetData:
                 print('Successfully Connected to Example db')
                 self.logger.info('Successfully Connected to Example db')
             else:
+                # Final attempt: create blank database file
                 print('Database connection issues. Attempting creation of blank db...')
                 if self.connection_attempts <= 5:
                     self.logger.warning(
@@ -121,6 +126,7 @@ class BudgetData:
                     # Reattempt connection to new file
                     self.connect('./iBudget_web.db')
                 else:
+                    # Break recurring error and fail to open application
                     self.logger.warning('attempted db connection/creation 5 times, quitting')
                     self.dbConnected = False
                     return False
@@ -146,6 +152,7 @@ class BudgetData:
         else:
             # print('No SQLite Connection to close')
             self.logger.info('No SQLite Connection to close')
+
         return None
 
     def get_accounts(self):
@@ -1621,6 +1628,7 @@ def fetch_filtered_transactions(filters):
 
 
 CONFIG = config.AppConfig()  # THIS IS THE MAIN CONFIG OBJECT FOR THE PROJECT
+CONFIG.reload()
 DATA = BudgetData(CONFIG)
 
 environ = CONFIG['env']['environ']
