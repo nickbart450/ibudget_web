@@ -95,7 +95,7 @@ class Home(page.Page):
                 account_sum = 0
                 account_sum_no_invest = 0
                 for acc in list(self.asset_accounts.index):
-                    if 'retire' in self.accounts.at[acc, 'name'].lower():
+                    if 'retire' in self.accounts.at[acc, 'account_name'].lower():
                         # pre-tax money gets adjusted here if you decide to include these accounts in your burn
                         if self.include_retire:
                             y = float(self.account_vals.at[i, str(acc)]) * (
@@ -144,7 +144,7 @@ class Home(page.Page):
         new_cols = []
         for c in self.account_vals.columns:
             try:
-                c = self.accounts.at[int(c), 'name']
+                c = self.accounts.at[int(c), 'account_name']
             except ValueError:
                 pass
             except KeyError:

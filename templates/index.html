@@ -83,7 +83,7 @@
           {% for account in account_view_order %}
             {
               type: "stackedColumn",
-              name: "{{ accounts[account]["name"] }}",
+              name: "{{ accounts[account]["account_name"] }}",
               showInLegend: "true",
               yValueFormatString: "$ #.##",
               dataPoints: {{ account_values_by_day[account] | safe }},

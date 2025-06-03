@@ -113,6 +113,8 @@ def app_setup():
 @APP.route("/setup/update/", methods=['POST'])
 def update_setting():
     """
+    API endpoint to update settings
+
     TODO: Add db_propogate option to update all matching entries in transaction db to new value
 
     :return: redirect
@@ -128,6 +130,8 @@ def update_setting():
         'Database': SETUP_PAGE.config.update_setting,
     }
     config_types = ['Home', 'Personal', 'Database']
+                    category_name=str(row['category_name']),
+                    account_name=str(row['account_name']),
 
     update_form = request.form
     # print("update_form", request.form)
@@ -185,6 +189,7 @@ def update_setting():
 @APP.route("/setup/delete/", methods=['GET'])
 def delete():
     """
+    Only deletes database rows in approved tables
 
     :return: redirect
     """
@@ -209,6 +214,8 @@ def new_setting():
     """
     TODO: Make required inputs required in the HTML form
 
+    Only adds database rows in approved tables
+
     :return: redirect
     """
     LOGGER.debug('/new request.args.to_dict()')
@@ -220,8 +227,8 @@ def new_setting():
     }
 
     required_inputs = {
-        'cat_id': ['name'],
-        'account_id': ['name', 'account_type', 'transaction_type'],
+        'cat_id': ['category_name'],
+        'account_id': ['account_name', 'account_type', 'transaction_type'],
     }
 
     key = list(request.form.keys())[0]

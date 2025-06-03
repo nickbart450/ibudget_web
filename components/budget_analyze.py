@@ -16,7 +16,7 @@ class AnalyzePage(page.Page):
         self.template = 'analyze.html'
         self.name = 'analyze'
 
-        self.categories = DATA.get_categories()['name'].to_list()
+        self.categories = DATA.get_categories()['category_name'].to_list()
         self.filters = dict(self.config['ui_settings.default_filters'])
         self.date_filters = [i.title() for i in list(DATA.date_filters.keys())]
         self.income_accts = DATA.accounts['account_id'][DATA.accounts['transaction_type'] == 'income'].to_list()
@@ -27,7 +27,7 @@ class AnalyzePage(page.Page):
         self.render_dict = {
             "data_columns": self.category_summary_columns,
             "date_filters": self.date_filters,
-            "accounts": ['All'] + list(DATA.accounts['name']),
+            "accounts": ['All'] + list(DATA.accounts['account_name']),
             "categories": self.categories,
         }
 

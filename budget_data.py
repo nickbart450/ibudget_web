@@ -168,7 +168,7 @@ class BudgetData:
         self.accounts = account_table
         return account_table
 
-    def add_account(self, name, account_type, transaction_type, account_id='', starting_value=0):
+    def add_account(self, account_name, account_type, transaction_type, account_id='', starting_value=0):
         """
         account_type examples: asset, liability, revenue, other
         transaction_type examples: external, bank, cash, income,  investment, credit_line, credit_card
@@ -178,12 +178,12 @@ class BudgetData:
         if account_id != '':
             print('account_id check:', self.account_id_unique_check(account_id))
 
-        # if name == '' or account_type == '' or transaction_type == '':
+        # if account_name == '' or account_type == '' or transaction_type == '':
 
-        subquery_1 = "name, account_type, transaction_type"
-        subquery_2 = "'{name}', '{account_type}', '{transaction_type}'"
+        subquery_1 = "account_name, account_type, transaction_type"
+        subquery_2 = "'{account_name}', '{account_type}', '{transaction_type}'"
         values_dict = {
-            'name': str(name),
+            'account_name': str(account_name),
             'account_type': str(account_type),
             'transaction_type': str(transaction_type)
         }
@@ -208,7 +208,7 @@ class BudgetData:
 
         print('added account to db:')
         print('\taccount_id: ', account_id)
-        print('\tname: ', name)
+        print('\taccount_name: ', account_name)
         print('\ttransaction_type: ', transaction_type)
         print('\taccount_type: ', account_type)
         print('\tstarting_value: ', starting_value)
@@ -218,7 +218,7 @@ class BudgetData:
 
         return account_id
 
-    def update_account(self, old_id, account_id=None, name=None, account_type=None, transaction_type=None, starting_value=None):
+    def update_account(self, old_id, account_id=None, account_name=None, account_type=None, transaction_type=None, starting_value=None):
         loc = locals().copy()
 
         old_id = int(old_id)
@@ -268,7 +268,7 @@ class BudgetData:
         print('Updated account in db:')
         print('\taccount_id - OLD: ', old_id)
         print('\taccount_id - NEW: ', account['account_id'])
-        print('\tname: ', account['name'])
+        print('\taccount_name: ', account['account_name'])
         print('\taccount_type: ', account['account_type'])
         print('\ttransaction_type: ', account['transaction_type'])
         print('\tstarting_value: ', account['starting_value'])
@@ -309,27 +309,27 @@ class BudgetData:
         self.categories = category_table
         return category_table
 
-    def add_category(self, name, cat_id='', description=''):
-        subquery_1 = "(name)"
-        subquery_2 = "('{name}')"
-        values_dict = {'name': str(name)}
+    def add_category(self, category_name, cat_id='', description=''):
+        subquery_1 = "(category_name)"
+        subquery_2 = "('{category_name}')"
+        values_dict = {'category_name': str(category_name)}
 
         if cat_id != '' and description != '':
-            subquery_1 = "(cat_id, name, description)"
-            subquery_2 = "('{cat_id}', '{name}', '{description}')"
+            subquery_1 = "(cat_id, category_name, description)"
+            subquery_2 = "('{cat_id}', '{category_name}', '{description}')"
 
             values_dict['cat_id'] = int(cat_id)
             values_dict['description'] = str(description)
 
         elif cat_id != '' and description == '':
-            subquery_1 = "(cat_id, name)"
-            subquery_2 = "('{cat_id}', '{name}')"
+            subquery_1 = "(cat_id, category_name)"
+            subquery_2 = "('{cat_id}', '{category_name}')"
 
             values_dict['cat_id'] = int(cat_id)
 
         elif cat_id == '' and description != '':
-            subquery_1 = "(name, description)"
-            subquery_2 = "('{name}', '{description}')"
+            subquery_1 = "(category_name, description)"
+            subquery_2 = "('{category_name}', '{description}')"
 
             values_dict['description'] = str(description)
 
@@ -347,7 +347,7 @@ class BudgetData:
 
         print('added category to db:')
         print('\tcategory_id: ', category_id)
-        print('\tname: ', name)
+        print('\tcategory_name: ', category_name)
         print('\tdescription: ', description)
 
         # Refresh category table
@@ -355,7 +355,7 @@ class BudgetData:
 
         return category_id
 
-    def update_category(self, old_id, cat_id=None, name=None, description=None):
+    def update_category(self, old_id, cat_id=None, category_name=None, description=None):
         old_id = int(old_id)
 
         categories = self.get_categories()
@@ -368,11 +368,11 @@ class BudgetData:
             self.logger.exception('Category ID cannot be None. Please specify cat_id before proceeding.')
             return "ERROR - Category ID cannot be None. Please specify cat_id before proceeding."
 
-        if name is not None and name != 'None':
-            if name == '':
-                category['name'] = None
+        if category_name is not None and category_name != 'None':
+            if category_name == '':
+                category['category_name'] = None
             else:
-                category['name'] = str(name)
+                category['category_name'] = str(category_name)
 
         if description is not None and description != 'None':
             if description == '':
@@ -382,16 +382,16 @@ class BudgetData:
 
         q_update = """
             UPDATE CATEGORIES
-            SET name=?, description=?
+            SET category_name=?, description=?
             WHERE cat_id = {};""".format(old_id)
-        params = (category['name'], category['description'])
+        params = (category['category_name'], category['description'])
 
         if cat_id != old_id:
             q_update = """
                 UPDATE CATEGORIES
-                SET cat_id = ?, name = ?, description = ?
+                SET cat_id = ?, category_name = ?, description = ?
                 WHERE cat_id = {};""".format(old_id)
-            params = (category['cat_id'], category['name'], category['description'])
+            params = (category['cat_id'], category['category_name'], category['description'])
 
         self.logger.debug('update_transaction query:\n{}'.format(q_update))
         self.logger.debug('update_transaction params:\n{}'.format(params))
@@ -403,7 +403,7 @@ class BudgetData:
         print('Updated category in db:')
         print('\tcategory_id - OLD: ', old_id)
         print('\tcategory_id - NEW: ', category['cat_id'])
-        print('\tname: ', category['name'])
+        print('\tcategory_name: ', category['category_name'])
         print('\tdescription: ', category['description'])
 
         # Refresh category table
@@ -483,7 +483,7 @@ class BudgetData:
         elif isinstance(account_filter, int) and account_filter in list(accounts['account_id']):
             account = [account_filter]
         else:
-            account = [int(accounts[accounts['name'] == account_filter]['account_id'])]
+            account = [int(accounts[accounts['account_name'] == account_filter]['account_id'])]
 
         debit_truth_series = []
         for i in df.index:
@@ -678,9 +678,9 @@ class BudgetData:
 
         # Convert account name inputs to id #s
         if credit_account is not None:
-            credit_account = int(accounts[accounts['name'] == credit_account].index.values[0])
+            credit_account = int(accounts[accounts['account_name'] == credit_account].index.values[0])
         if debit_account is not None:
-            debit_account = int(accounts[accounts['name'] == debit_account].index.values[0])
+            debit_account = int(accounts[accounts['account_name'] == debit_account].index.values[0])
 
         # Check for duplicate accounts
         if credit_account is not None and debit_account is not None and credit_account == debit_account:
@@ -973,7 +973,7 @@ class BudgetData:
             for account in accounts['account_id']:
                 if accounts.at[account, 'account_type'] == 'asset':
                     v = posted_today[str(account)]
-                    account_name = accounts.at[account, 'name']
+                    account_name = accounts.at[account, 'account_name']
                     todays_values[account_name] = float(v)
 
                     asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
@@ -981,7 +981,7 @@ class BudgetData:
 
                 elif accounts.at[account, 'account_type'] == 'retirement':
                     v = posted_today[str(account)]
-                    account_name = accounts.at[account, 'name']
+                    account_name = accounts.at[account, 'account_name']
                     todays_values[account_name] = float(v)
 
                     retirement_accounts = accounts.loc[accounts['account_type'] == 'retirement']
@@ -989,7 +989,7 @@ class BudgetData:
 
                 elif accounts.at[account, 'account_type'] == 'liability':
                     v = posted_today[str(account)]
-                    account_name = accounts.at[account, 'name']
+                    account_name = accounts.at[account, 'account_name']
                     todays_values[account_name] = float(v)
 
                     liability_accounts = accounts.loc[accounts['account_type'] == 'liability']
@@ -1035,7 +1035,7 @@ class BudgetData:
         if account_id in accounts.index and payment_date <= min(payment_dates):
             # If payment is first of the year, lookup starting value from accounts db table
 
-            # print('generating first payment for {}'.format(accounts.at[account_id, 'name']))
+            # print('generating first payment for {}'.format(accounts.at[account_id, 'account_name']))
             credit_balance = float(accounts.at[account_id, 'starting_value'])
         elif account_id in accounts.index and payment_date in payment_dates:
             # If the requested date matches an existing date in payments list, find that transaction id and store it
@@ -1119,7 +1119,7 @@ class BudgetData:
 
         accounts = self.get_accounts().set_index('account_id')
         cc_accounts = accounts.loc[accounts['transaction_type'] == 'credit_card']
-        # print('Account columns', accounts.columns)  # ['name', 'transaction_type', 'account_type', 'starting_value']
+        # print('Account columns', accounts.columns)  # ['account_name', 'transaction_type', 'account_type', 'starting_value']
 
         if account is None:
             if credit_account in list(cc_accounts.index):
@@ -1153,7 +1153,7 @@ class BudgetData:
                                               posted_date=payment_date,
                                               debit_account=account_id,
                                               description='CC Payment',
-                                              vendor=accounts.loc[account_id]['name'])
+                                              vendor=accounts.loc[account_id]['account_name'])
         else:
             # Find payment date and calculate payment amount
             payment_date = payment_id = None
@@ -1256,7 +1256,7 @@ class BudgetData:
             # Calculate Combined Account Values Loop
             account_sum = 0
             for acc in list(asset_accounts.index):
-                if 'retire' in accounts.at[acc, 'name'].lower():
+                if 'retire' in accounts.at[acc, 'account_name'].lower():
                     # pre-tax money gets adjusted here if you decide to include these accounts in your burn
                     if include_retirement:
                         y = float(values[str(acc)]) * (1 - float(self.config['personal']['retirement_tax_rate']))
@@ -1424,7 +1424,7 @@ class BudgetData:
             if create_tables:
                 create_accounts_query = '''CREATE TABLE ACCOUNTS
                                    (account_id INTEGER PRIMARY KEY NOT NULL,
-                                   name TEXT NOT NULL,
+                                   account_name TEXT NOT NULL,
                                    transaction_type TEXT NOT NULL,
                                    account_type TEXT NOT NULL,
                                    starting_value REAL NOT NULL
@@ -1434,20 +1434,20 @@ class BudgetData:
 
                 add_account_query = '''INSERT INTO ACCOUNTS
                                     (account_id,
-                                    name,
+                                    account_name,
                                     transaction_type,
                                     account_type,
                                     starting_value
                                     )
                                     VALUES
                                     ({account_id},
-                                    '{name}',
+                                    '{account_name}',
                                     '{transaction_type}',
                                     '{account_type}',
                                     '{start_value}');'''
                 add_external = add_account_query.format(
                     account_id=0,
-                    name='External',
+                    account_name='External',
                     transaction_type='external',
                     account_type='other',
                     start_value=0.00,
@@ -1456,7 +1456,7 @@ class BudgetData:
 
                 add_test = add_account_query.format(
                     account_id=100,
-                    name='Checking',
+                    account_name='Checking',
                     transaction_type='bank',
                     account_type='asset',
                     start_value=0.00,
@@ -1562,7 +1562,7 @@ class Account:
         self.account_id = int(account_id)
 
         account = database.get_accounts().loc[account_id]
-        self.name = account['name']
+        self.name = account['account_name']
         self.starting_balance = account['starting_value']
         self.transaction_type = account['transaction_type']
         self.account_type = account['account_type']
@@ -1620,7 +1620,7 @@ def fetch_filtered_transactions(filters):
         account_id_list = [0] + list(DATA.accounts['account_id'])
         account_translate_dict = {}
         for i in list(range(len(account_id_list))):
-            account_translate_dict[account_id_list[i]] = (['All'] + list(DATA.accounts['name']))[i]
+            account_translate_dict[account_id_list[i]] = (['All'] + list(DATA.accounts['account_name']))[i]
         result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
         result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
 
