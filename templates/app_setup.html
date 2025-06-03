@@ -1,43 +1,18 @@
 {% extends 'index.html' %}
 {% block body %}
 
-<!-- Dropdown Show/Hide Scripts-->
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='app_setup.js') }}"></script>
+
+<!-- OnLoad jQuery Script-->
 <script type="text/javascript">
-  function myFunc(id) {
-    var x = document.getElementById("setup_"+id);
-    var all = document.getElementsByClassName("setup_hidden");
+  $(function(){
+    // Initialize DataTables
+    initCategoryTable();
+    initAccountTable();
+    console.log('DataTables initialized');
 
-    if (x.className.indexOf("w3-show") == -1) {
-      for (let i = 0; i < all.length; i++) {
-        all[i].className = all[i].className.replace(" w3-show", "");
-      }
-      x.className += " w3-show";
-
-    } else {
-      x.className = x.className.replace(" w3-show", "");
-
-    }
-  }
-
-  // Called when the Delete button is clicked
-  function delete_setting_entry(item){
-    console.log("Source item:", item);
-
-    var table_map = new Object();
-    table_map["cat_id"] = "CATEGORIES";
-    table_map["account_id"]  = "ACCOUNTS";
-
-    var key = Object.keys(item)[0];
-
-    var table = table_map[key];
-
-    if (confirm('Confirm DELETE from '+table_map[key]+'?')){
-        location.href = "/setup/delete?"+key+"="+item[key];
-    } else {
-        console.log("Delete Cancelled")
-    };
-  };
-
+  });
 </script>
 
 <style>
@@ -48,109 +23,58 @@
 </style>
 
 <div id="setup" class="w3-margin">
-
-  <!-- Setup Sidebar -->
   <div class="w3-section w3-row">
 
-    <!-- Setup Item Tree Sidebar -->
+    <!-- Setup Sidebar -->
     <div id="setup_tree" class="w3-quarter w3-card w3-margin-right" style="height:90vh">
-      {% for i in tree_top_level %}
-        <div onclick="myFunc('{{ i }}')" class="w3-button" style="width: 100%">
-          <input class="w3-button w3-left-align tree_top_level" type="button" value="{{ i }}" style="width: 90%"><i class="fa fa-angle-right"></i>
+      {% for setting_category in tree_top_level %}
+        <div onclick="myFunc('{{ setting_category }}')" class="w3-button" style="width: 100%">
+          <input class="w3-button w3-left-align tree_top_level" type="button" value="{{ setting_category }}" style="width: 90%"><i class="fa fa-angle-right"></i>
         </div>
 
       {% endfor %}
 
     </div>
 
-    <!-- Setup Main Forms  -->
+
+    <!-- Setup Forms  -->
     <div class="scroll w3-rest w3-row" style="height:90vh; padding: 5px; border-left-style: solid; border-color: white; border-width: 1.5px">
+      <!--  Iterate over controllable settings to build each edit form depending on the type of setting (database table or config file setting)    -->
+      {% for setting_category in tree_top_level %}
+        <div id="setup_{{ setting_category }}" class="setup_hidden w3-hide" style="width: 100%">
+          <h2>{{ setting_category }} Settings</h2>
 
-      {% for i in tree_top_level %}
-        <div id="setup_{{ i }}" class="setup_hidden w3-hide w3-black" style="width: 100%">
-          <h2>{{ i }} Settings</h2>
-
-          {% if "list" == setup_dict[i]["type"] %}
+          {% if "table" == setup_dict[setting_category]["type"] %}
             <div>
-              <input onclick="document.getElementById('setup_new_modal_{{ i }}').style.display='block'" class="w3-button" type="button" value="Add Item">
+              <form id="{{ setting_category }}_table_settings_form" class="w3-margin-top">
+                <button class="w3-btn w3-black" type='button' onclick="document.getElementById('setup_new_modal_{{ setting_category }}').style.display='block'">Add New</button>
+                <button class="w3-btn w3-black">Submit</button>
 
-              <form class="w3-row-padding w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
-
-                <table class="w3-table">
-                  <tr>
-                    <th>Value</th>
-                    <th>Controls</th>
-                  </tr>
-
-                  {% for k in setup_dict[i]["data"] %}
-                    <tr>
-                      <td>
-                          <input class="w3-cell" type="text" value="{{ k }}" name="{{ i }}.{{ k.replace(' ', '_') }}" style="width:100%">
-                      </td>
-
-                      <td>
-                        <div>
-                          <i onClick="location.href = '{{ url_for('delete') }}?{{ i }}.{{ k.replace(' ', '_') }}';" class="fa fa-minus-circle w3-button"></i>
-                          <input class="w3-button w3-cell" type="submit" value="Update" name="{{ i }}.{{ k.replace(' ', '_') }}">
-                        </div>
-                      </td>
-                    </tr>
-                  {% endfor %}
-
+                <table id="{{ setting_category }}_table" class="w3-table w3-bordered">
                 </table>
               </form>
             </div>
 
-          {% elif "table" == setup_dict[i]["type"] %}
+          {% elif "individual" == setup_dict[setting_category]["type"] %}
             <div>
-              <input onclick="document.getElementById('setup_new_modal_{{ i }}').style.display='block'" class="w3-button" type="button" value="Add Item">
-
-              <ul class="w3-ul">
-                <li class="w3-cell-row">
-                  {% for k in setup_dict[i]["data"][0].keys() %}
-                  <div class="w3-container w3-cell" style="width:15%">{{ k }}</div>
-                  {% endfor %}
-                  <div class="w3-container w3-cell">Controls</div>
-                </li>
-
-                {% for row in setup_dict[i]["data"] %}
-                <li class="w3-cell-row">
-                  <form class="w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
-                    {% for k in setup_dict[i]["data"][0].keys() %}
-                    <div class="w3-container w3-cell" style="width:15%">
-                      <input type="text" value="{{ row[k] }}" name="{{ k }}"  style="width:90%">
-                    </div>
-                    {% endfor %}
-
-                    <div class="w3-container w3-cell">
-                      <i onClick="delete_setting_entry({{ row }})" class="fa fa-minus-circle w3-button"></i>
-                      <input class="w3-button" type="submit" value="Update" name="{{ i }}.{{ row[setup_dict[i]['id_key']] }}">
-                    </div>
-                  </form>
-                </li>
-                {% endfor %}
-
-              </ul>
-            </div>
-
-          {% elif "individual" == setup_dict[i]["type"] %}
-            <div>
-              <form class="w3-row-padding w3-margin-top" action="{{ url_for('update_setting') }}" method="post">
-                {% for k in setup_dict[i]["data"].keys() %}
+              <form id="{{ setting_category }}_individual_settings_form" class="w3-row-padding w3-margin-top">
+                {% for k in setup_dict[setting_category]["data"].keys() %}
                 <div class="w3-cell-row w3-padding">
                   <div class="w3-container w3-cell" style="width: 90%">
-                    <input class="w3-container w3-input" type="text" value="{{ setup_dict[i]['data'][k] }}" name="{{ k }}" id="{{ k }}"/>
+                    <input class="{{ setting_category }}_individual_setting_input w3-container w3-input" type="text" value="{{ setup_dict[setting_category]['data'][k] }}" name="{{ k }}" id="{{ k }}"/>
                     <label for="{{ k }}">{{ k }}</label>
-                  </div>
-
-                  <div class="w3-container w3-cell">
-                    <input class="w3-button" type="submit" value="Update" name="{{ i }}.{{ k }}"/>
                   </div>
                 </div>
                 {% endfor %}
+
+                <div class="w3-cell-row w3-padding">
+                  <div class="w3-container w3-cell" style="width: 90%"><input class="w3-button w3-right" type="submit" value="Update" name="{{ setting_category }}.{{ k }}"/></div>
+                </div>
+
               </form>
 
             </div>
+
           {% else %}
             <p>OTHER</p>
 
@@ -158,26 +82,25 @@
 
         </div>
 
-        <!-- Modal Root -->
-        <div id="setup_new_modal_{{ i }}" class="w3-modal">
+        <!-- Add New Table Row Modal -->
+        <div id="setup_new_modal_{{ setting_category }}" class="w3-modal">
           <div class="w3-modal-content w3-border w3-dark-grey w3-round">
             <!-- Setup New Entry Modal Close Button-->
-            <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('setup_new_modal_{{ i }}').style.display='none'">&times;</span>
+            <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('setup_new_modal_{{ setting_category }}').style.display='none'">&times;</span>
 
             <!-- Transaction Modify/Delete Modal Title Bar-->
             <div class="w3-bar w3-2018-meerkat w3-round">
-                <div class="w3-bar-item">NEW SETTING - {{ i }}</div>
+                <div class="w3-bar-item">NEW SETTING - {{ setting_category }}</div>
             </div>
 
             <!-- New Settings Modal Form-->
-            <form class="new_setting_form w3-row-padding w3-margin-top" action="{{ url_for('new_setting') }}?{{i}}" method="post">
-
-              {% for k in setup_dict[i]["data"][0] %}
+            <form id="{{ setting_category }}_modal_form" class="new_setting_form w3-row-padding w3-margin-top" action="{{ url_for('new_setting') }}" method="post">
+              {% for setting in setup_dict[setting_category]["data"][0] %}
                 <!-- Unit Row-->
                 <div class="w3-row-padding w3-section">
                   <div class="w3-threequarter">
-                    <input class="w3-input w3-border" type="text" name="{{ k }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                    <label>New {{ i }} - {{ k }}</label>
+                    <input id="{{ setting }}" class="w3-input w3-border" type="text" name="{{ setting }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                    <label>New {{ setting_category }} - {{ setting }}</label>
                   </div>
                 </div>
               {% endfor %}

@@ -1,7 +1,7 @@
 from components import page, config
 from budget_app import APP, LOGGER
 from budget_data import DATA, fetch_filtered_transactions
-from flask import request, render_template, redirect, url_for
+from flask import request, render_template, redirect, url_for, jsonify
 
 
 class SetupPage(page.Page):
@@ -50,7 +50,6 @@ class SetupPage(page.Page):
         }
 
         for i in self.top_level_items:
-
             if mapping_dict[i].startswith('db'):
                 # print('Database Fetch')
                 func_map = {
@@ -110,8 +109,24 @@ def app_setup():
     return SETUP_PAGE.get()
 
 
+@APP.route("/setup/_category_table_data/", methods=['GET'])
+def category_data():
+    """
+    API endpoint to fetch category list
+    """
+    return jsonify({'data': DATA.categories.to_dict('records')})
+
+
+@APP.route("/setup/_account_table_data/", methods=['GET'])
+def account_data():
+    """
+    API endpoint to fetch account list
+    """
+    return jsonify({'data': DATA.accounts.to_dict('records')})
+
+
 @APP.route("/setup/update/", methods=['POST'])
-def update_setting():
+def update_setup():
     """
     API endpoint to update settings
 
@@ -119,74 +134,72 @@ def update_setting():
 
     :return: redirect
     """
-    update_id = None
-    update_type = None
+    confirm = []
 
-    func_map = {
-        'Category': DATA.update_category,
-        'Account': DATA.update_account,
-        'Home': SETUP_PAGE.config.update_setting,
-        'Personal': SETUP_PAGE.config.update_setting,
-        'Database': SETUP_PAGE.config.update_setting,
-    }
-    config_types = ['Home', 'Personal', 'Database']
+    try:
+        # print(request.get_json())
+        update_json = request.get_json()
+        LOGGER.debug("update_json")
+        LOGGER.debug(update_json)
+
+        for row in update_json:
+            # print(row)
+            if 'cat_id' in row.keys():
+                # print('cat_id detected')
+                response = DATA.update_category(
+                    row['cat_id'],
+                    cat_id=row['cat_id'],
                     category_name=str(row['category_name']),
+                    description=str(row['description'])
+                )
+            elif 'account_id' in row.keys():
+                # print('account_id detected')
+                response = DATA.update_account(
+                    row['account_id'],
+                    account_id=row['account_id'],
                     account_name=str(row['account_name']),
+                    account_type=str(row['account_type']),
+                    transaction_type=str(row['transaction_type']),
+                    starting_value=str(row['starting_value']),
+                )
+            else:
+                response = "Error"
+            confirm.append(response)
 
-    update_form = request.form
-    # print("update_form", request.form)
-    LOGGER.debug("update_form")
-    LOGGER.debug(request.form)
+    except:
+        func_map = {
+            'home': SETUP_PAGE.config.update_setting,
+            'personal': SETUP_PAGE.config.update_setting,
+            'database': SETUP_PAGE.config.update_setting,
+        }
 
-    keys = list(update_form.keys())
+        # print("update_form", request.form)
+        update_form = request.form
+        LOGGER.debug("update_form")
+        LOGGER.debug(update_form)
 
-    update_dict = update_form.to_dict()
-    # print('update_dict', update_dict)
+        update_dict = update_form.to_dict()
+        print("update_dict", update_dict)
+        update_type = update_dict.pop('type')
+        # print('update_type', update_type)
 
-    for k in keys:
-        # print(k, request.form.get(k))
-        if request.form.get(k) == 'Update':
-            update_type = k.split('.')[0]
-            update_id = k.split('.')[1]
-            update_dict.pop(k)
-            break
+        for update_id in update_dict.keys():
+            # print('update_id: ', update_id, 'new value: ', update_dict[update_id])
+            update = {'config_section': update_type.lower(),
+                      'new_value': update_dict[update_id]}
 
-    if update_id is None:
-        e_text = 'Could not identify Row ID for update'
-        return render_template('warning.html', error_text=e_text, return_address='/setup')
+            response = func_map[update_type](update_id, **update)  # call appropriate handling function
+            confirm.append(response)
 
-    if update_type is None:
-        e_text = 'Could not identify update type (Category, Account, etc.)'
-        return render_template('warning.html', error_text=e_text, return_address='/setup')
-
-    # print('update_dict - popped key', update_dict)
-    # print("update_id", update_id)
-    # print("update_type", update_type)
-
-    LOGGER.debug("update_id")
-    LOGGER.debug(update_id)
-    LOGGER.debug("update_type")
-    LOGGER.debug(update_type)
-
-    if update_type in config_types:
-        # Needed a way to get section and setting name from form. This is a bit inelegant but functional
-        update_dict = {'config_section': update_type.lower(),
-                       'new_value': update_dict[update_id]}
-
-    # print('update_dict - FINAL', update_dict)
-    LOGGER.debug('update_dict-FINAL')
-    LOGGER.debug(update_dict)
-
-    confirm = func_map[update_type](update_id, **update_dict)  # call appropriate handling function
-
-    if 'err' in confirm.lower():
-        e_text = 'UPDATE FAILED - {}'.format(confirm)
-        return render_template('warning.html', error_text=e_text, return_address='/setup')
+    for response in confirm:
+        if 'err' in response.lower():
+            e_text = 'UPDATE FAILED - {}'.format(response)
+            return render_template('warning.html', error_text=e_text, return_address='/setup')
 
     return redirect(url_for('app_setup'))
 
 
-@APP.route("/setup/delete/", methods=['GET'])
+@APP.route("/setup/delete/", methods=['POST'])
 def delete():
     """
     Only deletes database rows in approved tables
@@ -194,16 +207,18 @@ def delete():
     :return: redirect
     """
     func_map = {
-        'cat_id': DATA.delete_category,
-        'account_id': DATA.delete_account,
+        'category': DATA.delete_category,
+        'account': DATA.delete_account,
     }
 
-    # print(request.args.to_dict())
-    LOGGER.debug('/delete request.args.to_dict()')
-    LOGGER.debug(request.args.to_dict())
+    data = request.form.to_dict()
+    # print(request.form.to_dict())
+    LOGGER.debug('/delete request.form.to_dict()')
+    LOGGER.debug(request.form.to_dict())
 
-    delete_type = list(request.args.to_dict().keys())[0]  # which section are we updating
-    delete_id = list(request.args.to_dict().values())[0]  # which value within that section are we updating
+    delete_type = data['type']
+    delete_id = data['id']
+
     func_map[delete_type](delete_id)  # call appropriate handling function
 
     return redirect(url_for('app_setup'))
