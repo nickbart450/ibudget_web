@@ -11,6 +11,7 @@ from budget_data import CONFIG
 class Page:
     def __init__(self):
         self.config = CONFIG
+        self.config.reload()
 
     def render(self, template, **kwargs):
         self.config.reload()

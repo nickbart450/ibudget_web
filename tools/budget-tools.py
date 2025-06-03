@@ -6,13 +6,14 @@ from components import config
 
 
 # Fetch config
-CONFIG = config.CONFIG
+CONFIG = config.AppConfig()  # THIS IS THE MAIN CONFIG OBJECT FOR THE PROJECT
+CONFIG.reload()
 environ = CONFIG['env']['environ']
 
 # Create Data object
-DATA = BudgetData()
-db_file = CONFIG['database.{}'.format(environ)]['file']
-DATA.connect(db_file)
+DATA = BudgetData(CONFIG)
+DB_FILE = CONFIG['database'][environ]
+DATA.connect(DB_FILE)
 connection = DATA.dbConnection
 
 
@@ -146,6 +147,10 @@ if __name__ == '__main__':
     # -- Rebuilds TRANSACTIONS table (deletes table, recreates table, adds 1/2022-11/2022 data)
     # rebuild_transactions()
 
+    # -- Changes column name
+    # string = "ALTER TABLE CATEGORIES RENAME COLUMN name TO category_name;"
+    # DATA.general_query(string)
+
 
     # ----- TRANSACTIONS
     # all_transactions = DATA.get_transactions()
@@ -179,6 +184,9 @@ if __name__ == '__main__':
     # add_starting_values_to_accounts(connection)
     # update_starting_values_in_accounts(connection)
     print(DATA.accounts)
+
+    # ----- CATEGORIES -----
+    print(DATA.get_categories())
 
     # -- Add Accounts
     # add_accounts(connection)
