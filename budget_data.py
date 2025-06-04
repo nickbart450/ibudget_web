@@ -1392,10 +1392,6 @@ class BudgetData:
 
     def set_year(self):
         print('setting active year to', self.year)
-    #     self.parse_date_filters()
-    #
-    # def parse_date_filters(self):
-    #     # print('parsing date filters')
 
         year = self.year
         if year is None:

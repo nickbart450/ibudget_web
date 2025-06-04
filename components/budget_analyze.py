@@ -207,13 +207,13 @@ class AnalyzePage(page.Page):
         m_list = [list(transactions_grouped.groups)[0]]
         m, y = first_month, int(first_year)
         for i in range(1, 100):
-            m += 1
-
             m_list .append("{0}-{1:0=2d}".format(y, m))
 
             if m == 12:
                 y += 1
                 m = 0
+
+            m += 1
 
         for m in m_list:
             if m > "{0}-{1:0=2d}".format(last_year, last_month):
