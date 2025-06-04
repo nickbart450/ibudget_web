@@ -191,13 +191,6 @@ def data_transactions():
     :return: render_template
     """
 
-    if DATA.year == 0:
-        DATA.year = None
-
-    elif DATA.year is None:
-        print('loading /transact with default year filter')
-        DATA.set_year()
-
     return TRANSACTION_PAGE.get()
 
 

@@ -53,7 +53,7 @@ class BudgetData:
         # Parse date filters from config
         self.year = None
         self.default_year = datetime.datetime.today().date().year
-        self.date_filters = self.parse_date_filters()
+        self.date_filters = self.set_year()
 
         # Initialize empty vars
         self.dbConnection = None
@@ -472,6 +472,8 @@ class BudgetData:
         else:
             query = query.format(fill='')
             # raise Exception("Please provide date range or filter code")
+
+        # print('query: ', query)
 
         date_cols = ['transaction_date', 'posted_date']
         df = pd.read_sql(query, self.dbConnection, parse_dates=date_cols)
@@ -1388,13 +1390,12 @@ class BudgetData:
             (transactions['debit_account_id'] == account) & (transactions['category'] == 'Credit Card Payment')]
         return payments
 
-    def set_year(self, year: int):
-        print('setting active year to', year)
-        self.year = year
-        self.parse_date_filters()
-
-    def parse_date_filters(self):
-        # print('parsing date filters')
+    def set_year(self):
+        print('setting active year to', self.year)
+    #     self.parse_date_filters()
+    #
+    # def parse_date_filters(self):
+    #     # print('parsing date filters')
 
         year = self.year
         if year is None:
