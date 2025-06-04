@@ -62,7 +62,7 @@ class TransactionsPage(page.Page):
             todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
 
         # Fetch latest categories
-        categories = DATA.categories['name'].to_list()
+        categories = DATA.categories['category_name'].to_list()
         categories.sort()
 
         active_year = DATA.year
@@ -73,7 +73,7 @@ class TransactionsPage(page.Page):
             self.template,
             date_filter=self.date_filters[:-2],
             active_year=active_year,
-            accounts=['All'] + DATA.accounts['name'].to_list(),
+            accounts=['All'] + DATA.accounts['account_name'].to_list(),
             account_values_today=todays_accounts,  # Account value dictionary for just today
             categories=['All'] + categories,
             date_filter_default=self.filters['date'],
@@ -130,12 +130,12 @@ class TransactionsPage(page.Page):
         else:
             posted_flag = False
 
-        credit_account = int(DATA.accounts[DATA.accounts['name'] == credit_account]['account_id'])
+        credit_account = int(DATA.accounts[DATA.accounts['account_name'] == credit_account]['account_id'])
 
         if debit_account == '':
             debit_account = None
         else:
-            debit_account = int(DATA.accounts[DATA.accounts['name'] == debit_account]['account_id'])
+            debit_account = int(DATA.accounts[DATA.accounts['account_name'] == debit_account]['account_id'])
 
         DATA.add_transaction(
             transaction_date=transaction_date,
@@ -196,7 +196,7 @@ def data_transactions():
 
     elif DATA.year is None:
         print('loading /transact with default year filter')
-        DATA.set_year(DATA.default_year)
+        DATA.set_year()
 
     return TRANSACTION_PAGE.get()
 
