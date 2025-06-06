@@ -55,16 +55,23 @@ class BudgetData:
         self.default_year = datetime.datetime.today().date().year
         self.date_filters = self.set_year()
 
-        # Initialize empty vars
+        # Initialize database connection
+        self.connection_attempts = 0
         self.dbConnection = None
         self.dbConnected = False
         self.db_version = None
-        self.connection_attempts = 0
+        self._environ = self.config['env']['environ']
+        self.db_file = self.config['database'][self._environ]
+        self.connect(self.db_file)
 
+        # Initialize data tables
         self.transactions = None
+        self.get_transactions()
         self.accounts = None
         self.account_values = None
+        self.get_accounts()
         self.categories = None
+        self.get_categories()
 
     def __del__(self):
         self.close()
@@ -79,6 +86,7 @@ class BudgetData:
             # Try to see if the path to the database file is accessible
             if os.path.exists(os.path.abspath(db_file)):
                 # If yes, open_file and connect
+
                 self.logger.info('Attempting to open {}'.format(os.path.abspath(db_file)))
                 self.dbConnection = sql.connect(db_file, check_same_thread=False)
                 test_query = 'SELECT sqlite_version();'
@@ -101,6 +109,7 @@ class BudgetData:
                 self.logger.info('Successfully Connected to Example db')
             else:
                 # Final attempt: create blank database file
+
                 print('Database connection issues. Attempting creation of blank db...')
                 if self.connection_attempts <= 5:
                     self.logger.warning(
@@ -132,7 +141,6 @@ class BudgetData:
                     return False
 
             if self.dbConnected:
-                self.get_transactions()
                 return True
             else:
                 return False
@@ -433,95 +441,49 @@ class BudgetData:
         """
 
         query = """SELECT * from TRANSACTIONS
-                   {fill}
                    ORDER BY transaction_date ASC;
                 """
 
-        # Query Database, Filtering by Date - other filters handled on the dataframe after
-        if date_filter == 'Date Filter' or date_filter == 'All':
-            date_filter = 'all'
-
-        if date_filter == 'all' and self.year is not None:
-            # If self.year is set to reduce transmitted data, alter input 'all' to selected year only
-            # print('get_transactions - overriding date_filter to', self.year)
-            start_date = '{y}-01-01'.format(y=self.year)
-            end_date = '{y}-12-31'.format(y=self.year)
-            date_filter = None
-
+        # # Query Database, Filtering by Date - other filters handled on the dataframe after
+        # if date_filter == 'Date Filter' or date_filter == 'All':
+        #     date_filter = 'all'
+        #
+        # if date_filter == 'all' and self.year is not None:
+        #     # If self.year is set to reduce transmitted data, alter input 'all' to selected year only
+        #     # print('get_transactions - overriding date_filter to', self.year)
+        #     start_date = '{y}-01-01'.format(y=self.year)
+        #     end_date = '{y}-12-31'.format(y=self.year)
+        #     date_filter = None
+        #
+        # # else:
+        # #     print('get_transactions no year override')
+        #
+        # if date_filter is not None:
+        #     date_filter = date_filter.lower()
+        #     d1 = self.date_filters[date_filter][0]
+        #     d2 = self.date_filters[date_filter][1]
+        #     query = query.format(fill="""WHERE {0} BETWEEN '{1} 00:00:00' AND '{2} 00:00:00'""")
+        #     query = query.format(date_type, d1, d2)
+        # elif start_date is not None or end_date is not None:
+        #     if start_date is None:
+        #         d1 = '1970-01-01'
+        #         d2 = end_date
+        #     elif end_date is None:
+        #         d1 = start_date
+        #         d2 = '2100-12-31'
+        #     else:
+        #         d1 = start_date
+        #         d2 = end_date
+        #     query = query.format(fill="""WHERE {0} BETWEEN '{1} 00:00:00' AND '{2} 00:00:00'""")
+        #     query = query.format(date_type, d1, d2)
         # else:
-        #     print('get_transactions no year override')
-
-        if date_filter is not None:
-            date_filter = date_filter.lower()
-            d1 = self.date_filters[date_filter][0]
-            d2 = self.date_filters[date_filter][1]
-            query = query.format(fill="""WHERE {0} BETWEEN '{1} 00:00:00' AND '{2} 00:00:00'""")
-            query = query.format(date_type, d1, d2)
-        elif start_date is not None or end_date is not None:
-            if start_date is None:
-                d1 = '1970-01-01'
-                d2 = end_date
-            elif end_date is None:
-                d1 = start_date
-                d2 = '2100-12-31'
-            else:
-                d1 = start_date
-                d2 = end_date
-            query = query.format(fill="""WHERE {0} BETWEEN '{1} 00:00:00' AND '{2} 00:00:00'""")
-            query = query.format(date_type, d1, d2)
-        else:
-            query = query.format(fill='')
+        #     query = query.format(fill='')
             # raise Exception("Please provide date range or filter code")
 
         # print('query: ', query)
 
         date_cols = ['transaction_date', 'posted_date']
         df = pd.read_sql(query, self.dbConnection, parse_dates=date_cols)
-
-        # Account Filter
-        accounts = self.get_accounts()
-        if account_filter == 'All' or account_filter == 'Account Filter':
-            account = list(accounts['account_id'])
-        elif isinstance(account_filter, int) and account_filter in list(accounts['account_id']):
-            account = [account_filter]
-        else:
-            account = [int(accounts[accounts['account_name'] == account_filter]['account_id'])]
-
-        debit_truth_series = []
-        for i in df.index:
-            if df.at[i, 'debit_account_id'] in account:
-                debit_truth_series.append(True)
-            else:
-                debit_truth_series.append(False)
-
-        credit_truth_series = []
-        for i in df.index:
-            if df.at[i, 'credit_account_id'] in account:
-                credit_truth_series.append(True)
-            else:
-                credit_truth_series.append(False)
-
-        joint_truth_series = []
-        for i in list(range(len(debit_truth_series))):
-            if debit_truth_series[i]:
-                joint_truth_series.append(True)
-            elif credit_truth_series[i]:
-                joint_truth_series.append(True)
-            else:
-                joint_truth_series.append(False)
-
-        df = df[joint_truth_series]
-
-        # Expense/Income Filter
-        if expense_income_filter == 'expenses':
-            df = df[df['debit_account_id'] == 0]
-
-        elif expense_income_filter == 'income':
-            df = pd.concat([df[df['credit_account_id'] == 0], df[df['credit_account_id'] == 300]])
-
-        # Category filter
-        if category_filter != 'All' and category_filter is not None:
-            df = df[df['category'] == str(category_filter)]
 
         # Append Total
         if append_total:
@@ -625,7 +587,7 @@ class BudgetData:
         cursor.execute(query)
         self.dbConnection.commit()
 
-        transaction_id = cursor.lastrowid
+        transaction_id = cursor.lastrowid  # Fetch transaction_id of newly added transaction
 
         print('added transaction to db:')
         print('\ttransaction_id: ', transaction_id)
@@ -639,8 +601,7 @@ class BudgetData:
         # print('\tvendor: ', vendor)
         # print('\tposted_flag: ', is_posted)
 
-        # Refresh transaction table
-        self.get_transactions()
+        self.get_transactions()  # Refresh transaction table
 
         # Determine CC update necessity
         transaction_id = cursor.lastrowid
@@ -880,7 +841,7 @@ class BudgetData:
         :return: pandas.DataFrame
         """
         # Fetch transactions from db and order them by date
-        transactions = self.get_transactions().copy().sort_index()
+        transactions = self.transactions.copy().sort_index()
         transactions = transactions.sort_values(by=['posted_date', 'transaction_date'])
 
         # Fetch account info from database
@@ -1226,7 +1187,7 @@ class BudgetData:
         monthly_expense = float(self.config['personal']['average_monthly_expend'])
 
         # Fetch transactions from db and order them by date
-        transactions = self.get_transactions(start_date=date).copy().sort_index()
+        transactions = fetch_filtered_transactions({'start_date': date})
         # print(transactions)
         transactions = transactions.sort_values(by=['posted_date', 'transaction_date'])
 
@@ -1338,8 +1299,23 @@ class BudgetData:
         return account_values
 
     def category_summary(self, date_filter='all'):
+        """
+        Something seems a little off - income/expense columns swapped in 'All'??
+        """
         from tabulate import tabulate
-        transactions = self.get_transactions(date_filter=date_filter)
+
+        if self.year is None:
+            self.set_year(year=self.default_year)
+
+        # transactions = self.get_transactions(date_filter=date_filter)
+        cat_summary_filter = {
+            'date_filter': date_filter,
+            'account': 'all',
+            'category': 'All',
+            'income_expense': 'both',
+            'date_type': 'transaction_date',
+        }
+        transactions = fetch_filtered_transactions(cat_summary_filter)
         cat_width = 30
         amount_width = 10
 
@@ -1352,11 +1328,11 @@ class BudgetData:
         out_transactions = transactions.loc[transactions['debit_account_id'] == 0]
         in_transactions = transactions.loc[
             (transactions['credit_account_id'] == 0) |
-            (transactions['credit_account_id'] == 300)
+            (transactions['credit_account_id'] == 300) |
+            (transactions['credit_account_id'] == 301)
             ]
 
-        # categories = sorted(transactions.category.unique())
-        categories = self.categories
+        categories = self.categories['category_name'].to_list()
         summary = pd.DataFrame()  # columns=categories
 
         for category in categories:
@@ -1385,24 +1361,18 @@ class BudgetData:
             warnings.warn('Incorrect account id entered')
             return
 
-        transactions = self.get_transactions(account_filter=account)
+        transactions = fetch_filtered_transactions({'account_filter': account})
         payments = transactions[
             (transactions['debit_account_id'] == account) & (transactions['category'] == 'Credit Card Payment')]
         return payments
 
-    def set_year(self):
+    def set_year(self, year=None):
+        self.year = year
         print('setting active year to', self.year)
-
-        year = self.year
-        if year is None:
-            # print('year is None, using default year')
-            year = self.default_year
-
-        # print('active year', year)
 
         date_filters = {}
         for k in self.config['ui_settings.date_filters']:
-            date_filters[k] = self.config['ui_settings.date_filters'][k].replace('yyyy', '{}'.format(year)).split(',')
+            date_filters[k] = self.config['ui_settings.date_filters'][k].replace('yyyy', '{}'.format(self.year)).split(',')
 
         # print('date_filters', date_filters)
         self.date_filters = date_filters
@@ -1564,7 +1534,7 @@ class Account:
         self.transaction_type = account['transaction_type']
         self.account_type = account['account_type']
 
-        self.transactions = database.get_transactions(account_filter=account_id)
+        self.transactions = fetch_filtered_transactions({'account': account_id})
         self.balance = 0
 
         print('\nConfiguring account {} from database...'.format(self.account_id))
@@ -1585,52 +1555,142 @@ class CreditCard(Account):
 
 
 def fetch_filtered_transactions(filters):
-    # Fetch filtered results
-    result = DATA.get_transactions(
-        date_filter=filters['date'],
-        start_date=None,
-        end_date=None,
-        date_type='transaction_date',
-        account_filter=filters['account'],
-        expense_income_filter=filters['income_expense'],
-        category_filter=filters['category'],
-        append_total=False)
+    """
+        filters = {
+            'date':         None,
+            'start_date':   None,
+            'end_date':     None,
+            'date_type':    'transaction_date',
+            'account':      'All',
+            'income_expense': 'both',
+            'category':     'All'
+        }
+    """
+    df = DATA.transactions.copy()
 
-    if result is None:
+    # Filter Dates -----------------------------------------------------------------------------------------------------
+        # If self.year is set, the dataframe will be filtered, right?
+        # So if the desired start and end dates are before or after the loaded data in DATA.transactions then it will fail
+        # Should get_transactions always load all the data?
+
+    df['transaction_date_yr'] = df['transaction_date'].dt.year
+    df['transaction_date_mm'] = df['transaction_date'].dt.month
+    df['transaction_date_dd'] = df['transaction_date'].dt.day
+    df['posted_date_yr'] = df['posted_date'].dt.year
+    df['posted_date_mm'] = df['posted_date'].dt.month
+    df['posted_date_dd'] = df['posted_date'].dt.day
+
+    start_date = '1970-01-01'.split('-')
+    end_date   = '2100-12-31'.split('-')
+    if filters['start_date'] is not None or filters['end_date'] is not None:
+        # Using the filters like: '2020-01-02' '2021-02-03'
+        print('filtering start and/or end dates')
+        if filters['start_date'] is None:
+            end_date = filters['end_date'].split('-')
+        if filters['end_date'] is None:
+            start_date = filters['start_date'].split('-')
+
+        start_date = datetime.datetime(year=int(start_date[0]),
+                                       month=int(start_date[1]),
+                                       day=int(start_date[2]))
+        end_date   = datetime.datetime(year=int(end_date[0]),
+                                       month=int(end_date[1]),
+                                       day=int(end_date[2]))
+
+        mask = (df[filters['date_type']] > start_date) & (df[filters['date_type']] <= end_date)
+        df = df.loc[mask]
+
+    elif filters['date'] is not None:
+        # Using the date shortcuts like: 'june', 'q4'
+        filters['date'] = filters['date'].lower()
+
+        if DATA.year is not None:
+            # Final year override if DATA.year is set (not None)
+            year_str = filters['date_type'] + '_yr'
+            df = df.loc[df[year_str] == DATA.year]
+
+        month_ranges = {
+            'all': list(range(1,13)),
+            'january': [1],
+            'february': [2],
+            'march': [3],
+            'april': [4],
+            'may': [5],
+            'june': [6],
+            'july': [7],
+            'august': [8],
+            'september': [9],
+            'october': [10],
+            'november': [11],
+            'december': [12],
+            'q1': [1, 2, 3],
+            'q2': [4, 5, 6],
+            'q3': [7, 8, 9],
+            'q4': [10, 11, 12],
+            'h1': [1, 2, 3, 4, 5, 6],
+            'h2': [7, 8, 9, 10, 11, 12],
+        }
+
+        print(month_ranges[filters['date']])
+        df = df.loc[df['transaction_date_mm'].isin(month_ranges[filters['date']])]
+
+    else:
+        if DATA.year is not None:
+            # Final year override if DATA.year is set (not None)
+            year_str = filters['date_type'] + '_yr'
+            df = df.loc[df[year_str] == DATA.year]
+
+    # Filter Accounts --------------------------------------------------------------------------------------------------
+    if str(filters['account']).lower() != 'all' and filters['account'] is not None:
+        print('filtering account', filters['account'])
+
+        account = int(DATA.accounts[DATA.accounts['account_name'] == filters['account']]['account_id'])
+        df = df.loc[(df['debit_account_id'] == account) | (df['credit_account_id'] == account)]
+
+    # Filter Category
+    if str(filters['category']).lower() != 'all' and filters['category'] is not None:
+        df = df.loc[df['category'] == filters['category']]
+
+    # Filter Income/Expense
+    df['debit_account_id_str'] = df['debit_account_id'].apply(str)
+    df['credit_account_id_str'] = df['credit_account_id'].apply(str)
+    if str(filters['income_expense']).lower() == 'expenses':
+        df = df[df['debit_account_id'] == 0]
+    elif str(filters['income_expense']).lower() == 'income':
+        df = df.loc[(df['credit_account_id'] == 0) | (df.credit_account_id_str.str.contains('^30'))]
+
+    # print(df.head())
+    # print(df.tail())
+
+    if df is None:
         print('Empty DataFrame after filters')
         return pd.DataFrame(columns=TRANSACTION_TABLE_COLS)
 
-    else:
-        result = result.copy()
+    # else:
+    df['amount_string'] = df['amount'].map('$ {:,.2f}'.format) # Add reformatted amount_string column
 
-        # Reformat amount column
-        result['amount_string'] = result['amount'].map('$ {:,.2f}'.format)
+    # Reformat date columns
+    df['transaction_date'] = df['transaction_date'].dt.strftime('%Y-%m-%d')
+    df['posted_date'] = df['posted_date'].dt.strftime('%Y-%m-%d')
 
-        # Reformat date columns
-        result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
-        result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
+    # Reformat is_posted column
+    df['is_posted'] = df['is_posted'].replace([0, 1], ['', 'checked'])
 
-        # Reformat is_posted column
-        result['is_posted'] = result['is_posted'].replace([0, 1], ['', 'checked'])
+    # Append account names
+    account_id_list = [0] + list(DATA.accounts['account_id'])
+    account_translate_dict = {}
+    for i in list(range(len(account_id_list))):
+        account_translate_dict[account_id_list[i]] = (['All'] + list(DATA.accounts['account_name']))[i]
+    df['credit_account_name'] = df['credit_account_id'].replace(account_translate_dict)
+    df['debit_account_name'] = df['debit_account_id'].replace(account_translate_dict)
 
-        # Append account names
-        account_id_list = [0] + list(DATA.accounts['account_id'])
-        account_translate_dict = {}
-        for i in list(range(len(account_id_list))):
-            account_translate_dict[account_id_list[i]] = (['All'] + list(DATA.accounts['account_name']))[i]
-        result['credit_account_name'] = result['credit_account_id'].replace(account_translate_dict)
-        result['debit_account_name'] = result['debit_account_id'].replace(account_translate_dict)
-
-        return result
+    return df
 
 
 CONFIG = config.AppConfig()  # THIS IS THE MAIN CONFIG OBJECT FOR THE PROJECT
 CONFIG.reload()
 DATA = BudgetData(CONFIG)
 
-environ = CONFIG['env']['environ']
-DB_FILE = CONFIG['database'][environ]
-DATA.connect(DB_FILE)
 
 if __name__ == "__main__":
     print('Config environment: {}'.format(CONFIG['env']['environ']))
@@ -1661,8 +1721,9 @@ if __name__ == "__main__":
 
     # -- TOOLS
     # COPY HERE: ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']['july', 'august', 'september', 'october', 'november', 'december']
+    # DATA.set_year(2024)
     # for n in ['july', 'august', 'september', 'october', 'november', 'december', 'all']:
-    #     print('\n\t{}'.format(n.upper()))
+    #     print('\n\t{} {}'.format(n.upper(), DATA.year))
     #     DATA.category_summary(date_filter=n)
 
     # DATA.get_transactions().to_csv('./2023transacts.csv')
@@ -1677,8 +1738,22 @@ if __name__ == "__main__":
     # print(burn_table[['transaction_date', 'account_sum', 'account_sum_no_invest', 'burntime_full', 'burntime_no_invest']])
 
     # print(DATA.get_accounts())
-    print(DATA.get_transactions(category_filter='Transfer'))
-    # print(DATA.quick_query('list_tables'))
     # print(DATA.get_categories())
+    # print(DATA.get_transactions(category_filter='Transfer'))
+    # print(DATA.quick_query('list_tables'))
+
+    # DATA.year = 2024
+    f = {
+        'date': None,
+        'start_date': None,  # '2024-01-12'
+        'end_date': None,  # '2024-02-05'
+        'date_type': 'transaction_date',  # 'posted_date'
+        'account': None,
+        'income_expense': None,
+        'category': None
+    }
+    dat = fetch_filtered_transactions(f)
+    print(dat.head())
+    print(dat.tail())
 
     DATA.close()

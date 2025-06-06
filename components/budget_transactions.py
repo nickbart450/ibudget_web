@@ -37,6 +37,15 @@ class TransactionsPage(page.Page):
         return result
 
     def get(self):
+        self.filters = {
+            'date': None,
+            'start_date': None,
+            'end_date': None,
+            'date_type': 'transaction_date',
+            'account': None,
+            'category': None,
+            'income_expense': None,
+        }
         # Get Date Filter
         if request.args.get('date') is not None:
             self.filters['date'] = request.args.get('date')
@@ -66,8 +75,24 @@ class TransactionsPage(page.Page):
         categories.sort()
 
         active_year = DATA.year
-        if DATA.year is None:
+        if active_year is None:
             active_year = 0
+
+        active_date = self.filters['date']
+        if active_date is None:
+            active_date = 'All'
+
+        active_account = self.filters['account']
+        if active_account is None:
+            active_account = 'All'
+
+        active_category = self.filters['category']
+        if active_category is None:
+            active_category = 'All'
+
+        active_income_expense_filter = self.filters['income_expense']
+        if active_income_expense_filter is None:
+            active_income_expense_filter = 'both'
 
         return render_template(
             self.template,
@@ -76,10 +101,10 @@ class TransactionsPage(page.Page):
             accounts=['All'] + DATA.accounts['account_name'].to_list(),
             account_values_today=todays_accounts,  # Account value dictionary for just today
             categories=['All'] + categories,
-            date_filter_default=self.filters['date'],
-            account_filter_default=self.filters['account'],
-            category_filter_default=self.filters['category'],
-            income_expense_filter_default=self.filters['income_expense'],
+            date_filter_default=active_date,
+            account_filter_default=active_account,
+            category_filter_default=active_category,
+            income_expense_filter_default=active_income_expense_filter,
         )
 
     def update(self):
@@ -196,7 +221,7 @@ def data_transactions():
 
 @APP.route("/transact/_posted_table_data/", methods=['GET'])
 def _posted_table_data():
-    print('fetching posted table data')
+    # print('fetching posted table data')
 
     result = TRANSACTION_PAGE.fetch_transactions()
 
@@ -214,7 +239,7 @@ def _posted_table_data():
 
 @APP.route("/transact/_upcoming_table_data/", methods=['GET'])
 def _upcoming_table_data():
-    print('fetching upcoming table data')
+    # print('fetching upcoming table data')
 
     result = TRANSACTION_PAGE.fetch_transactions()
 

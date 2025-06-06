@@ -6,12 +6,9 @@ from flask import redirect
 
 @APP.route("/change-year-<year>&redirect=<url>", methods=['GET'])
 def change_year(year, url):
-
-    DATA.year = int(year)
-
-    if DATA.year == 0:
-        DATA.year = None
-
-    DATA.set_year()
+    if year == 0 or year == '0':
+        DATA.set_year(None)
+    else:
+        DATA.set_year(int(year))
 
     return redirect('/{}'.format(url))

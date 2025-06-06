@@ -46,6 +46,15 @@ class AnalyzePage(page.Page):
 
     def get(self):
         # Get Filters from URL
+        self.filters = {
+            'date': None,
+            'start_date': None,
+            'end_date': None,
+            'date_type': 'transaction_date',
+            'account': None,
+            'category': None,
+            'income_expense': None,
+        }
         if request.args.get('date') is not None:
             self.filters['date'] = request.args.get('date')
 
@@ -55,12 +64,25 @@ class AnalyzePage(page.Page):
         if request.args.get('category') is not None:
             self.filters['category'] = request.args.get('category')
 
-        self.render_dict["date_filter_default"] = self.filters["date"]
-        self.render_dict["account_filter_default"] = self.filters["account"]
-        self.render_dict["category_filter_default"] = self.filters["category"]
+        active_year = DATA.year
+        if DATA.year is None:
+            active_year = 0
 
-        # for k in self.render_dict.keys():
-        #     print(k, self.render_dict[k], type(self.render_dict[k]))
+        active_date = self.filters['date']
+        if active_date is None:
+            active_date = 'All'
+
+        active_account = self.filters['account']
+        if active_account is None:
+            active_account = 'All'
+
+        active_category = self.filters['category']
+        if active_category is None:
+            active_category = 'All'
+
+        self.render_dict["date_filter_default"] = active_date
+        self.render_dict["account_filter_default"] = active_account
+        self.render_dict["category_filter_default"] = active_category
 
         print('Fetching /analyze with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /analyze with filters: {}'.format(dict(self.filters)))
@@ -77,10 +99,6 @@ class AnalyzePage(page.Page):
         # Fetch page data for modules
         self.category_summary()
         self.category_sum_by_month()
-
-        active_year = DATA.year
-        if DATA.year is None:
-            active_year = 0
 
         return render_template(self.template,
                                active_year=active_year,
@@ -189,11 +207,6 @@ class AnalyzePage(page.Page):
             (transactions['category'] != 'Transfer') &
             (transactions['category'] != 'Adjustment')
             ]
-
-        # Filter transactions by category
-        c = self.filters['category']
-        if c.lower() != 'all':
-            transactions = transactions[transactions['category'] == c]
 
         # Add YYYY-MM date code column to transactions datatable
         transactions['year_month'] = transactions['posted_date'].apply(lambda row: row[0:7])
