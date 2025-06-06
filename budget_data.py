@@ -1631,7 +1631,6 @@ def fetch_filtered_transactions(filters):
             'h2': [7, 8, 9, 10, 11, 12],
         }
 
-        print(month_ranges[filters['date']])
         df = df.loc[df['transaction_date_mm'].isin(month_ranges[filters['date']])]
 
     else:
