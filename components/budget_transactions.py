@@ -96,7 +96,7 @@ class TransactionsPage(page.Page):
 
         return render_template(
             self.template,
-            date_filter=self.date_filters[:-2],
+            date_filter=self.date_filters,
             active_year=active_year,
             accounts=['All'] + DATA.accounts['account_name'].to_list(),
             account_values_today=todays_accounts,  # Account value dictionary for just today
