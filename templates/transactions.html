@@ -9,6 +9,15 @@
 <!-- OnLoad jQuery Script-->
 <script type="text/javascript">
     $(function(){
+        // Initialize DataTables
+        initPostedTable();
+        initUpcomingTable();
+        console.log('datatable initialized');
+
+        // Initialize button/dropdown event listeners
+        initListeners();
+        console.log('listeners initialized');
+
         // Format active year selection
         console.log('Formatting Active Year: ', {{ active_year | safe }});
         year_string = "#year_select_".concat({{ active_year | safe }});
@@ -19,14 +28,6 @@
         $('#'+'{{ income_expense_filter_default }}').prop('checked',true);
         console.log('radio button set on {{ income_expense_filter_default }}');
 
-        // Initialize DataTables
-        initPostedTable();
-        initUpcomingTable();
-        console.log('datatable initialized');
-
-        // Initialize button/dropdpown event listeners
-        initListeners();
-        console.log('listeners initialized');
     });
 </script>
 
