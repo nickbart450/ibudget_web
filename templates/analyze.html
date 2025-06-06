@@ -106,6 +106,10 @@
     $("#spending_pie_chart").CanvasJSChart(spending_options);
     $("#income_pie_chart").CanvasJSChart(income_options);
     $("#category_chart").CanvasJSChart(category_canvas_options);
+
+    // Set investment included checkbox button
+    $('#invest_selector').prop('checked', {{ invest_select }});
+    console.log('checkbox set to {{ invest_select }}');
     });
 </script>
 
@@ -161,6 +165,11 @@
               {% endfor %}
             </div>
           </div>
+        </div>
+
+        <!-- Investment Filter-->
+        <div id="investment_filter_container" class="w3-bar-block w3-section">
+          <span class="w3-bar-item"><input type="checkbox" id="invest_selector" class="w3-check" name="invest_selector"> Include Investment</span>
         </div>
       </div>
 

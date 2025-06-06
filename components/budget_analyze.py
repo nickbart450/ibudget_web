@@ -24,6 +24,7 @@ class AnalyzePage(page.Page):
         self.category_summary_columns = ['Category', 'Expenses', 'Expenses %', 'Income', 'Income %']
 
         self.todays_accounts = None
+        self.include_invest = False
         self.root_transactions = None
         self.render_dict = {
             "data_columns": self.category_summary_columns,
@@ -64,6 +65,11 @@ class AnalyzePage(page.Page):
         if request.args.get('category') is not None:
             self.filters['category'] = request.args.get('category')
 
+        if request.args.get('include_invest') is not None:
+            self.include_invest = False
+            if request.args.get('include_invest') == 'true':
+                self.include_invest = True
+
         active_year = DATA.year
         if DATA.year is None:
             active_year = 0
@@ -83,9 +89,12 @@ class AnalyzePage(page.Page):
         self.render_dict["date_filter_default"] = active_date
         self.render_dict["account_filter_default"] = active_account
         self.render_dict["category_filter_default"] = active_category
+        self.render_dict["invest_select"] = str(self.include_invest).lower()
 
         print('Fetching /analyze with filters: {}'.format(dict(self.filters)))
+        # print('Fetching /analyze with invest_select: {}'.format(str(self.include_invest).lower()))
         LOGGER.debug('Fetching /analyze with filters: {}'.format(dict(self.filters)))
+        LOGGER.debug('Fetching /analyze with invest_select: {}'.format(str(self.include_invest).lower()))
 
         # Calculate today's account values and format dict for page data
         self.todays_accounts = DATA.calculate_todays_account_values()
@@ -107,12 +116,11 @@ class AnalyzePage(page.Page):
     def category_summary(self):
         transactions = self.root_transactions.copy()
 
-        # Remove investment, transfer, adjustment categories
-        transactions = transactions[
-            # (transactions['category'] != 'Investment') &
-            (transactions['category'] != 'Transfer') &
-            (transactions['category'] != 'Adjustment')
-            ]
+        # Remove Transfer & Adjustment Categories
+        transactions = transactions[(transactions['category'] != 'Transfer') & (transactions['category'] != 'Adjustment')]
+        if not self.include_invest:
+            # If include_invest is False, remove those transactions
+            transactions = transactions[transactions['category'] != 'Investment']
 
         # Expense Transactions
         trans_exp = transactions[transactions['debit_account_id'] == 0]

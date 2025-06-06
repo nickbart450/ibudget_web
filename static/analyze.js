@@ -23,6 +23,7 @@ function initListeners(){
     for (let i = 0; i<category_btns.length; i++) {
         category_btns[i].addEventListener("click", setCategoryFilter);
         };
+    $('#invest_selector').on("click", setInvestFilter);
 };
 
 // Updates Date Filters in <div> and calls filter url
@@ -31,10 +32,15 @@ function setDateFilter(event){
     var date_filter = event.target.value
     document.getElementById("date_filter").innerHTML = date_filter
 
+    var account_filter = document.getElementById("account_filter").innerHTML
+    var category_filter = document.getElementById("category_filter").innerHTML
+    var invest_filter = $('#invest_selector').prop('checked');
+
     var server_data = {
         "date": date_filter,
-        "account": document.getElementById("account_filter").innerHTML,
-        "category": "All",
+        "account": account_filter,
+        "category": category_filter,
+        "include_invest": invest_filter,
         };
 
     location.href = "/analyze/?"+$.param(server_data);
@@ -46,10 +52,15 @@ function setAccountFilter(event){
     var account_filter = event.target.value
     document.getElementById("account_filter").innerHTML = account_filter;
 
+    var date_filter = document.getElementById("date_filter").innerHTML
+    var category_filter = document.getElementById("category_filter").innerHTML
+    var invest_filter = $('#invest_selector').prop('checked');
+
     var server_data = {
-        "date": document.getElementById("date_filter").innerHTML,
+        "date": date_filter,
         "account": account_filter,
-        "category": "All",
+        "category": category_filter,
+        "include_invest": invest_filter,
         };
 
     location.href = "/analyze/?"+$.param(server_data);
@@ -57,14 +68,37 @@ function setAccountFilter(event){
 
 // Updates Category Filters in <div> and calls filter url
 function setCategoryFilter(event){
-    // Account Filter
     var category_filter = event.target.value
     document.getElementById("category_filter").innerHTML = category_filter;
 
+    var date_filter = document.getElementById("date_filter").innerHTML
+    var account_filter = document.getElementById("account_filter").innerHTML
+    var invest_filter = $('#invest_selector').prop('checked');
+
     var server_data = {
-        "date": "All",
-        "account": "All",
-        "category": category_filter
+        "date": date_filter,
+        "account": account_filter,
+        "category": category_filter,
+        "include_invest": invest_filter,
+        };
+
+    location.href = "/analyze/?"+$.param(server_data);
+};
+
+// Updates Include Investment Filter in <div> and calls filter url
+function setInvestFilter(event){
+    var invest_filter = $(this).prop('checked');
+    // console.log('filter clicked: ', invest_filter);
+
+    var date_filter = document.getElementById("date_filter").innerHTML
+    var account_filter = document.getElementById("account_filter").innerHTML
+    var category_filter = document.getElementById("category_filter").innerHTML
+
+    var server_data = {
+        "date": date_filter,
+        "account": account_filter,
+        "category": category_filter,
+        "include_invest": invest_filter,
         };
 
     location.href = "/analyze/?"+$.param(server_data);
