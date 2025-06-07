@@ -16,7 +16,7 @@
         $(year_string).css("fontSize", "12px");
         $(year_string).css("fontWeight", "bold");
 
-        initTable( {{ posted_data | safe }} );
+        initTable();
         console.log('datatable initialized');
 
         initListeners();
