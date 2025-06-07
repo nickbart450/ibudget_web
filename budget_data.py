@@ -1361,9 +1361,17 @@ class BudgetData:
             warnings.warn('Incorrect account id entered')
             return
 
-        transactions = fetch_filtered_transactions({'account_filter': account})
-        payments = transactions[
-            (transactions['debit_account_id'] == account) & (transactions['category'] == 'Credit Card Payment')]
+        filters = {
+            'date': None,
+            'start_date': None,
+            'end_date': None,
+            'date_type': 'transaction_date',
+            'account': account,
+            'income_expense': 'both',
+            'category': 'Credit Card Payment',
+        }
+        transactions = fetch_filtered_transactions(filters)
+        payments = transactions[transactions['debit_account_id'] == account]
         return payments
 
     def set_year(self, year=None):
