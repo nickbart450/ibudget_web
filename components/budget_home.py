@@ -17,19 +17,14 @@ class Home(page.Page):
         self.name = 'home'
 
         self.include_retire = False
-
         self.accounts = None
         self.todays_accounts = None
-
         self.asset_accounts = None
         self.asset_account_values = None
         self.asset_accounts_no_invest = None
-
         self.burn_time_full = None  # only removes retirement accounts if specified in config file options
         self.burn_time_no_invest = None  # removes all investment accounts from burn time calculation (lower limit)
-
         self.account_vals = None
-
         self.home_settings = {}
 
     def get(self):
@@ -168,17 +163,17 @@ class Home(page.Page):
         # print('\naccount_values_today', self.todays_accounts)
         # print('\naccount_view_order', self.asset_accounts_no_invest)
 
-        return self.render(
-            self.template,
-            accounts=self.accounts.to_dict('index'),  # Used to translate account_id to name
-            account_values_today=self.todays_accounts,  # Account value dictionary for just today
-            account_values_by_day=self.asset_account_values,  # Account value dictionary by day for CanvasJS stacked bar chart
-            burn_time_by_day=self.burn_time_full,  # List of dictionaries describing burn time
-            burn_time_by_day_no_invest=self.burn_time_no_invest,  # List of dictionaries describing burn time
-            burn_time_retirement=include_retire_str,
-            account_view_order=self.asset_accounts_no_invest,  # List of account ids, ordered by total value largest to smallest
-            home_settings=self.home_settings,
-        )
+        render_dict = self.render_dict
+        render_dict['accounts'] = self.accounts.to_dict('index')  # Used to translate account_id to name
+        render_dict['account_values_today'] = self.todays_accounts  # Account value dictionary for just today
+        render_dict['account_values_by_day'] = self.asset_account_values  # Account value dictionary by day for CanvasJS stacked bar chart
+        render_dict['burn_time_by_day'] = self.burn_time_full  # List of dictionaries describing burn time
+        render_dict['burn_time_by_day_no_invest'] = self.burn_time_no_invest  # List of dictionaries describing burn time
+        render_dict['burn_time_retirement'] = include_retire_str
+        render_dict['account_view_order'] = self.asset_accounts_no_invest  # List of account ids, ordered by total value largest to smallest
+        render_dict['home_settings'] = self.home_settings
+
+        return self.render(self.template, **render_dict)
 
 
 HOME_PAGE = Home()

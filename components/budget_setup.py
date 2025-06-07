@@ -31,11 +31,7 @@ class SetupPage(page.Page):
         }
 
         self.top_level_items = list(self.setup_dict.keys())
-        self.top_level_items = [i.title() for i in self.top_level_items]
-
-        self.render_dict = {
-            "tree_top_level": self.top_level_items,
-        }
+        # self.top_level_items = [i.title() for i in self.top_level_items]
 
     def get(self):
         """Fetch appropriate data and render page from template"""
@@ -92,9 +88,11 @@ class SetupPage(page.Page):
         LOGGER.debug('setup_dict')
         LOGGER.debug(self.setup_dict)
 
-        self.render_dict['setup_dict'] = self.setup_dict
+        render_dict = self.render_dict
+        render_dict['setup_dict'] = self.setup_dict
+        render_dict["tree_top_level"] = self.top_level_items
 
-        return render_template(self.template, **self.render_dict)
+        return self.render(self.template, **render_dict)
 
 
 SETUP_PAGE = SetupPage()

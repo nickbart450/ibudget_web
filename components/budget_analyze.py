@@ -26,12 +26,6 @@ class AnalyzePage(page.Page):
         self.todays_accounts = None
         self.include_invest = False
         self.root_transactions = None
-        self.render_dict = {
-            "data_columns": self.category_summary_columns,
-            "date_filters": self.date_filters,
-            "accounts": ['All'] + list(DATA.accounts['account_name']),
-            "categories": ['All'] + self.categories,
-        }
 
     def current_filter_url(self):
         """Determines new url string based on currently selected page filters."""
@@ -86,10 +80,12 @@ class AnalyzePage(page.Page):
         if active_category is None:
             active_category = 'All'
 
-        self.render_dict["date_filter_default"] = active_date
-        self.render_dict["account_filter_default"] = active_account
-        self.render_dict["category_filter_default"] = active_category
-        self.render_dict["invest_select"] = str(self.include_invest).lower()
+        render_dict = self.render_dict
+        render_dict["data_columns"] = self.category_summary_columns
+        render_dict["date_filter_default"] = active_date
+        render_dict["account_filter_default"] = active_account
+        render_dict["category_filter_default"] = active_category
+        render_dict["invest_select"] = str(self.include_invest).lower()
 
         print('Fetching /analyze with filters: {}'.format(dict(self.filters)))
         # print('Fetching /analyze with invest_select: {}'.format(str(self.include_invest).lower()))
@@ -100,18 +96,23 @@ class AnalyzePage(page.Page):
         self.todays_accounts = DATA.calculate_todays_account_values()
         for t in self.todays_accounts:
             self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
-        self.render_dict["account_values_today"] = self.todays_accounts
+        render_dict["account_values_today"] = self.todays_accounts
 
         # Fetch transactions for analysis
         self.root_transactions = fetch_filtered_transactions(self.filters).sort_values('posted_date')
 
         # Fetch page data for modules
-        self.category_summary()
-        self.category_sum_by_month()
+        cat_sum = self.category_summary()
+        for c in cat_sum:
+            render_dict[c[0]] = c[1]
+
+        cat_sum_month = self.category_sum_by_month()
+        for c in cat_sum_month:
+            render_dict[c[0]] = c[1]
 
         return render_template(self.template,
                                active_year=active_year,
-                               **self.render_dict)
+                               **render_dict)
 
     def category_summary(self):
         transactions = self.root_transactions.copy()
@@ -187,9 +188,9 @@ class AnalyzePage(page.Page):
             LOGGER.exception(e)
             LOGGER.warning('No data met current filters: {}'.format(dict(self.filters)))
 
-        self.render_dict["data"] = category_summary_table
-        self.render_dict["pie_expenses"] = expenses_pie_chart
-        self.render_dict["pie_income"] = income_pie_chart
+        return (("data", category_summary_table),
+                ("pie_expenses", expenses_pie_chart),
+                ("pie_income", income_pie_chart))
 
     def category_sum_by_month(self):
         months = {
@@ -262,7 +263,7 @@ class AnalyzePage(page.Page):
                 result.at[m, 'income_sum'] = 0
                 result.at[m, 'expense_sum'] = 0
 
-        self.render_dict["area_category"] = result.to_dict("records")
+        return ("area_category", result.to_dict("records")),
 
 
 ANALYZE_PAGE = AnalyzePage()

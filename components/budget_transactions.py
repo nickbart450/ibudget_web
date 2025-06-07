@@ -107,18 +107,18 @@ class TransactionsPage(page.Page):
         if active_income_expense_filter is None:
             active_income_expense_filter = 'both'
 
-        return render_template(
-            self.template,
-            date_filter=self.date_filters,
-            active_year=active_year,
-            accounts=['All'] + DATA.accounts['account_name'].to_list(),
-            account_values_today=todays_accounts,  # Account value dictionary for just today
-            categories=['All'] + categories,
-            date_filter_default=active_date,
-            account_filter_default=active_account,
-            category_filter_default=active_category,
-            income_expense_filter_default=active_income_expense_filter,
-        )
+        render_dict = self.render_dict
+        render_dict['date_filter'] = self.date_filters
+        render_dict['active_year'] = active_year
+        render_dict['accounts'] = ['All'] + DATA.accounts['account_name'].to_list()
+        render_dict['account_values_today'] = todays_accounts
+        render_dict['categories'] = ['All'] + categories
+        render_dict['date_filter_default'] = active_date
+        render_dict['account_filter_default'] = active_account
+        render_dict['category_filter_default'] = active_category
+        render_dict['income_expense_filter_default'] = active_income_expense_filter
+
+        return self.render(self.template, **render_dict)
 
     def update(self):
         print('POSTing transaction update')
