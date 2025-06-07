@@ -148,6 +148,9 @@ if __name__ == '__main__':
     # rebuild_transactions()
 
     # -- Changes column name
+    # string = "ALTER TABLE ACCOUNTS RENAME COLUMN name TO account_name;"
+    # DATA.general_query(string)
+    #
     # string = "ALTER TABLE CATEGORIES RENAME COLUMN name TO category_name;"
     # DATA.general_query(string)
 
