@@ -217,7 +217,7 @@ class AnalyzePage(page.Page):
             ]
 
         # Add YYYY-MM date code column to transactions datatable
-        transactions['year_month'] = transactions['posted_date'].apply(lambda row: row[0:7])
+        transactions['year_month'] = transactions['posted_date'].dt.strftime('%Y-%m')
         transactions_grouped = transactions.groupby('year_month')
 
         # Build output table
