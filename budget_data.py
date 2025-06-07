@@ -1643,7 +1643,13 @@ def fetch_filtered_transactions(filters):
     if str(filters['account']).lower() != 'all' and filters['account'] is not None:
         print('filtering account', filters['account'])
 
-        account = int(DATA.accounts[DATA.accounts['account_name'] == filters['account']]['account_id'])
+        try:
+            # test for account ID #
+            account = int(filters['account'])
+        except ValueError:
+            # assume name passed as str if not ID #
+            account = int(DATA.accounts[DATA.accounts['account_name'] == filters['account']]['account_id'])
+
         df = df.loc[(df['debit_account_id'] == account) | (df['credit_account_id'] == account)]
 
     # Filter Category
