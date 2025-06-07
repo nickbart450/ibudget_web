@@ -1675,8 +1675,8 @@ def fetch_filtered_transactions(filters):
     df['amount_string'] = df['amount'].map('$ {:,.2f}'.format) # Add reformatted amount_string column
 
     # Reformat date columns
-    df['transaction_date'] = df['transaction_date'].dt.strftime('%Y-%m-%d')
-    df['posted_date'] = df['posted_date'].dt.strftime('%Y-%m-%d')
+    # df['transaction_date'] = df['transaction_date'].dt.strftime('%Y-%m-%d')
+    # df['posted_date'] = df['posted_date'].dt.strftime('%Y-%m-%d')
 
     # Reformat is_posted column
     df['is_posted'] = df['is_posted'].replace([0, 1], ['', 'checked'])

@@ -37,6 +37,10 @@ class TransactionsPage(page.Page):
         return result
 
     def get(self):
+        # PROCESS data from HTML GET request
+        # self.filters is dict of currently selected filters in checkboxes and dropdowns
+        # Clean types from Flask request object
+
         self.filters = {
             'date': None,
             'start_date': None,
@@ -46,6 +50,7 @@ class TransactionsPage(page.Page):
             'category': None,
             'income_expense': None,
         }
+
         # Get Date Filter
         if request.args.get('date') is not None:
             self.filters['date'] = request.args.get('date')
@@ -62,6 +67,14 @@ class TransactionsPage(page.Page):
         if request.args.get('income_expense') is not None:
             self.filters['income_expense'] = request.args.get('income_expense').lower()
 
+        # Convert self.filters from string to None, as necessary
+        for f in self.filters.keys():
+            v = self.filters[f]
+            if type(v) is str:
+                v = v.lower()
+                if v == 'none':
+                    self.filters[f] = None
+
         print('Fetching /transact with filters: {}'.format(dict(self.filters)))
         LOGGER.debug('Fetching /transact with filters: {}'.format(dict(self.filters)))
 
@@ -70,7 +83,7 @@ class TransactionsPage(page.Page):
         for t in todays_accounts:
             todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
 
-        # Fetch latest categories
+        # Fetch categories
         categories = DATA.categories['category_name'].to_list()
         categories.sort()
 
@@ -222,8 +235,11 @@ def data_transactions():
 @APP.route("/transact/_posted_table_data/", methods=['GET'])
 def _posted_table_data():
     # print('fetching posted table data')
-
     result = TRANSACTION_PAGE.fetch_transactions()
+
+    # Update column format to YYYY-MM-DD string format
+    result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
+    result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
 
     # Split Transactions by posted status
     grouped_result = result.groupby('is_posted')
@@ -240,8 +256,11 @@ def _posted_table_data():
 @APP.route("/transact/_upcoming_table_data/", methods=['GET'])
 def _upcoming_table_data():
     # print('fetching upcoming table data')
-
     result = TRANSACTION_PAGE.fetch_transactions()
+
+    # Update column format to YYYY-MM-DD string format
+    result['transaction_date'] = result['transaction_date'].dt.strftime('%Y-%m-%d')
+    result['posted_date'] = result['posted_date'].dt.strftime('%Y-%m-%d')
 
     # Split Transactions by posted status
     grouped_result = result.groupby('is_posted')
