@@ -110,9 +110,7 @@ class AnalyzePage(page.Page):
         for c in cat_sum_month:
             render_dict[c[0]] = c[1]
 
-        return render_template(self.template,
-                               active_year=active_year,
-                               **render_dict)
+        return self.render(self.template, active_year=active_year, **render_dict)
 
     def category_summary(self):
         transactions = self.root_transactions.copy()
