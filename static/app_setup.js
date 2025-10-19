@@ -86,7 +86,7 @@ function initCategoryTable(){
             { data: 'category_name',
               title: 'Name',
               render: function (data, type, row, meta) {
-                return "<input type='text' name='category_name' value='" + data + "'>";
+                return "<input type='text' name='category_name' style='width:100%;' value='" + data + "'>";
               },
               className: 'w3-center' },
             { data: 'description',
@@ -94,7 +94,7 @@ function initCategoryTable(){
                 if (!data) {
                   data = "";
                 };
-                return "<input type='text' name='description' value='" + data + "'>";
+                return "<input type='text' name='description' style='width:100%;' value='" + data + "'>";
               },
               title: 'Description',
               className: 'w3-center' },
@@ -204,7 +204,7 @@ function initAccountTable(){
             { data: 'account_name',
               title: 'Name',
               render: function (data, type, row, meta) {
-                return "<input type='text' name='account_name' value='" + data + "'>";
+                return "<input type='text' name='account_name' style='width:100%;' value='" + data + "'>";
               },
               className: 'w3-center' },
             { data: 'account_type',
@@ -212,7 +212,7 @@ function initAccountTable(){
                 if (!data) {
                   data = "";
                 };
-                return "<input type='text' name='description' value='" + data + "'>";
+                return "<input type='text' name='description' style='width:100%;' value='" + data + "'>";
               },
               title: 'Account Type',
               className: 'w3-center' },
@@ -221,7 +221,7 @@ function initAccountTable(){
                 if (!data) {
                   data = "";
                 };
-                return "<input type='text' name='description' value='" + data + "'>";
+                return "<input type='text' name='description' style='width:100%;' value='" + data + "'>";
               },
               title: 'Transaction Type',
               className: 'w3-center' },
@@ -230,7 +230,7 @@ function initAccountTable(){
                 if (!data) {
                   data = 0;
                 };
-                return "<input type='text' name='description' value='" + data + "'>";
+                return "<input type='text' name='description' style='width:100%;' value='" + data + "'>";
               },
               title: 'Starting Value',
               className: 'w3-center' },
@@ -330,3 +330,108 @@ $(document).on('submit','#setup_new_modal_Account',function(e) {
         }
     });
 });
+
+// Links Settings
+// -- DataTable Setup Function
+function initLinksTable(){
+    var table = $('#Links_list').DataTable({
+        ajax: '/setup/_links_table_data/',
+        columns: [
+            { data: 'link_id',
+              title: 'ID',
+              className: 'w3-center',
+              },
+            { data: 'link_url',
+              title: 'Link',
+              render: function (data, type, row, meta) {
+                return "<input type='text' name='link_url' style='width:100%;' value='" + data + "'>";
+              },
+              className: 'w3-input w3-center' },
+            { data: 'link_id',
+              title: 'Functions',
+              className: 'w3-center',
+              render: function (data, type, row, meta) {
+                return "<button type='button' id='" + data + "' onclick='delete_Links_entry(" + data + ")' class='w3-btn w3-red w3-round'><i class='fa fa-minus'></i></button>";
+              }
+            }
+        ],
+        paging: false,
+        scrollY: 0.75*($( window ).height())+'px',
+        scrollCollapse: true,
+        order: [[0, 'asc']],
+        searching: false
+    });
+};
+
+// -- Handle Form Submission for Update
+$(document).on('submit','#Links_list_settings_form',function(e) {
+    // console.log('submitting Links table settings');
+    e.preventDefault();
+
+    var data = []
+    var table = $('#Links_list').DataTable()
+    table.rows().every(function(){
+    // console.log('link_id', this.data()['link_id']);  // Existing data when table was loaded
+    // console.log('link_url', $(table.cell(this.index(), 1).node()).find('input').val());
+    // console.log('pushing data')
+        data.push({
+            'link_id': this.data()['link_id'],
+            'link_url': $(table.cell(this.index(), 1).node()).find('input').val(),
+        });
+    });
+    // console.log(data);
+
+    $.ajax({
+        type:'POST',
+        url:'/setup/update/',
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        success:function() {
+            alert('Saved');
+            $('#Links_list').DataTable().ajax.reload();
+
+        }
+    });
+});
+
+// -- New Item
+$(document).on('submit','#setup_new_modal_Links_list',function(e) {
+//    console.log('Adding new Link');
+//    console.log($("#list_Links").val());
+    e.preventDefault();
+
+    $.ajax({
+        type:'POST',
+        url:'/setup/new/',
+        data:{
+            link_url: $("#list_Links").val(),
+        },
+        success:function() {
+            $("#list_Links").val('')
+            alert('Saved');
+            document.getElementById('setup_new_modal_Links_list').style.display='none';
+            $('#Links_list').DataTable().ajax.reload();
+        }
+    });
+});
+
+// -- Delete item
+function delete_Links_entry(item){
+    if (confirm('Confirm DELETE?')){
+        $.ajax({
+            type:'POST',
+            url:'/setup/delete/',
+            data:{
+                type: 'Links',
+                id: item
+            },
+            success:function() {
+                alert('Saved');
+                $('#Links_list').DataTable().ajax.reload();
+            }
+        });
+
+    } else {
+        console.log("Delete Cancelled")
+    };
+};

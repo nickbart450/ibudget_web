@@ -4,6 +4,127 @@ from budget_data import DATA, fetch_filtered_transactions
 from flask import request, render_template, redirect, url_for, jsonify
 
 
+class SetupItem:
+    def __init__(self, name, data_source, setup_type):
+        self.data_source = data_source
+        self.name = name
+        self.setup_type = setup_type
+        # print('init SetupItem {}'.format(name))
+        # print('data source: ', self.data_source)
+        self.data = None
+
+        if self.data_source == 'config':
+            self.load_config()
+
+    def load_config(self):
+        self.data = {}
+        indiv_settings = DATA.config.options(self.name)
+
+        for t in indiv_settings:
+            self.data[t] = DATA.config.get(self.name, t)
+
+
+class HomeSetup(SetupItem):
+    def __init__(self):
+        super().__init__('home', 'config', 'individual')
+
+
+class PersonalSetup(SetupItem):
+    def __init__(self):
+        super().__init__('personal', 'config', 'individual')
+
+
+class DatabaseSetup(SetupItem):
+    def __init__(self):
+        super().__init__('database', 'config', 'individual')
+
+
+class CategorySetup(SetupItem):
+    def __init__(self):
+        super().__init__('Category', 'database', 'table')
+        self.data = DATA.categories.to_dict('records')
+
+    def update_category(self, update_json):
+        for row in update_json:
+            response = DATA.update_category(
+                row['cat_id'],
+                cat_id=row['cat_id'],
+                category_name=str(row['category_name']),
+                description=str(row['description'])
+            )
+            if response != 'Success':
+                print('!!!!!!!!!!! ERROR !!!!!!!!!!')
+        self.data = DATA.categories.to_dict('records')
+
+
+class AccountSetup(SetupItem):
+    def __init__(self):
+        super().__init__('Account', 'database', 'table')
+        self.data = DATA.accounts.to_dict('records')
+
+    def update_account(self, update_json):
+        for row in update_json:
+            response = DATA.update_account(
+                row['account_id'],
+                account_id=row['account_id'],
+                account_name=str(row['account_name']),
+                account_type=str(row['account_type']),
+                transaction_type=str(row['transaction_type']),
+                starting_value=str(row['starting_value']),
+            )
+            if response != 'Success':
+                print('!!!!!!!!!!! ERROR !!!!!!!!!!')
+        self.data = DATA.accounts.to_dict('records')
+
+
+class LinksSetup(SetupItem):
+    def __init__(self):
+        super().__init__('links', 'config', 'list')
+
+        self.data = self.get_links()
+
+    def get_links(self):
+        links_data = []
+        index = 0
+        for i in DATA.config['links']:
+            print(i, index, DATA.config['links'][i])
+            links_data.append({'link_id': index, 'link_url': DATA.config['links'][i]})
+            index += 1
+
+        return links_data
+
+    def add_link(self, link_url):
+        # print('adding link')
+        key = len(DATA.config['links'])+1
+        DATA.config.add_setting('links', str(key), link_url)
+
+        self.data = []
+        for i in DATA.config['links']:
+            self.data.append({'link_id': i, 'link_url': DATA.config['links'][i]})
+
+    def delete_link(self, link_id):
+        # print('removing link: ', link_id)
+        DATA.config.remove_option('links', link_id)
+        DATA.config.write_out_config()
+
+        self.data = []
+        for i in DATA.config['links']:
+            # print(i, DATA.config['links'][i])
+            self.data.append({'link_id': i, 'link_url': DATA.config['links'][i]})
+
+    def update_links(self, update_json):
+        listy = []
+        for l in update_json:
+            listy.append(l['link_url'])
+
+        DATA.config.update_list('links', listy)
+
+        self.data = []
+        for i in DATA.config['links']:
+            # print(i, DATA.config['links'][i])
+            self.data.append({'link_id': i, 'link_url': DATA.config['links'][i]})
+
+
 class SetupPage(page.Page):
     def __init__(self):
         """
@@ -21,76 +142,39 @@ class SetupPage(page.Page):
         self.template = 'app_setup.html'
         self.name = 'setup'
 
+        self.home = HomeSetup()
+        self.personal = PersonalSetup()
+        self.database = DatabaseSetup()
+        self.category = CategorySetup()
+        self.account = AccountSetup()
+        self.links_setup = LinksSetup()
+
         self.setup_dict = {
-            'Home': {'type': 'individual', 'data': None},
-            'Personal': {'type': 'individual', 'data': None},
-            'Database': {'type': 'individual', 'data': None},
-            'Category': {'type': 'table', 'data': None},
-            'Account': {'type': 'table', 'data': None},
-            # 'other': None,
+            'Home':     {'name': 'home', 'type': 'individual', 'source': 'config', 'data': None},
+            'Personal': {'name': 'personal', 'type': 'individual', 'source': 'config', 'data': None},
+            'Database': {'name': 'database', 'type': 'individual', 'source': 'config', 'data': None},
+            'Category': {'name': 'Category', 'type': 'table', 'source': 'database', 'data': None},
+            'Account':  {'name': 'Account', 'type': 'table', 'source': 'database', 'data': None},
+            'Links':    {'name': 'links', 'type': 'list', 'source': 'config', 'data': None},
         }
 
-        self.top_level_items = list(self.setup_dict.keys())
-        # self.top_level_items = [i.title() for i in self.top_level_items]
+        self.top_level_items = list(self.setup_dict.keys())  # top_level_items sets the list of available tabs for setup
 
     def get(self):
         """Fetch appropriate data and render page from template"""
         print('Fetching {}'.format(self.name))
 
-        mapping_dict = {
-            'Home': 'home',
-            'Personal': 'personal',
-            'Database': 'database',
-            'Category': 'db.Category',
-            'Account': 'db.Account',
-        }
-
-        for i in self.top_level_items:
-            if mapping_dict[i].startswith('db'):
-                # print('Database Fetch')
-                func_map = {
-                    'Category': DATA.categories.fillna("").to_dict('records'),
-                    'Account': DATA.accounts.fillna("").to_dict('records'),
-                }
-
-                key_map = {
-                    'Category': 'cat_id',
-                    'Account': 'account_id',
-                }
-
-                db_table = mapping_dict[i].split('.')[1]
-
-                self.setup_dict[db_table]['data'] = func_map[db_table]
-                self.setup_dict[db_table]['id_key'] = key_map[db_table]
-
-            else:
-                # print('ConfigParser Fetch')
-                if len(mapping_dict[i].split('.')) > 1:
-                    options = mapping_dict[i].split('.')
-                    # print('options', options)
-
-                    self.setup_dict[i]['data'] = self.config.get(options[0], options[1]).replace('\n', '').split(',')
-
-                else:
-                    self.setup_dict[i]['data'] = {}
-
-                    indiv_settings = self.config.options(mapping_dict[i])
-
-                    # print('indiv_settings', indiv_settings)
-                    # print('mapping_dict[i]', mapping_dict[i])
-                    for t in indiv_settings:
-                        # print('\tt', t)
-                        # print(self.config.get(mapping_dict[i], t))
-
-                        self.setup_dict[i]['data'][t] = self.config.get(mapping_dict[i], t)
-
-        print('setup_dict', self.setup_dict)
-        LOGGER.debug('setup_dict')
-        LOGGER.debug(self.setup_dict)
-
         render_dict = self.render_dict
-        render_dict['setup_dict'] = self.setup_dict
         render_dict["tree_top_level"] = self.top_level_items
+
+        render_dict['setup_dict'] = self.setup_dict
+        render_dict['setup_dict']['Home']['data'] = self.home.data          # Home data is dict of setting:value
+        render_dict['setup_dict']['Personal']['data'] = self.personal.data  # Personal data is dict of setting:value
+        render_dict['setup_dict']['Database']['data'] = self.database.data  # Database data is dict of setting:value
+        render_dict['setup_dict']['Category']['data'] = self.category.data  # Category data is list of dicts for each row in the table
+        render_dict['setup_dict']['Account']['data'] = self.account.data    # Account data is list of dicts for each row in the table
+        render_dict['setup_dict']['Links']['data'] = self.links_setup.data  # Link data is list of dicts {'link_id': value, 'link_url': value}
+        print('Setup render_dict: ', render_dict)
 
         return self.render(self.template, **render_dict)
 
@@ -112,7 +196,7 @@ def category_data():
     """
     API endpoint to fetch category list
     """
-    return jsonify({'data': DATA.categories.to_dict('records')})
+    return jsonify({'data': SETUP_PAGE.category.data})
 
 
 @APP.route("/setup/_account_table_data/", methods=['GET'])
@@ -120,7 +204,15 @@ def account_data():
     """
     API endpoint to fetch account list
     """
-    return jsonify({'data': DATA.accounts.to_dict('records')})
+    return jsonify({'data': SETUP_PAGE.account.data})
+
+
+@APP.route("/setup/_links_table_data/", methods=['GET'])
+def links_data():
+    """
+    API endpoint to fetch link list
+    """
+    return jsonify({'data': SETUP_PAGE.links_setup.data})
 
 
 @APP.route("/setup/update/", methods=['POST'])
@@ -132,92 +224,35 @@ def update_setup():
 
     :return: redirect
     """
-    confirm = []
-
-    try:
-        # print(request.get_json())
+    if request.is_json:
         update_json = request.get_json()
         LOGGER.debug("update_json")
         LOGGER.debug(update_json)
+        print('update_json', update_json)
 
-        for row in update_json:
-            # print(row)
-            if 'cat_id' in row.keys():
-                # print('cat_id detected')
-                response = DATA.update_category(
-                    row['cat_id'],
-                    cat_id=row['cat_id'],
-                    category_name=str(row['category_name']),
-                    description=str(row['description'])
-                )
-            elif 'account_id' in row.keys():
-                # print('account_id detected')
-                response = DATA.update_account(
-                    row['account_id'],
-                    account_id=row['account_id'],
-                    account_name=str(row['account_name']),
-                    account_type=str(row['account_type']),
-                    transaction_type=str(row['transaction_type']),
-                    starting_value=str(row['starting_value']),
-                )
-            else:
-                response = "Error"
-            confirm.append(response)
+        if 'cat_id' in update_json[0].keys():
+            SETUP_PAGE.category.update_category(update_json)
+        elif 'account_id' in update_json[0].keys():
+            SETUP_PAGE.account.update_account(update_json)
+        elif 'link_id' in update_json[0].keys():
+            SETUP_PAGE.links_setup.update_links(update_json)
 
-    except:
-        func_map = {
-            'home': SETUP_PAGE.config.update_setting,
-            'personal': SETUP_PAGE.config.update_setting,
-            'database': SETUP_PAGE.config.update_setting,
-        }
-
-        # print("update_form", request.form)
+    else:
         update_form = request.form
         LOGGER.debug("update_form")
         LOGGER.debug(update_form)
+        # print("update_form", request.form)
 
         update_dict = update_form.to_dict()
-        print("update_dict", update_dict)
+        # print("update_dict", update_dict)
         update_type = update_dict.pop('type')
         # print('update_type', update_type)
 
         for update_id in update_dict.keys():
-            # print('update_id: ', update_id, 'new value: ', update_dict[update_id])
             update = {'config_section': update_type.lower(),
                       'new_value': update_dict[update_id]}
 
-            response = func_map[update_type](update_id, **update)  # call appropriate handling function
-            confirm.append(response)
-
-    for response in confirm:
-        if 'err' in response.lower():
-            e_text = 'UPDATE FAILED - {}'.format(response)
-            return render_template('warning.html', error_text=e_text, return_address='/setup')
-
-    return redirect(url_for('app_setup'))
-
-
-@APP.route("/setup/delete/", methods=['POST'])
-def delete():
-    """
-    Only deletes database rows in approved tables
-
-    :return: redirect
-    """
-    func_map = {
-        'category': DATA.delete_category,
-        'account': DATA.delete_account,
-    }
-
-    data = request.form.to_dict()
-    # print(request.form.to_dict())
-    LOGGER.debug('/delete request.form.to_dict()')
-    LOGGER.debug(request.form.to_dict())
-
-    delete_type = data['type']
-    delete_id = data['id']
-
-    func_map[delete_type](delete_id)  # call appropriate handling function
+            SETUP_PAGE.config.update_setting(update_id, **update)  # call appropriate handling function
 
     return redirect(url_for('app_setup'))
 
@@ -233,15 +268,18 @@ def new_setting():
     """
     LOGGER.debug('/new request.args.to_dict()')
     LOGGER.debug(request.args.to_dict())
+    # print(request.form.to_dict())
 
     func_map = {
         'cat_id': DATA.add_category,
         'account_id': DATA.add_account,
+        'link_url': SETUP_PAGE.links_setup.add_link,
     }
 
     required_inputs = {
         'cat_id': ['category_name'],
         'account_id': ['account_name', 'account_type', 'transaction_type'],
+        'link_url': ['link_url'],
     }
 
     key = list(request.form.keys())[0]
@@ -252,10 +290,34 @@ def new_setting():
             missing_vals.append(i)
 
     if len(missing_vals) == 0:
-        # TODO: add warning page catch here
         func_map[key](**request.form.to_dict())  # should only use the first entry for list entries
         return redirect(url_for('app_setup'))
     else:
         e_text = 'MISSING REQUIRED VALUES - {}'.format(missing_vals)
         return render_template('warning.html', error_text=e_text, return_address='/setup')
 
+
+@APP.route("/setup/delete/", methods=['POST'])
+def delete():
+    """
+    Only deletes database rows in approved tables
+
+    :return: redirect
+    """
+    func_map = {
+        'category': DATA.delete_category,
+        'account': DATA.delete_account,
+        'Links': SETUP_PAGE.links_setup.delete_link,
+    }
+
+    data = request.form.to_dict()
+    # print('DELETE\n', request.form.to_dict())
+    LOGGER.debug('/delete request.form.to_dict()')
+    LOGGER.debug(request.form.to_dict())
+
+    delete_type = data['type']
+    delete_id = data['id']
+
+    func_map[delete_type](delete_id)  # call appropriate handling function
+
+    return redirect(url_for('app_setup'))

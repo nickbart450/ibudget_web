@@ -10,6 +10,7 @@
     // Initialize DataTables
     initCategoryTable();
     initAccountTable();
+    initLinksTable();
     console.log('DataTables initialized');
 
   });
@@ -75,6 +76,17 @@
 
             </div>
 
+          {% elif "list" == setup_dict[setting_category]["type"] %}
+            <div>
+              <form id="{{ setting_category }}_list_settings_form" class="w3-margin-top">
+                <button class="w3-btn w3-black" type='button' onclick="document.getElementById('setup_new_modal_{{ setting_category }}_list').style.display='block'">Add New</button>
+                <button class="w3-btn w3-black">Submit</button>
+
+                <table id="{{ setting_category }}_list" class="w3-table w3-bordered">
+                </table>
+              </form>
+            </div>
+
           {% else %}
             <p>OTHER</p>
 
@@ -82,37 +94,72 @@
 
         </div>
 
-        <!-- Add New Table Row Modal -->
-        <div id="setup_new_modal_{{ setting_category }}" class="w3-modal">
-          <div class="w3-modal-content w3-border w3-dark-grey w3-round">
-            <!-- Setup New Entry Modal Close Button-->
-            <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('setup_new_modal_{{ setting_category }}').style.display='none'">&times;</span>
 
-            <!-- Transaction Modify/Delete Modal Title Bar-->
-            <div class="w3-bar w3-2018-meerkat w3-round">
-                <div class="w3-bar-item">NEW SETTING - {{ setting_category }}</div>
-            </div>
+        {% if setup_dict[setting_category]['type'] == 'list' %}
+          <!-- Add New List Item Modal -->
+          <div id="setup_new_modal_{{ setting_category }}_list" class="w3-modal">
+            <div class="w3-modal-content w3-border w3-dark-grey w3-round">
+              <!-- Setup New Entry Modal Close Button-->
+              <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('setup_new_modal_{{ setting_category }}_list').style.display='none'">&times;</span>
 
-            <!-- New Settings Modal Form-->
-            <form id="{{ setting_category }}_modal_form" class="new_setting_form w3-row-padding w3-margin-top" action="{{ url_for('new_setting') }}" method="post">
-              {% for setting in setup_dict[setting_category]["data"][0] %}
-                <!-- Unit Row-->
-                <div class="w3-row-padding w3-section">
-                  <div class="w3-threequarter">
-                    <input id="{{ setting }}" class="w3-input w3-border" type="text" name="{{ setting }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
-                    <label>New {{ setting_category }} - {{ setting }}</label>
-                  </div>
-                </div>
-              {% endfor %}
-
-              <div class="w3-quarter w3-center">
-                <input type="submit" value="Submit" class="w3-button w3-black w3-large">
+              <!-- Transaction Modify/Delete Modal Title Bar-->
+              <div class="w3-bar w3-2018-meerkat w3-round">
+                  <div class="w3-bar-item">NEW SETTING - {{ setting_category }}</div>
               </div>
 
+              <!-- New Settings Modal Form-->
+              <form id="{{ setting_category }}_list_modal_form" class="new_setting_form w3-row-padding w3-margin-top" action="{{ url_for('new_setting') }}" method="post">
+                <!-- Unit Row -->
+                <div class="w3-row-padding w3-section">
+                  <div class="w3-threequarter">
+                    <input id="list_{{ setting_category }}" class="w3-input w3-border" type="text" name="{{ setting_category }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                    <label>New {{ setting_category }}</label>
+                  </div>
+                </div>
 
-            </form>
+                <div class="w3-quarter w3-center">
+                  <input type="submit" value="Submit" class="w3-button w3-black w3-large">
+                </div>
+
+
+              </form>
+            </div>
           </div>
-        </div>
+
+        {% else %}
+          <!-- Add New Table Row Modal -->
+          <div id="setup_new_modal_{{ setting_category }}" class="w3-modal">
+            <div class="w3-modal-content w3-border w3-dark-grey w3-round">
+              <!-- Setup New Entry Modal Close Button-->
+              <span class="w3-button w3-display-topright w3-round w3-black" onclick="document.getElementById('setup_new_modal_{{ setting_category }}').style.display='none'">&times;</span>
+
+              <!-- Transaction Modify/Delete Modal Title Bar-->
+              <div class="w3-bar w3-2018-meerkat w3-round">
+                  <div class="w3-bar-item">NEW SETTING - {{ setting_category }}</div>
+              </div>
+
+              <!-- New Settings Modal Form-->
+              <form id="{{ setting_category }}_modal_form" class="new_setting_form w3-row-padding w3-margin-top" action="{{ url_for('new_setting') }}" method="post">
+                {% for setting in setup_dict[setting_category]["data"][0] %}
+                  <!-- Unit Row -->
+                  <div class="w3-row-padding w3-section">
+                    <div class="w3-threequarter">
+                      <input id="{{ setting }}" class="w3-input w3-border" type="text" name="{{ setting }}" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                      <label>New {{ setting_category }} - {{ setting }}</label>
+                    </div>
+                  </div>
+                {% endfor %}
+
+                <div class="w3-quarter w3-center">
+                  <input type="submit" value="Submit" class="w3-button w3-black w3-large">
+                </div>
+
+
+              </form>
+            </div>
+          </div>
+
+        {% endif %}
       {% endfor %}
 
     </div>

@@ -13,13 +13,17 @@ class Page:
         self.config = CONFIG
         self.config.reload()
         self.render_dict = {}
+        self.links = []
 
     def render(self, template, **kwargs):
+        # print({**kwargs})
         self.config.reload()
 
-        # print({**kwargs})
+        self.links = [i[1] for i in DATA.config.items('links')]
+
         return render_template(
             template,
+            links=self.links,
             **kwargs
         )
 

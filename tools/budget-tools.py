@@ -186,10 +186,10 @@ if __name__ == '__main__':
     # print('Adding starting_values column to ACCOUNTS table in: ', db_file)
     # add_starting_values_to_accounts(connection)
     # update_starting_values_in_accounts(connection)
-    print(DATA.accounts)
+    # print(DATA.accounts)
 
     # ----- CATEGORIES -----
-    print(DATA.get_categories())
+    # print(DATA.get_categories())
 
     # -- Add Accounts
     # add_accounts(connection)

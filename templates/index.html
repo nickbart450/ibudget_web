@@ -30,12 +30,10 @@
       <div class="w3-dropdown-hover">
         <button class="w3-button">Links</button>  <!-- onclick="dropdownFunction()" -->
         <div id="dropdown" class="w3-dropdown-content w3-bar-block w3-card-4 w3-deep-purple w3-medium">
-          <a href="https://www.skylacu.com/" target="_blank" class="w3-bar-item w3-button">Skyla Credit Union</a>
-          <a href="https://www.td.com/us/en/personal-banking" target="_blank" class="w3-bar-item w3-button">TD Bank</a>
-          <a href="https://www.chase.com/" target="_blank" class="w3-bar-item w3-button">Chase</a>
-          <a href="https://www.capitalone.com/" target="_blank" class="w3-bar-item w3-button">Capital One</a>
-          <a href="https://www.mortgagequestions.com/" target="_blank" class="w3-bar-item w3-button">PHH Mortgage</a>
-          <a href="https://github.com/nickbart450/ibudget_web" target="_blank" class="w3-bar-item w3-button">Project github</a>
+          {% for link in links %}
+            <a href="//{{ link }}" target="_blank" class="w3-bar-item w3-button">{{ link }}</a>
+          {% endfor %}
+
         </div>
       </div>
 
@@ -83,7 +81,7 @@
           {% for account in account_view_order %}
             {
               type: "stackedColumn",
-              name: "{{ accounts[account]["account_name"] }}",
+              name: "{{ accounts[account]['account_name'] }}",
               showInLegend: "true",
               yValueFormatString: "$ #.##",
               dataPoints: {{ account_values_by_day[account] | safe }},

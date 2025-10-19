@@ -51,6 +51,7 @@ config_defaults = {
                                  'q2': 'yyyy-04-01,yyyy-06-31',
                                  'q3': 'yyyy-07-01,yyyy-09-31',
                                  'q4': 'yyyy-10-01,yyyy-12-31'},
+    'links': {'0': 'www.google.com'}
 }
 
 
@@ -89,15 +90,36 @@ class AppConfig(configparser.ConfigParser):
     def update_setting(self, config_item, config_section, new_value):
         """Updates a configuration setting (config_item) in 1 section to a new value"""
 
-        # print('address', config_section, '.', config_item)
-        # print('current_val', self[config_section][config_item])
-        # print('new_value', new_value)
+        print('address: ', config_section, '.', config_item)
+        print('current_val', self[config_section][config_item])
+        print('new_value', new_value)
         self[config_section][config_item] = new_value
         # print('new_val-confirm', self[config_section][config_item])
 
         self.write_out_config()
         # self.reload()
 
+        return 'Success'
+
+    def update_list(self, config_section, new_list):
+        print('config section: ', config_section)
+        print('current_val', self[config_section].items())
+        print('new_value', new_list)
+
+        index = 0
+        for itm in new_list:
+            self[config_section][str(index)] = str(itm)
+            print('new_val-confirm', self[config_section][str(index)])
+            index += 1
+
+        self.write_out_config()
+
+        return 'Success'
+
+    def add_setting(self, config_section, key, val):
+        # print('adding setting to section: {}'.format(config_section))
+        self[config_section][key] = val
+        self.write_out_config()
         return 'Success'
 
     def write_out_config(self):

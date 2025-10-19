@@ -2,6 +2,9 @@
 __version__ = '0.1.1'
 
 import os.path
+
+import pandas
+
 ROOT = os.path.dirname(os.path.realpath(__file__))
 os.chdir(ROOT)
 
@@ -1307,14 +1310,19 @@ class BudgetData:
         if self.year is None:
             self.set_year(year=self.default_year)
 
+        print('\n\t{} {}'.format(date_filter.upper(), self.year))
+
         # transactions = self.get_transactions(date_filter=date_filter)
         cat_summary_filter = {
-            'date_filter': date_filter,
+            'date': date_filter,
+            'start_date': None,
+            'end_date': None,
             'account': 'all',
             'category': 'All',
             'income_expense': 'both',
             'date_type': 'transaction_date',
         }
+
         transactions = fetch_filtered_transactions(cat_summary_filter)
         cat_width = 30
         amount_width = 10
@@ -1343,18 +1351,23 @@ class BudgetData:
                 summary.at[category, 'outflow'] = round(
                     sum(out_transactions[out_transactions['category'] == category].amount), 2)  # row/column
 
+        summary = summary.loc[:, ['outflow', 'inflow']]
+
         summary = summary.fillna(0)
         print(tabulate(summary))
 
-        summary['total'] = summary['inflow'] - summary['outflow']
+        # summary['total'] = summary['inflow'] - summary['outflow']
         # print(sum(summary['total']))
+
+        summary.rename(columns={'outflow': str(self.year)[-2:] + str(date_filter.upper()) + '_outflow',
+                                'inflow': str(self.year)[-2:] + str(date_filter.upper()) + '_inflow'}, inplace=True)
 
         debit_sum = round(sum(out_transactions.amount), 2)
         credit_sum = round(sum(in_transactions.amount), 2)
         print('\nNet Debits (outflow): ${:.2f}'.format(debit_sum))
         print('Net Credits (inflow): ${:.2f}'.format(credit_sum))
         print('Net Delta   (in-out): ${:.2f}'.format(credit_sum - debit_sum))
-        return None
+        return summary
 
     def get_cc_payments(self, account):
         if account not in list(self.get_accounts().index):
@@ -1734,10 +1747,12 @@ if __name__ == "__main__":
 
     # -- TOOLS
     # COPY HERE: ['q1', 'q2', 'q3', 'q4', 'all']['january', 'february', 'march', 'april', 'may', 'june']['july', 'august', 'september', 'october', 'november', 'december']
-    # DATA.set_year(2024)
-    # for n in ['july', 'august', 'september', 'october', 'november', 'december', 'all']:
-    #     print('\n\t{} {}'.format(n.upper(), DATA.year))
-    #     DATA.category_summary(date_filter=n)
+    table = pandas.DataFrame()
+    DATA.set_year(2025)
+    for n in ['q1', 'q2', 'q3', 'q4', 'all']:
+        # print('\n\t{} {}'.format(n.upper(), DATA.year))
+        table = pd.concat([table, DATA.category_summary(date_filter=n)], axis=1)
+    # table.to_csv('2025.csv')
 
     # DATA.get_transactions().to_csv('./2023transacts.csv')
 
@@ -1756,17 +1771,17 @@ if __name__ == "__main__":
     # print(DATA.quick_query('list_tables'))
 
     # DATA.year = 2024
-    f = {
-        'date': None,
-        'start_date': None,  # '2024-01-12'
-        'end_date': None,  # '2024-02-05'
-        'date_type': 'transaction_date',  # 'posted_date'
-        'account': None,
-        'income_expense': None,
-        'category': None
-    }
-    dat = fetch_filtered_transactions(f)
-    print(dat.head())
-    print(dat.tail())
+    # f = {
+    #     'date': None,
+    #     'start_date': None,  # '2024-01-12'
+    #     'end_date': None,  # '2024-02-05'
+    #     'date_type': 'transaction_date',  # 'posted_date'
+    #     'account': None,
+    #     'income_expense': None,
+    #     'category': None
+    # }
+    # dat = fetch_filtered_transactions(f)
+    # print(dat.head())
+    # print(dat.tail())
 
     DATA.close()
