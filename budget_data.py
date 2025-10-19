@@ -1112,9 +1112,10 @@ class BudgetData:
 
             payment_id = self.add_transaction(payment_date,
                                               'Credit Card Payment',
-                                              10.00,
+                                              self.calculate_credit_card_payment(account_id, payment_date),
                                               posted_date=payment_date,
                                               debit_account=account_id,
+                                              credit_account=100,
                                               description='CC Payment',
                                               vendor=accounts.loc[account_id]['account_name'])
         else:
@@ -1370,7 +1371,7 @@ class BudgetData:
             'income_expense': 'both',
             'category': 'Credit Card Payment',
         }
-        transactions = fetch_filtered_transactions(filters)
+        transactions = self.transactions.copy()
         payments = transactions[transactions['debit_account_id'] == account]
         return payments
 
