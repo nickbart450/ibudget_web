@@ -72,7 +72,7 @@
                 <div class="w3-row-padding w3-section">
                     <div class="w3-half">
                         <div class="w3-dropdown-hover" style="width:100%">
-                            <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" required="required" placeholder="Account-From" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                            <input id="cred_accnt_input" class="w3-input w3-border" type="text" name="account-credit" required="required" placeholder="Account-From" pattern="[\&\/()\.\-\,a-z A-Z0-9]+">
                             <div id="cred_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
                                 {% for i in accounts %}
                                     <input class="cred_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
@@ -83,7 +83,7 @@
                     </div>
                     <div class="w3-half">
                         <div class="w3-dropdown-hover" style="width:100%">
-                            <input id="deb_accnt_input" class="w3-input w3-border" type="text" name="account-debit" placeholder="Account-To" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                            <input id="deb_accnt_input" class="w3-input w3-border" type="text" name="account-debit" placeholder="Account-To" pattern="[\&\/()\.\-\,a-z A-Z0-9]+">
                             <div id="deb_accnt_dropdown" class="w3-dropdown-content w3-bar-block w3-card-4">
                                 {% for i in accounts %}
                                     <input class="deb_account_btn w3-bar-item w3-button" type="button" value="{{ i }}">
@@ -102,7 +102,7 @@
                     </div>
                     <div class="w3-half">
                         <div class="w3-dropdown-hover" style="width:100%">
-                            <input id="cat_input" class="w3-input w3-border" type="text" name="category" required="required" placeholder="Category" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                            <input id="cat_input" class="w3-input w3-border" type="text" name="category" required="required" placeholder="Category" pattern="[\&\/()\.\-\,a-z A-Z0-9]+">
                             <div class="w3-dropdown-content w3-bar-block w3-card-4" style="height: 200px; width: 75%; min-width: 225px; overflow-x: hidden; overflow-y: auto;">
                               {% for i in categories %}
                                 <input id="cat_{{ i }}" type="button" value="{{ i }}" class="cat_btn w3-bar-item w3-button">
@@ -117,10 +117,10 @@
                 <!-- Fourth Row -->
                 <div class="w3-row-padding w3-section">
                     <div class="w3-threequarter">
-                        <input class="w3-input w3-border" type="text" name="description" placeholder="Monday - Dinner" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                        <input class="w3-input w3-border" type="text" name="description" placeholder="Monday - Dinner" pattern="[\&\/()\.\-\,a-z A-Z0-9]+">
                         <label>Description</label>
                     </div>
-                    <div class="w3-rest w3-center">
+                    <div class="w3-quarter w3-center">
                         <input class="w3-check" type="checkbox" name="is_posted_selector">
                         <label class="w3-large">Posted</label>
                     </div>
@@ -129,7 +129,7 @@
                 <!-- Fifth Row -->
                 <div class="w3-row-padding w3-section">
                     <div class="w3-threequarter">
-                        <input class="w3-input w3-border" type="text" name="vendor" placeholder="Amazon" pattern="[\&\/\\\(\)\.\-a-zA-Z0-9\s]+">
+                        <input class="w3-input w3-border" type="text" name="vendor" placeholder="Amazon" pattern="[\&\/()\.\-\,a-z A-Z0-9\s]+">
                         <label>Vendor</label>
                     </div>
                     <div class="w3-quarter w3-center">
