@@ -931,7 +931,8 @@ class BudgetData:
         total_liabilities = 0
         total_retirement = 0
         if posted_today is not None:
-            accounts = self.accounts.set_index('account_id', drop=False)
+            accounts = self.accounts.copy()
+            accounts = accounts.sort_values('transaction_type')
             accounts = accounts.sort_values('account_type')
             for account in accounts['account_id']:
                 if accounts.at[account, 'account_type'] == 'asset':
@@ -1751,6 +1752,7 @@ if __name__ == "__main__":
     # print(burn_table.columns)
     # print(burn_table[['transaction_date', 'account_sum', 'account_sum_no_invest', 'burntime_full', 'burntime_no_invest']])
 
+    print(DATA.calculate_todays_account_values())
     # print(DATA.get_accounts())
     # print(DATA.get_categories())
     # print(DATA.get_transactions(category_filter='Transfer'))
@@ -1767,7 +1769,7 @@ if __name__ == "__main__":
         'category': None
     }
     dat = fetch_filtered_transactions(f)
-    print(dat.head())
-    print(dat.tail())
+    # print(dat.head())
+    # print(dat.tail())
 
     DATA.close()
