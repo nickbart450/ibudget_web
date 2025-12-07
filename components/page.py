@@ -6,12 +6,17 @@ from flask import render_template
 
 # Internal Imports
 from budget_data import CONFIG
+from budget_data import DATA
 
 
 class Page:
     def __init__(self):
         self.config = CONFIG
         self.config.reload()
+
+        self.todays_accounts = None
+        self.todays_accounts_show = {}
+        self.todays_accounts_hidden = {}
 
     def render(self, template, **kwargs):
         self.config.reload()
@@ -20,6 +25,22 @@ class Page:
             template,
             **kwargs
         )
+
+    def get_todays_accounts(self):
+        # Fetch today's account values from data object
+        # self.todays_accounts is dict with keys of account_id and values
+        self.todays_accounts = DATA.calculate_todays_account_values()
+        for t in self.todays_accounts:
+            if "total" in str(t).lower():
+                self.todays_accounts_show[t] = '$ {:.2f}'.format(self.todays_accounts[t])
+                continue
+
+            account_name = DATA.accounts.at[t, 'account_name']
+
+            if DATA.accounts.at[t, 'hidden']:
+                self.todays_accounts_hidden[account_name] = '$ {:.2f}'.format(self.todays_accounts[t])
+            else:
+                self.todays_accounts_show[account_name] = '$ {:.2f}'.format(self.todays_accounts[t])
 
 
 if __name__ == '__main__':

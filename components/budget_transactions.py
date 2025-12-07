@@ -79,9 +79,7 @@ class TransactionsPage(page.Page):
         LOGGER.debug('Fetching /transact with filters: {}'.format(dict(self.filters)))
 
         # Calculate today's account values from database
-        todays_accounts = DATA.calculate_todays_account_values()
-        for t in todays_accounts:
-            todays_accounts[t] = '$ {:.2f}'.format(todays_accounts[t])
+        self.get_todays_accounts()
 
         # Fetch categories
         categories = DATA.categories['category_name'].to_list()
@@ -112,7 +110,8 @@ class TransactionsPage(page.Page):
             date_filter=self.date_filters,
             active_year=active_year,
             accounts=['All'] + DATA.accounts['account_name'].to_list(),
-            account_values_today=todays_accounts,  # Account value dictionary for just today
+            account_values_today=self.todays_accounts_show,  # Account value dictionary for just today
+            account_values_today_hidden=self.todays_accounts_hidden,  # Account value dictionary for just today
             categories=['All'] + categories,
             date_filter_default=active_date,
             account_filter_default=active_account,

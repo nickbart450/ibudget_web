@@ -18,9 +18,6 @@ class Home(page.Page):
 
         self.include_retire = False
 
-        self.accounts = None
-        self.todays_accounts = None
-
         self.asset_accounts = None
         self.asset_account_values = None
         self.asset_accounts_no_invest = None
@@ -50,10 +47,7 @@ class Home(page.Page):
             'interval_BurnChart': int(self.config['home']['burn_time_chart_interval']),
         }
 
-        # Fetch today's account values from data object
-        self.todays_accounts = DATA.calculate_todays_account_values()
-        for t in self.todays_accounts:
-            self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
+        self.get_todays_accounts()
 
         self.include_retire = str(self.config['ui_settings']['include_retirement_in_burn']).lower() == "true"
 
@@ -171,7 +165,8 @@ class Home(page.Page):
         return self.render(
             self.template,
             accounts=self.accounts.to_dict('index'),  # Used to translate account_id to name
-            account_values_today=self.todays_accounts,  # Account value dictionary for just today
+            account_values_today=self.todays_accounts_show,  # Account value dictionary for just today
+            account_values_today_hidden=self.todays_accounts_hidden,  # Account value dictionary for just today
             account_values_by_day=self.asset_account_values,  # Account value dictionary by day for CanvasJS stacked bar chart
             burn_time_by_day=self.burn_time_full,  # List of dictionaries describing burn time
             burn_time_by_day_no_invest=self.burn_time_no_invest,  # List of dictionaries describing burn time
