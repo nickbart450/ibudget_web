@@ -909,6 +909,8 @@ class BudgetData:
         return account_values
 
     def calculate_todays_account_values(self):
+        # Returns {account_id: account value (float)}
+
         today = datetime.datetime.today()
         self.logger.info("Calculating Today's Account Values {}...".format(today))
 
@@ -935,27 +937,19 @@ class BudgetData:
             accounts = accounts.sort_values('transaction_type')
             accounts = accounts.sort_values('account_type')
             for account in accounts['account_id']:
-                if accounts.at[account, 'account_type'] == 'asset':
-                    v = posted_today[str(account)]
-                    account_name = accounts.at[account, 'account_name']
-                    todays_values[account_name] = float(v)
+                v = posted_today[str(account)]
+                # account_name = accounts.at[account, 'account_name']
+                todays_values[account] = float(v)
 
+                if accounts.at[account, 'account_type'] == 'asset':
                     asset_accounts = accounts.loc[accounts['account_type'] == 'asset']
                     total_assets = sum(posted_today[list(asset_accounts.index.astype(str))])
 
                 elif accounts.at[account, 'account_type'] == 'retirement':
-                    v = posted_today[str(account)]
-                    account_name = accounts.at[account, 'account_name']
-                    todays_values[account_name] = float(v)
-
                     retirement_accounts = accounts.loc[accounts['account_type'] == 'retirement']
                     total_retirement = sum(posted_today[list(retirement_accounts.index.astype(str))])
 
                 elif accounts.at[account, 'account_type'] == 'liability':
-                    v = posted_today[str(account)]
-                    account_name = accounts.at[account, 'account_name']
-                    todays_values[account_name] = float(v)
-
                     liability_accounts = accounts.loc[accounts['account_type'] == 'liability']
                     total_liabilities = sum(posted_today[list(liability_accounts.index.astype(str))])
 
