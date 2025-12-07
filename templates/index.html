@@ -153,12 +153,27 @@
   <div id="homepage_body" class="w3-row-padding">
     <!-- Left Sidebar -->
     <div id="home_left_sidebar" class="w3-quarter w3-card w3-margin-right">
-      <div class="w3-row w3-padding w3-round w3-border w3-center w3-large" style="background-color: #343E3C">
-        <b>Current Account Values</b>
+      <div class="w3-bar w3-border" style="background-color: #343E3C">
+        <div class="w3-bar-item"><b>CURRENT ACCOUNT VALUES</b></div>
       </div>
 
       <!-- Current Account Values Table -->
       <table class="w3-table w3-bordered">
+        <script>
+        function ShowHideAccounts() {
+          var rows = document.getElementsByClassName("hide_row");
+
+          if (rows[0].style.display === "table-row") {
+            for (let row of rows) {
+                row.style.display = "none";
+            }
+          } else {
+            for (let row of rows) {
+                row.style.display = "table-row";
+            }
+          }
+        }
+        </script>
         <thead>
           <tr>
             <th class="w3-right-align">Account</th>
@@ -174,6 +189,21 @@
             </tr>
 
           {% endfor %}
+          <tr>
+            <td colspan="2">
+               <button onclick="ShowHideAccounts()" class="w3-button w3-block w3-right-align">Other Accounts ></button>
+            </td>
+          </tr>
+
+          {% for account in account_values_today_hidden %}
+            <tr class="hide_row" style="display: none">
+              <!-- Data-->
+              <td class="w3-right-align">{{ account }}</td>
+              <td class="w3-left-align"><b>{{ account_values_today_hidden[account] }}</b></td>
+            </tr>
+
+          {% endfor %}
+
         </tbody>
       </table>
 
