@@ -154,6 +154,24 @@ if __name__ == '__main__':
     # string = "ALTER TABLE CATEGORIES RENAME COLUMN name TO category_name;"
     # DATA.general_query(string)
 
+    # -- ADD COLUMN TO ACCOUNTS TABLE
+    # statement = """
+    #     ALTER TABLE ACCOUNTS
+    #     ADD COLUMN hidden INT NOT NULL default 0
+    # """
+    # DATA.general_query(statement, commit=True)
+
+    # -- UPDATE VALUE in ACCOUNT TABLE
+    # hidden = [0, 102, 103, 104, 202, 300, 301, 400, 401, 402, 403, 404, 405, 406, 407, 408, 901, 902, 5737, 9721]
+    # for h in hidden:
+    #     statement = """
+    #        UPDATE accounts
+    #        SET hidden = 1
+    #        WHERE account_id = {};
+    #     """.format(h)
+    #     DATA.general_query(statement, commit=True)
+    # DATA.get_accounts()
+
 
     # ----- TRANSACTIONS
     # all_transactions = DATA.get_transactions()
