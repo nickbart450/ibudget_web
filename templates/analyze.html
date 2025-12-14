@@ -2,9 +2,7 @@
 {% block body %}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
-
 <script type="text/javascript" src="https://canvasjs.com/assets/script/jquery.canvasjs.min.js"></script>
-
 
 <!-- Page Functions -->
 <script type="text/javascript" src="{{ url_for('static', filename='analyze.js') }}"></script>
@@ -69,6 +67,8 @@
       axisX: {
         title: "Month",
 		valueFormatString: "YYYY-MM",
+		interval: 1,
+        intervalType: "month",
 	  },
       axisY: {
           title: "Amount ($)",
@@ -262,7 +262,7 @@
 
   <!--  Category Trends Charts -->
   <div class="w3-section w3-row">
-    <!--  Filters & Account Values Sidebar  -->
+    <!--  Filter Sidebar  -->
     <div id="category_filter_sidebar" class="w3-quarter w3-card w3-margin-right">
         <div class="w3-bar" style="background-color: #343E3C">
             <div class="w3-bar-item"><b>CATEGORY TREND -</b></div>

@@ -102,7 +102,7 @@ class AnalyzePage(page.Page):
         self.render_dict["account_values_today_hidden"] = self.todays_accounts_hidden
 
         # Fetch transactions for analysis
-        self.root_transactions = fetch_filtered_transactions(self.filters).sort_values('posted_date')
+        self.root_transactions = fetch_filtered_transactions(self.filters).sort_values('transaction_date')
 
         # Fetch page data for modules
         self.category_summary()
@@ -116,19 +116,22 @@ class AnalyzePage(page.Page):
         transactions = self.root_transactions.copy()
 
         # Remove Transfer & Adjustment Categories
-        transactions = transactions[(transactions['category'] != 'Transfer') & (transactions['category'] != 'Adjustment')]
+        transactions = transactions[(transactions['category'] != 'Transfer') &
+                                    (transactions['category'] != 'Adjustment')]
         if not self.include_invest:
             # If include_invest is False, remove those transactions
             transactions = transactions[transactions['category'] != 'Investment']
 
         # Expense Transactions
-        trans_exp = transactions[transactions['debit_account_id'] == 0]
+        trans_exp = transactions[(transactions['debit_account_id'] == 0) &
+                                 (transactions['category'] != 'Credit Card Payment')
+                                 ]
 
         # Income Transactions
+        # All money coming in from External or from designated income accounts, ignoring investment income
         trans_inc = transactions[
             (transactions['credit_account_id'] == 0) |
-            (transactions['credit_account_id'].isin(self.income_accts))
-            ]
+            (transactions['credit_account_id'].isin(self.income_accts))]
 
         # Build resulting table and format text
         result = pd.DataFrame(columns=self.category_summary_columns)
@@ -210,13 +213,15 @@ class AnalyzePage(page.Page):
 
         # Remove investment, transfer, adjustment categories
         transactions = transactions[
-            # (transactions['category'] != 'Investment') &
             (transactions['category'] != 'Transfer') &
-            (transactions['category'] != 'Adjustment')
-            ]
+            (transactions['category'] != 'Adjustment')]
+
+        if not self.include_invest:
+            # If include_invest is False, remove those transactions
+            transactions = transactions[transactions['category'] != 'Investment']
 
         # Add YYYY-MM date code column to transactions datatable
-        transactions['year_month'] = transactions['posted_date'].dt.strftime('%Y-%m')
+        transactions['year_month'] = transactions['transaction_date'].dt.strftime('%Y-%m')
         transactions_grouped = transactions.groupby('year_month')
 
         # Build output table
@@ -225,41 +230,47 @@ class AnalyzePage(page.Page):
         last_month = int(list(transactions_grouped.groups)[-1][-2:])
         first_year = list(transactions_grouped.groups)[0][:4]
         last_year = list(transactions_grouped.groups)[-1][:4]
-        m_list = [list(transactions_grouped.groups)[0]]
-        m, y = first_month, int(first_year)
+        m_list = []
+        m, y = int(first_month), int(first_year)
         for i in range(1, 100):
-            m_list .append("{0}-{1:0=2d}".format(y, m))
-
+            m_list.append("{0}-{1:0=2d}".format(y, m))
             if m == 12:
                 y += 1
                 m = 0
-
             m += 1
 
         for m in m_list:
             if m > "{0}-{1:0=2d}".format(last_year, last_month):
                 break
 
+            result.at[m, 'date_code'] = "{}-{:02d}".format(m[0:4], months[m[-2:]])
+
             try:
                 month_trans = transactions_grouped.get_group(m)
 
                 # Expense Transactions
-                trans_exp = month_trans[month_trans['debit_account_id'] == 0]
+                trans_exp = month_trans[(month_trans['debit_account_id'] == 0) &
+                                        (month_trans['category'] != 'Credit Card Payment')
+                                        ]
+                result.at[m, 'expense_sum'] = round(sum(trans_exp['amount']), 2)
+
+            except KeyError:
+                result.at[m, 'expense_sum'] = 0
+
+            try:
+                month_trans = transactions_grouped.get_group(m)
 
                 # Income Transactions
                 trans_inc = month_trans[
                     (month_trans['credit_account_id'] == 0) |
-                    (month_trans['credit_account_id'].isin(self.income_accts))
+                    (month_trans['credit_account_id'].isin(self.income_accts)) &
+                    (month_trans['category'] != 'Credit Card Payment')
                     ]
 
-                result.at[m, 'date_code'] = "{}-{}".format(m[0:4], months[m[-2:]])
                 result.at[m, 'income_sum'] = round(sum(trans_inc['amount']), 2)
-                result.at[m, 'expense_sum'] = round(sum(trans_exp['amount']), 2)
 
             except KeyError:
-                result.at[m, 'date_code'] = "{}-{}".format(m[0:4], months[m[-2:]])
                 result.at[m, 'income_sum'] = 0
-                result.at[m, 'expense_sum'] = 0
 
         self.render_dict["area_category"] = result.to_dict("records")
 
