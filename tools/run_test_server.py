@@ -10,6 +10,12 @@ from components import config
 
 
 if __name__ == '__main__':
+    import pandas as pd
+    pd.set_option('display.max_rows', 1000)
+    pd.set_option('display.min_rows', 50)
+    pd.options.display.width = 0
+    pd.set_option('display.max_columns', 30)
+
     # Load Config File
     CONFIG = DATA.config
 
