@@ -97,10 +97,9 @@ class AnalyzePage(page.Page):
         LOGGER.debug('Fetching /analyze with invest_select: {}'.format(str(self.include_invest).lower()))
 
         # Calculate today's account values and format dict for page data
-        self.todays_accounts = DATA.calculate_todays_account_values()
-        for t in self.todays_accounts:
-            self.todays_accounts[t] = '$ {:.2f}'.format(self.todays_accounts[t])
-        self.render_dict["account_values_today"] = self.todays_accounts
+        self.get_todays_accounts()
+        self.render_dict["account_values_today"] = self.todays_accounts_show
+        self.render_dict["account_values_today_hidden"] = self.todays_accounts_hidden
 
         # Fetch transactions for analysis
         self.root_transactions = fetch_filtered_transactions(self.filters).sort_values('posted_date')

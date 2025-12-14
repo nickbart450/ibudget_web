@@ -44,4 +44,7 @@ class Page:
 
 
 if __name__ == '__main__':
-    print('a')
+    import pandas as pd
+    pd.set_option("display.max_rows", None, "display.max_columns", None, "display.width", 2000)  # makes pandas print full table
+    p = Page()
+    p.get_todays_accounts()

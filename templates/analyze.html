@@ -175,34 +175,55 @@
         </div>
       </div>
 
-      <!-- Today's Account Values Table -->
-      <div>
-        <br>
-        <div class="w3-card w3-round w3-border">
-          <div class="w3-bar w3-round" style="background-color: #343E3C">
-            <div class="w3-bar-item"><b>TODAY'S ACCOUNT VALUES -</b></div>
-          </div>
+      <!-- Current Account Values Table -->
+      <table class="w3-table w3-bordered">
+        <script>
+        function ShowHideAccounts() {
+          var rows = document.getElementsByClassName("hide_row");
 
-          <table class="w3-table w3-bordered">
-            <thead>
-              <tr>
-                <th class="w3-right-align">Account</th>
-                <th class="w3-center">Value (USD)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for account in account_values_today %}
-              <tr>
-                <!-- Data-->
-                <td class="w3-right-align">{{ account }}</td>
-                <td class="w3-left-align"><b>{{ account_values_today[account] }}</b></td>
-              </tr>
+          if (rows[0].style.display === "table-row") {
+            for (let row of rows) {
+                row.style.display = "none";
+            }
+          } else {
+            for (let row of rows) {
+                row.style.display = "table-row";
+            }
+          }
+        }
+        </script>
+        <thead>
+          <tr>
+            <th class="w3-right-align">Account</th>
+            <th class="w3-center">Value (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in account_values_today %}
+            <tr>
+              <!-- Data-->
+              <td class="w3-right-align">{{ account }}</td>
+              <td class="w3-left-align"><b>{{ account_values_today[account] }}</b></td>
+            </tr>
 
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {% endfor %}
+          <tr>
+            <td colspan="2">
+               <button onclick="ShowHideAccounts()" class="w3-button w3-block w3-right-align">Other Accounts ></button>
+            </td>
+          </tr>
+
+          {% for account in account_values_today_hidden %}
+            <tr class="hide_row" style="display: none">
+              <!-- Data-->
+              <td class="w3-right-align">{{ account }}</td>
+              <td class="w3-left-align"><b>{{ account_values_today_hidden[account] }}</b></td>
+            </tr>
+
+          {% endfor %}
+
+        </tbody>
+      </table>
     </div>
 
     <!-- Table & Pie Charts  -->
